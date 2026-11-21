@@ -94,10 +94,18 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
 - `dms edit [<map>]` (**`Edit Map.cmd`**): packs `build/<map>/edit.wad` from `TEXTMAP` and opens it in the editor,
   so Save writes there. If the mapper already saved changes in it, it is reopened as it is, not overwritten.
 
-Code: `src/dms/udmf.py` (TEXTMAP read/write, keeps every field), `wad.py`, `gen.py` (the `MapBuilder` that
+- `dms catalog`: lists the IWAD's wall textures (with sizes) and flats into `catalog/` (committed; names only).
+  Re-run after changing the Freedoom pin.
+- `dms validate <map> [--edit]`: checks `TEXTMAP` (or the mapper's `edit.wad`) and writes `build/<map>/validate.txt`
+  (`validate-edit.txt`). `dms build` runs the same checks and exits non-zero on errors, but still packs the WAD so the
+  map can be opened to look at the problem. Checks: references, zero-length and crossing lines, missing front sides,
+  one-sided walls without a middle texture, unclosed/orphan sectors, light 0-255, ceiling below floor, textures and
+  flats against the catalog, player 1 start, things outside every sector or on no skill level, tagged specials.
+
+Code: `src/dms/udmf.py` (TEXTMAP read/write, keeps every field), `wad.py`, `catalog.py`, `validate.py`, `gen.py` (the `MapBuilder` that
 `map.py` files use; every element gets a `user_gid`), `maps.py`, `build.py`, `launch.py`.
 
-*Planned, not built yet* (see `PLAN.md` §6): `pull`, `watch`, `tour`, validator, renderer.
+*Planned, not built yet* (see `PLAN.md` §6): renderer, `pull`, movement check, notes, `watch`, `tour`.
 
 **Running uv directly** (e.g. `uv add`, `uv lock`): never call a bare `uv`. Run it inside the repo environment:
 

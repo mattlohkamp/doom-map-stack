@@ -47,9 +47,40 @@ def cmd_build(args: argparse.Namespace) -> int:
 
     root = repo_root()
     targets = maps.all_maps(root) if args.all else [maps.resolve(root, args.map)]
+    errors = 0
     for info in targets:
-        build.build(info, root, force=args.force)
+        errors += build.build(info, root, force=args.force).errors
+    return 1 if errors else 0
+
+
+def cmd_catalog(args: argparse.Namespace) -> int:
+    from dms import catalog
+    from dms.launch import tool_path
+
+    root = repo_root()
+    cat = catalog.from_iwad(tool_path(root, "freedoom"))
+    for p in catalog.write(cat, root):
+        print(f"dms catalog: wrote {p}")
+    print(f"    {len(cat.textures)} textures, {len(cat.flats)} flats from {cat.source}")
     return 0
+
+
+def cmd_validate(args: argparse.Namespace) -> int:
+    from dms import build, maps, udmf
+
+    root = repo_root()
+    info = maps.resolve(root, args.map)
+    if args.edit:
+        tm = build.read_edit_wad_textmap(info, root)
+        title, report_path = f"validate {info.name} (edit.wad)", info.build_dir(root) / "validate-edit.txt"
+    else:
+        if not info.textmap.exists():
+            raise build.BuildError(f"{info.textmap} doesn't exist yet (run `dms build {info.name}`)")
+        tm = udmf.parse(info.textmap.read_text(encoding="utf-8"))
+        title, report_path = f"validate {info.name}", info.build_dir(root) / "validate.txt"
+    print(f"dms {title}")
+    issues = build.check(tm, root, "validate", report_path)
+    return 1 if any(i.severity == "error" for i in issues) else 0
 
 
 def pick_map(root: Path, given: str | None, action: str):
@@ -112,6 +143,14 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--all", action="store_true", help="build every map in maps/")
     p.add_argument("--force", action="store_true", help="overwrite hand edits to TEXTMAP / unsaved edit.wad changes")
     p.set_defaults(func=cmd_build)
+
+    p = sub.add_parser("catalog", help="list the IWAD's textures and flats into catalog/ (for the validator)")
+    p.set_defaults(func=cmd_catalog)
+
+    p = sub.add_parser("validate", help="check a map's TEXTMAP (or the editor's edit.wad) for problems")
+    p.add_argument("map", help=MAP_HELP)
+    p.add_argument("--edit", action="store_true", help="check build/<map>/edit.wad (the mapper's saved edits)")
+    p.set_defaults(func=cmd_validate)
 
     p = sub.add_parser("play", help="build if needed, then play the map in UZDoom")
     p.add_argument("map", nargs="?", help=MAP_HELP + "; none: choose from a list")

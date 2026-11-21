@@ -1,0 +1,213 @@
+namespace = "zdoom";
+thing // 0
+{
+x = 256.0;
+y = 256.0;
+angle = 90;
+type = 1;
+skill1 = true;
+skill2 = true;
+skill3 = true;
+skill4 = true;
+skill5 = true;
+single = true;
+coop = true;
+dm = true;
+class1 = true;
+class2 = true;
+class3 = true;
+user_gid = "player1_start";
+}
+
+vertex // 0
+{
+x = 0.0;
+y = 0.0;
+}
+
+vertex // 1
+{
+x = 0.0;
+y = 512.0;
+}
+
+vertex // 2
+{
+x = 256.0;
+y = 640.0;
+}
+
+vertex // 3
+{
+x = 512.0;
+y = 512.0;
+}
+
+vertex // 4
+{
+x = 512.0;
+y = 0.0;
+}
+
+vertex // 5
+{
+x = 256.0;
+y = 0.0;
+}
+
+vertex // 6
+{
+x = -192.0;
+y = 608.0;
+}
+
+vertex // 7
+{
+x = 64.0;
+y = 736.0;
+}
+
+linedef // 0
+{
+v1 = 0;
+v2 = 1;
+sidefront = 0;
+blocking = true;
+user_gid = "room.wall_w";
+}
+
+linedef // 1
+{
+v1 = 1;
+v2 = 2;
+sidefront = 1;
+blocking = true;
+user_gid = "room.wall_n";
+}
+
+linedef // 2
+{
+v1 = 3;
+v2 = 4;
+sidefront = 2;
+blocking = true;
+user_gid = "room.wall_e";
+}
+
+linedef // 3
+{
+v1 = 4;
+v2 = 5;
+sidefront = 3;
+blocking = true;
+user_gid = "room.wall_s";
+}
+
+linedef // 4
+{
+v1 = 2;
+v2 = 3;
+sidefront = 4;
+blocking = true;
+user_gid = "room.wall_n";
+}
+
+linedef // 5
+{
+v1 = 6;
+v2 = 7;
+blocking = true;
+user_gid = "room.wall_n";
+}
+
+linedef // 6
+{
+v1 = 2;
+v2 = 5;
+sidefront = 5;
+sideback = 6;
+twosided = true;
+}
+
+linedef // 7
+{
+v1 = 5;
+v2 = 0;
+sidefront = 7;
+blocking = true;
+user_gid = "room.wall_s";
+}
+
+sidedef // 0
+{
+sector = 1;
+texturemiddle = "GRAY1";
+user_gid = "room.wall_w.front";
+}
+
+sidedef // 1
+{
+sector = 1;
+texturemiddle = "GRAY1";
+user_gid = "room.wall_n.front";
+}
+
+sidedef // 2
+{
+sector = 0;
+texturemiddle = "GRAY1";
+user_gid = "room.wall_e.front";
+}
+
+sidedef // 3
+{
+sector = 0;
+texturemiddle = "GRAY1";
+user_gid = "room.wall_s.front";
+}
+
+sidedef // 4
+{
+sector = 0;
+texturemiddle = "GRAY1";
+user_gid = "room.wall_n.front";
+offsetx_mid = 256.0;
+}
+
+sidedef // 5
+{
+sector = 1;
+}
+
+sidedef // 6
+{
+sector = 0;
+}
+
+sidedef // 7
+{
+sector = 1;
+texturemiddle = "GRAY1";
+user_gid = "room.wall_s.front";
+}
+
+sector // 0
+{
+heightfloor = 0;
+heightceiling = 128;
+texturefloor = "FLOOR4_8";
+textureceiling = "CEIL3_5";
+lightlevel = 0;
+user_gid = "room";
+}
+
+sector // 1
+{
+heightfloor = 0;
+heightceiling = 128;
+texturefloor = "FLOOR4_8";
+textureceiling = "CEIL3_5";
+lightlevel = 99999;
+user_gid = "room";
+}
+

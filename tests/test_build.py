@@ -11,7 +11,7 @@ def repo(tmp_path):
 
 def test_new_build_pack(repo):
     info = maps.new(repo, "hello-room", kind="test")
-    out = build.build(info, repo)
+    out = build.build(info, repo).wad
     assert out == repo / "build" / "hello-room" / "hello-room.wad"
     kind, lumps = wad.read(out)
     assert [l.name for l in lumps] == ["MAPINFO", "MAP01", "TEXTMAP", "ENDMAP"]
