@@ -49,8 +49,18 @@ def cmd_build(args: argparse.Namespace) -> int:
     targets = maps.all_maps(root) if args.all else [maps.resolve(root, args.map)]
     errors = 0
     for info in targets:
-        errors += build.build(info, root, force=args.force).errors
+        errors += build.build(info, root, force=args.force, note=args.note).errors
     return 1 if errors else 0
+
+
+def cmd_board(args: argparse.Namespace) -> int:
+    from dms import board
+    from dms.configure import project_settings
+
+    root = repo_root()
+    port = args.port or int(project_settings(root)["board"]["port"])
+    auto_pull = bool(project_settings(root)["board"]["auto_pull"])
+    return board.serve(root, port, open_browser=not args.no_browser, auto_pull=auto_pull)
 
 
 def cmd_catalog(args: argparse.Namespace) -> int:
@@ -136,6 +146,16 @@ def cmd_edit(args: argparse.Namespace) -> int:
     return launch.edit(root, info)
 
 
+def cmd_pull(args: argparse.Namespace) -> int:
+    from dms import pull
+
+    root = repo_root()
+    info = pick_map(root, args.map, "Pull")
+    if info is None:
+        return 0
+    return pull.pull(info, root, ported=args.ported)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="dms", description="Doom map stack.")
     parser.add_argument("--version", action="version", version=f"dms {__version__}")
@@ -163,7 +183,13 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("map", nargs="?", help=MAP_HELP)
     g.add_argument("--all", action="store_true", help="build every map in maps/")
     p.add_argument("--force", action="store_true", help="overwrite hand edits to TEXTMAP / unsaved edit.wad changes")
+    p.add_argument("--note", help="what changed and what to check; shown with this build on the board")
     p.set_defaults(func=cmd_build)
+
+    p = sub.add_parser("board", help="serve the board (build history, editor state, play log) and open it in the browser")
+    p.add_argument("--port", type=int, help="default: [board] port in dms.toml (8765)")
+    p.add_argument("--no-browser", action="store_true", help="don't open the browser")
+    p.set_defaults(func=cmd_board)
 
     p = sub.add_parser("catalog", help="list the IWAD's textures and flats into catalog/ (for the validator)")
     p.set_defaults(func=cmd_catalog)
@@ -188,12 +214,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("map", nargs="?", help=MAP_HELP + "; none: choose from a list")
     p.set_defaults(func=cmd_edit)
 
+    p = sub.add_parser("pull", help="bring saved editor changes (build/<map>/edit.wad) back into the map's source")
+    p.add_argument("map", nargs="?", help=MAP_HELP + "; none: choose from a list")
+    p.add_argument("--ported", action="store_true",
+                   help="the structural changes are now in map.py: write the tweaks and rebuild")
+    p.set_defaults(func=cmd_pull)
+
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     from dms.build import BuildError
     from dms.maps import MapError
+    from dms.pull import PullError
 
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -202,7 +235,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     try:
         return args.func(args)
-    except (BuildError, MapError) as e:
+    except (BuildError, MapError, PullError) as e:
         print(f"dms: {e}", file=sys.stderr)
         return 1
 

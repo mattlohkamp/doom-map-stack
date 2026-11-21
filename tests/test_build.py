@@ -100,3 +100,49 @@ def test_build_refreshes_unedited_edit_wad(repo):
     _, lumps = wad.read(ew)
     assert b"lightlevel = 160" in lumps[2].data  # the open editor would reload this
     assert not build.edit_wad_changed(info, repo)
+
+
+def test_force_build_discards_saved_edit_wad(repo):
+    info = maps.new(repo, "a")
+    build.build(info, repo)
+    ew = build.pack_edit_wad(info, repo)
+    _, lumps = wad.read(ew)  # the mapper saves a change by accident
+    lumps[2] = wad.Lump("TEXTMAP", lumps[2].data.replace(b"lightlevel = 192", b"lightlevel = 200"))
+    wad.write(ew, lumps)
+    build.build(info, repo, force=True)
+    assert b"lightlevel = 192" in wad.read(ew)[1][2].data
+    assert not build.edit_wad_changed(info, repo)
+
+
+def test_wad_write_overwrites_in_place_when_replace_is_refused(tmp_path, monkeypatch):
+    # The editor holds its open WAD so it can't be replaced, but it can be written to.
+    path = tmp_path / "edit.wad"
+    wad.write(path, [wad.Lump("A", b"a much longer first version")])
+
+    def refuse(self, target):
+        raise PermissionError(5, "Access is denied")
+
+    monkeypatch.setattr(type(path), "replace", refuse)
+    wad.write(path, [wad.Lump("B", b"short")])
+    assert wad.read(path)[1] == [wad.Lump("B", b"short")]
+    assert not (tmp_path / "edit.wad.tmp").exists()
+
+
+def test_edit_does_not_open_a_second_editor(repo, monkeypatch, capsys):
+    import json
+    import os
+
+    from dms import launch
+
+    info = maps.new(repo, "a")
+    build.build(info, repo)
+    opened = []
+    monkeypatch.setattr(launch, "open_editor", lambda *a, **k: opened.append(a) or 0)
+    monkeypatch.setattr(launch, "focus_process_window", lambda pid: True)
+    state = info.build_dir(repo) / "editor-state.json"
+    state.write_text(json.dumps({"open": True, "pid": os.getpid()}))  # this process counts as alive
+    assert launch.edit(repo, info) == 0 and opened == []
+    assert "already open in the editor" in capsys.readouterr().out
+    state.write_text(json.dumps({"open": True, "pid": 999999999}))  # a crashed editor: open again
+    launch.edit(repo, info)
+    assert len(opened) == 1

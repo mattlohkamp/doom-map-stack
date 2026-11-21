@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
-from dms.build import build, edit_wad_changed, needs_build, pack_edit_wad
+from dms.build import build, edit_wad_changed, editor_state, needs_build, pack_edit_wad
 from dms.configure import (
     UDB_GAME_CONFIG,
     UDB_SCRIPT_CONFIG,
@@ -105,9 +106,61 @@ def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False) ->
     return 0
 
 
+def pid_alive(pid: int) -> bool:
+    """Whether a process is still running (Windows; elsewhere assumes it is)."""
+    if sys.platform != "win32":
+        return True
+    import ctypes
+
+    k = ctypes.windll.kernel32
+    h = k.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not h:
+        return False
+    code = ctypes.c_ulong()
+    ok = k.GetExitCodeProcess(h, ctypes.byref(code))
+    k.CloseHandle(h)
+    return bool(ok) and code.value == 259  # STILL_ACTIVE
+
+
+def focus_process_window(pid: int) -> bool:
+    """Bring a process's main window to the front (best effort: Windows may only flash it)."""
+    if sys.platform != "win32":
+        return False
+    import ctypes
+    from ctypes import wintypes
+
+    user32 = ctypes.windll.user32
+    found: list[int] = []
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    def each(hwnd, _lparam):
+        owner = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
+        if owner.value == pid and user32.IsWindowVisible(hwnd) and user32.GetWindowTextLengthW(hwnd) > 0 \
+                and not user32.GetWindow(hwnd, 4):  # GW_OWNER: a top-level main window, not a dialog
+            found.append(hwnd)
+            return False
+        return True
+
+    user32.EnumWindows(each, 0)
+    if not found:
+        return False
+    if user32.IsIconic(found[0]):
+        user32.ShowWindow(found[0], 9)  # SW_RESTORE
+    return bool(user32.SetForegroundWindow(found[0]))
+
+
 def edit(root: Path, info: MapInfo) -> int:
     """Open the map in the editor as build/<map>/edit.wad. Packs a fresh edit.wad from TEXTMAP,
     unless the mapper has saved changes in the current one, which is then reopened as it is."""
+    state = editor_state(info, root)
+    pid = state.get("pid")
+    if state.get("open") and isinstance(pid, int) and pid_alive(pid):
+        # A second editor on the same edit.wad: the two lock each other's saves, and the plugin
+        # can't be rebuilt while one has it loaded. Show the open one instead.
+        print(f"dms edit: {info.name} is already open in the editor (process {pid}); bringing it to the front")
+        focus_process_window(pid)
+        return 0
     if not info.textmap.exists():
         build(info, root)
     ew = info.edit_wad(root)

@@ -49,9 +49,18 @@ def write(path: Path, lumps: list[Lump], kind: str = "PWAD") -> None:
         data += lump.data
     HEADER.pack_into(data, 0, kind.encode("ascii"), len(lumps), len(data))
     path.parent.mkdir(parents=True, exist_ok=True)
+    out = bytes(data + directory)
     tmp = path.with_name(path.name + ".tmp")
-    tmp.write_bytes(bytes(data + directory))
-    tmp.replace(path)
+    tmp.write_bytes(out)
+    try:
+        tmp.replace(path)
+    except PermissionError:
+        # The editor keeps the WAD it has open (edit.wad) and won't let it be replaced or deleted,
+        # but allows writing to it; so overwrite it in place. Its plugin reloads once it sees the change.
+        tmp.unlink()
+        with open(path, "r+b") as f:
+            f.write(out)
+            f.truncate()
 
 
 def find(lumps: list[Lump], name: str, start: int = 0) -> int:

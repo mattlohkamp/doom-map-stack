@@ -26,7 +26,7 @@ UDB_GAMEKEY = "uzdoom_doomudmf"  # lowercased config filename without extension
 UDB_SCRIPT_CONFIG = "zdoom_acs.cfg"
 UZDOOM_PORTABLE_INI = "uzdoom_portable.ini"
 
-DEFAULT_SETTINGS = {"play": {"music": False}}
+DEFAULT_SETTINGS = {"play": {"music": False}, "board": {"port": 8765, "auto_pull": True}}
 
 
 def project_settings(root: Path) -> dict:

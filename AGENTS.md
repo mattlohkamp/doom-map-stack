@@ -84,7 +84,7 @@ It sets the environment and runs `uv run dms <command>`. Any other `.ps1` script
 Map commands take a map name (`maps/<name>`) or a path to a map folder:
 - `dms new <name> [--kind map|test|example]`: creates `maps/<name>/` with `map.toml`, `map.py` (one room) and `notes.md`.
 - `dms list`: the maps in `maps/`.
-- `dms build <map> | --all [--force]`: generated maps run `map.py` and write `TEXTMAP` (first line: a hash of the
+- `dms build <map> | --all [--force] [--note TEXT]`: generated maps run `map.py` and write `TEXTMAP` (first line: a hash of the
   content); then packs `build/<map>/<map>.wad` (MAPINFO with title/sky/music and `nojump`/`nocrouch`; the map in MAP01).
   Refuses to overwrite a generated `TEXTMAP` that was edited by hand, or to build while `build/<map>/edit.wad` has
   editor changes not brought back yet; `--force` discards them.
@@ -99,7 +99,39 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   unsaved changes (then it says so in the status bar), and writes `build/<map>/editor-state.json`
   (`open`, `unsaved_changes`). After a build, `dms` refreshes `edit.wad` from the new `TEXTMAP` whenever the
   mapper has no saved edits in it, so **an open editor shows Claude's change within a second or two**. A save that
-  doesn't change the map data (only nodes) doesn't count as an edit.
+  doesn't change the map data (only nodes) doesn't count as an edit. Details (live-tested 2026-11-21):
+  - The editor keeps `edit.wad` open: it can't be replaced, only overwritten, so `wad.write` falls back to writing in place.
+  - With unsaved changes the plugin warns (sound once per new version, the text again every 10 s). Undoing every
+    edit counts as clean (the editor's own "changed" flag doesn't clear on undo), so the reload then happens.
+  - `dms build --force` discards the mapper's saved edits in `edit.wad` too, and the open editor reloads.
+  - The first map opened through `dms edit` brings the editor to the front (Windows would leave it behind).
+  - Reload = the editor's internal `CloseMap()` then `OpenMapFileWithOptions()` (both by reflection). Without the
+    close, the old map's handle on `edit.wad` leaked and the next save failed with "target file is locked by Builder".
+
+- `dms pull [<map>] [--ported]` (**`Pull Map.cmd`**): brings the mapper's saved editor changes (`edit.wad`) back
+  into the map's source (`src/dms/pull.py`). Compares the save with `TEXTMAP` (what `edit.wad` was packed from),
+  matching elements by `user_gid`. Property tweaks (light, heights, textures, offsets, flags, a thing's
+  position/angle/type) go to **`maps/<map>/overrides.toml`** (`src/dms/overrides.py`; keyed by kind and gid; every
+  build applies it after `map.py`). Editor comments (UDMF `comment`) are appended to the map's `notes.md` as
+  requests. Structural changes (moved vertices; new, removed, split or copied lines/sectors/things) are listed in
+  `build/<map>/pull.txt` and nothing is written: **Claude ports them into `map.py`, then runs
+  `dms pull <map> --ported`**. Then it rebuilds (the editor reloads), checks the result against the save and keeps
+  the save in `build/<map>/pulled/`. Refuses while the editor has unsaved changes. Hand-edited maps: the save
+  becomes `TEXTMAP`. It also draws `render-edit.png`/`diff-edit.png`: look at them, and read the requests.
+  Claude looks at `overrides.toml` for patterns: if a whole room got the same tweak, fix `map.py` and drop those
+  overrides.
+- `dms board [--port N] [--no-browser]` (**`Open Board.cmd`**): serves the board on 127.0.0.1 (port from `dms.toml`
+  `[board]`, default 8765) and opens the browser; the console window keeps it running and prints a timestamped
+  line for each new build (with the note's first line), editor change (opened, unsaved, saved edits waiting,
+  closed) and finished play session. **Auto-pull** (`dms.toml` `[board] auto_pull`, on by default): while the board
+  runs, a save in the editor is pulled about a second after it settles (once per save). Tweak/comment-only saves
+  rebuild straight away; a save with structural changes shows as "Editor save waiting for Claude" at the top of
+  the board (pull's report and `diff-edit` pictures) until Claude ports it and runs `dms pull <map> --ported`. Per map, newest first: each
+  build's render and diff side by side, Claude's note, validation, the diff text; plus the editor's state and
+  warning/error lines from the last play log. It polls every 2 s, so new builds appear by themselves (`src/dms/board.py`,
+  standard library only). Builds that changed the map, or carry a note, are kept in `build/<map>/history/<n>/`
+  (`src/dms/history.py`, newest 100). **When building something for the mapper to look at, pass
+  `dms build <map> --note "what changed; what to check"`**: the note is shown with that build on the board.
 
 - `dms catalog`: lists the IWAD's wall textures (with sizes) and flats into `catalog/` (committed; names only).
   Re-run after changing the Freedoom pin.
@@ -111,15 +143,17 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
 
 - **Renders** (`src/dms/render.py`): every build writes `build/<map>/render.png` + `render.txt` (sectors shaded by
   floor height, walls, specials, things, grid, validation issues ringed in red) and, when the map changed,
-  `diff.png` + `diff.txt` against the previous build (green added, red removed, yellow changed).
+  `diff.png` + `diff.txt` against the previous build: the current map with the changes marked (green added,
+  yellow changed, red see-through ghosts of what was removed), plus `diff-before.png` / `diff-after.png` (previous
+  and current map, same view, each with its side of the changes) for the board's before/after view.
   `dms render <map> [--edit]` redraws; `--edit` draws the mapper's `edit.wad` (`render-edit.png`) and diffs it
   against `TEXTMAP` (`diff-edit.png`): that's how Claude sees the mapper's editor changes. **Look at the PNG
   (and read the .txt) after every build.**
 
 Code: `src/dms/udmf.py` (TEXTMAP read/write, keeps every field), `wad.py`, `catalog.py`, `validate.py`, `gen.py` (the `MapBuilder` that
-`map.py` files use; every element gets a `user_gid`), `maps.py`, `build.py`, `launch.py`.
+`map.py` files use; every element gets a `user_gid`), `maps.py`, `build.py`, `launch.py`, `history.py`, `board.py`.
 
-*Planned, not built yet* (see `PLAN.md` §6): `pull`, movement check, notes, `watch`, `tour`.
+*Planned, not built yet* (see `PLAN.md` §6): movement check, notes, `watch`, `tour`.
 
 **Running uv directly** (e.g. `uv add`, `uv lock`): never call a bare `uv`. Run it inside the repo environment:
 

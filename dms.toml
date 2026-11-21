@@ -5,3 +5,10 @@
 # Music when test-playing (F9 in the editor, and later `dms play`). false = UZDoom runs with
 # -nomusic for that launch only; sound effects stay on and nothing is saved in UZDoom's settings.
 music = false
+
+[board]
+# Port for the board (`Open Board.cmd`), served on this computer only (127.0.0.1).
+port = 8765
+# While the board runs, a save in the editor is pulled straight away (`dms pull`): tweaks and comments
+# are kept and the map rebuilds. A save with structural changes waits on the board for Claude.
+auto_pull = true

@@ -259,10 +259,18 @@ def _line_key(tm: Textmap, ld: Block):
 
 
 def _line_signature(tm: Textmap, ld: Block) -> tuple:
-    sides = tm.sidedefs
+    sides, sectors = tm.sidedefs, tm.sectors
+
     def side(k):
         s = ld.get(k, -1)
-        return tuple(sorted(sides[s].fields.items())) if isinstance(s, int) and 0 <= s < len(sides) else None
+        if not (isinstance(s, int) and 0 <= s < len(sides)):
+            return None
+        fields = dict(sides[s].fields)
+        sec = fields.get("sector")
+        # Which sector, not its number: removing another sector renumbers the rest.
+        if isinstance(sec, int) and 0 <= sec < len(sectors) and sectors[sec].get("user_gid"):
+            fields["sector"] = sectors[sec].get("user_gid")
+        return tuple(sorted(fields.items(), key=lambda kv: kv[0]))
     own = tuple(sorted((k, v) for k, v in ld.fields.items() if k not in ("v1", "v2", "sidefront", "sideback")))
     return own, side("sidefront"), side("sideback")
 
@@ -270,6 +278,32 @@ def _line_signature(tm: Textmap, ld: Block) -> tuple:
 def _key_by_gid_or_index(blocks: list[Block]) -> dict:
     gids = [b.get("user_gid") for b in blocks]
     return {(g if g and gids.count(g) == 1 else ("#", i)): b for i, (g, b) in enumerate(zip(gids, blocks))}
+
+
+def match_sectors(prev: Textmap, cur: Textmap) -> list[int | None]:
+    """For each current sector, the index of the previous sector it is, or None (new).
+    The editor copies a gid when it splits a sector (see PLAN.md section 9), so match each current
+    sector to a previous one with the same gid (several may share it): the one at the same index if
+    it has that gid, else the first one not matched yet, else the first one (a copy made by a split).
+    Without a gid, fall back to the same index if that previous sector has no gid either."""
+    by_gid: dict = {}
+    for i, b in enumerate(prev.sectors):
+        by_gid.setdefault(b.get("user_gid"), []).append(i)
+    used: set[int] = set()
+    out: list[int | None] = []
+    for idx, s in enumerate(cur.sectors):
+        gid = s.get("user_gid")
+        if gid:
+            cands = by_gid.get(gid, [])
+            pick = (idx if idx in cands and idx not in used
+                    else next((c for c in cands if c not in used), cands[0] if cands else None))
+            if pick is not None:
+                used.add(pick)
+            out.append(pick)
+        else:
+            same = idx < len(prev.sectors) and not prev.sectors[idx].get("user_gid")
+            out.append(idx if same else None)
+    return out
 
 
 def diff(prev: Textmap, cur: Textmap) -> dict[str, list]:
@@ -285,26 +319,19 @@ def diff(prev: Textmap, cur: Textmap) -> dict[str, list]:
     for k in cl.keys() & pl.keys():
         if _line_signature(cur, cl[k]) != _line_signature(prev, pl[k]):
             changes["changed_lines"].append(tuple(k))
-    # Sectors: the editor copies a gid when it splits a sector (see PLAN.md section 9), so match each
-    # current sector to the previous one with the same gid (several may share it); without a gid,
-    # fall back to the same index if that previous sector has no gid either.
-    prev_by_gid: dict = {}
-    for b in prev.sectors:
-        prev_by_gid.setdefault(b.get("user_gid"), b)
-    matched_prev = set()
-    for idx, s in enumerate(cur.sectors):
+    matches = match_sectors(prev, cur)
+    for idx, (s, old_idx) in enumerate(zip(cur.sectors, matches)):
         gid = s.get("user_gid")
-        old = prev_by_gid.get(gid) if gid else (
-            prev.sectors[idx] if idx < len(prev.sectors) and not prev.sectors[idx].get("user_gid") else None)
-        if old is None:
+        if old_idx is None:
             changes["changed_sectors"].append((gid or ("#", idx), idx, ["new sector"]))
             continue
-        matched_prev.add(id(old))
+        old = prev.sectors[old_idx]
         if s.fields != old.fields:
             diffs = sorted(f for f in set(s.fields) | set(old.fields) if s.get(f) != old.get(f))
             changes["changed_sectors"].append((gid or ("#", idx), idx, diffs))
+    matched_prev = set(m for m in matches if m is not None)
     changes["removed_sectors"] = [b.get("user_gid") or f"#{i}" for i, b in enumerate(prev.sectors)
-                                  if id(b) not in matched_prev]
+                                  if i not in matched_prev]
     pt, ct = _key_by_gid_or_index(prev.things), _key_by_gid_or_index(cur.things)
     for k in ct.keys() - pt.keys():
         changes["added_things"].append((k, ct[k]))
@@ -328,40 +355,105 @@ def _old_value(prev: Textmap, cur: Textmap, idx: int, field_name: str):
     return prev.sectors[idx].get(field_name) if idx < len(prev.sectors) else None
 
 
-def render_diff(prev: Textmap, cur: Textmap, out_png: Path, title: str = "") -> bool:
-    """Write diff.png/diff.txt. Returns False (and removes old diff files) if nothing changed."""
-    changes = diff(prev, cur)
-    out_txt = out_png.with_suffix(".txt")
-    if not any(changes.values()):
-        out_png.unlink(missing_ok=True)
-        out_txt.write_text(f"{title}: no changes since the previous build\n", encoding="utf-8", newline="\n")
-        return False
-    view = view_for(prev, cur)
-    img = Image.new("RGB", (view.width, view.height), BG)
-    _grid(ImageDraw.Draw(img), view, _font(11))
-    _draw_map(img, view, cur, dim=True)
-    draw = ImageDraw.Draw(img)
+def _mark_changes(img: Image.Image, view: View, prev: Textmap, cur: Textmap, changes: dict, side: str) -> Image.Image:
+    """Mark the changes on a full render. side "both": on the current map, with removed things as
+    red ghosts; "before": on the previous map (removed red, changed yellow); "after": on the current
+    map (added green, changed yellow)."""
+    before, after = side in ("both", "before"), side in ("both", "after")
+    on = prev if side == "before" else cur
+    matches = match_sectors(prev, cur)
     w = max(2, round(view.scale * 3))
-    loops = sector_loops(cur)
-    for _k, idx, _f in changes["changed_sectors"]:
-        for poly in loops.get(idx, []):
-            draw.polygon([view.px(*p) for p in poly], outline=CHANGED, width=w)
-    for key, color in (("removed_lines", REMOVED), ("added_lines", ADDED), ("changed_lines", CHANGED)):
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    fill, draw = ImageDraw.Draw(layer), ImageDraw.Draw(img)
+    outlines: list[tuple[list, tuple]] = []
+
+    def sector(tm: Textmap, idx: int, color: tuple, alpha: int) -> None:
+        for poly in sector_loops(tm).get(idx, []):
+            pts = [view.px(*p) for p in poly]
+            fill.polygon(pts, fill=color + (alpha,))
+            outlines.append((pts, color))
+
+    for _k, idx, fields in changes["changed_sectors"]:
+        if fields == ["new sector"]:
+            if after:
+                sector(cur, idx, ADDED, 70)
+        elif side == "before":
+            if matches[idx] is not None:
+                sector(prev, matches[idx], CHANGED, 40)
+        else:
+            sector(cur, idx, CHANGED, 40)
+    if before:
+        matched = set(m for m in matches if m is not None)
+        for i in range(len(prev.sectors)):
+            if i not in matched:
+                sector(prev, i, REMOVED, 70 if side == "before" else 55)
+
+    img = Image.alpha_composite(img.convert("RGBA"), layer).convert("RGB")
+    draw = ImageDraw.Draw(img)
+    for pts, color in outlines:
+        draw.polygon(pts, outline=color, width=max(1, w - 1))
+    for key, color, shown in (("removed_lines", REMOVED, before), ("added_lines", ADDED, after),
+                              ("changed_lines", CHANGED, True)):
+        if not shown:
+            continue
         for a, *rest in changes[key]:
             b = rest[0] if rest else a
             draw.line([view.px(*a), view.px(*b)], fill=color, width=w)
     r = max(5, 16 * view.scale)
-    for key, color in (("added_things", ADDED), ("removed_things", REMOVED)):
-        for _k, t in changes[key]:
-            cx, cy = view.px(t.get("x", 0), t.get("y", 0))
-            draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=color, width=3)
+
+    def ring(t: Block, color: tuple, width: int = 3) -> tuple[float, float]:
+        cx, cy = view.px(t.get("x", 0), t.get("y", 0))
+        draw.ellipse([cx - r - 3, cy - r - 3, cx + r + 3, cy + r + 3], outline=color, width=width)
+        return cx, cy
+
+    if after:
+        for _k, t in changes["added_things"]:
+            ring(t, ADDED)
+    if before:
+        for _k, t in changes["removed_things"]:
+            ring(t, REMOVED)
     for _k, old, new in changes["moved_things"]:
-        a, b = view.px(old.get("x", 0), old.get("y", 0)), view.px(new.get("x", 0), new.get("y", 0))
-        draw.line([a, b], fill=CHANGED, width=2)
-        draw.ellipse([b[0] - r, b[1] - r, b[0] + r, b[1] + r], outline=CHANGED, width=3)
-    if title:
-        draw.text((view.width - 6, view.height - 6), title, fill=GRID_LABEL, font=_font(13), anchor="rd")
-    img.save(out_png)
+        if side == "before":
+            ring(old, CHANGED)
+        elif side == "after":
+            ring(new, CHANGED)
+        else:
+            a = ring(old, REMOVED, 2)  # where it was: a ghost
+            b = ring(new, CHANGED)
+            draw.line([a, b], fill=CHANGED, width=2)
+    return img
+
+
+DIFF_SUFFIXES = ("", "-before", "-after")
+
+
+def render_diff(prev: Textmap, cur: Textmap, out_png: Path, title: str = "") -> bool:
+    """Write diff.png (the current map with the changes marked: green added, yellow changed, red
+    ghosts of what was removed), diff-before.png / diff-after.png (the previous and current map with
+    their side of the changes marked, same view) and diff.txt. Returns False (and removes old diff
+    images) if nothing changed."""
+    changes = diff(prev, cur)
+    out_txt = out_png.with_suffix(".txt")
+    if not any(changes.values()):
+        stem = out_png.with_suffix("")
+        for s in DIFF_SUFFIXES:
+            stem.with_name(stem.name + s + ".png").unlink(missing_ok=True)
+        out_txt.write_text(f"{title}: no changes since the previous build\n", encoding="utf-8", newline="\n")
+        return False
+    # One view for all three images, so before and after line up.
+    view = view_for(prev, cur)
+    stem = out_png.with_suffix("")
+    for side, path, base in (("both", out_png, cur),
+                             ("before", stem.with_name(stem.name + "-before.png"), prev),
+                             ("after", stem.with_name(stem.name + "-after.png"), cur)):
+        img = Image.new("RGB", (view.width, view.height), BG)
+        _grid(ImageDraw.Draw(img), view, _font(11))
+        _draw_map(img, view, base)
+        img = _mark_changes(img, view, prev, cur, changes, side)
+        label = {"both": title, "before": f"{title} (before)", "after": f"{title} (after)"}[side]
+        if label:
+            ImageDraw.Draw(img).text((view.width - 6, view.height - 6), label, fill=GRID_LABEL, font=_font(13), anchor="rd")
+        img.save(path)
 
     def pt(p):
         return f"({p[0]:g}, {p[1]:g})"

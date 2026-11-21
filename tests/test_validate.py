@@ -54,6 +54,23 @@ def test_generated_room_is_clean():
     assert validate(m.textmap(), cat()) == []
 
 
+def test_platform_inside_room_is_clean():
+    # A raised sector inside a room, joined by two-sided lines (hello-room's live-reload test).
+    m = MapBuilder()
+    room = m.room("room", 0, 0, 512, 512)
+    plat = m.sector("platform", floor=24)
+    sw, nw, ne, se = (320, 320), (320, 448), (448, 448), (448, 320)
+    for name, a, b in (("w", sw, nw), ("n", nw, ne), ("e", ne, se), ("s", se, sw)):
+        m.two_sided(a, b, plat, room, f"platform.edge_{name}")
+    m.player_start(128, 128)
+    tm = m.textmap()
+    assert validate(tm, cat()) == []
+    assert sector_at(tm, 384, 384) == 1 and sector_at(tm, 128, 128) == 0
+    edge = tm.linedefs[-1]
+    assert edge["twosided"] is True and "blocking" not in edge.fields
+    assert tm.sidedefs[edge["sideback"]]["texturebottom"] != "-"
+
+
 def test_missing_player_start_and_bad_texture():
     m = MapBuilder()
     m.room("room", 0, 0, 512, 512, floor_tex="NOPE")
@@ -115,3 +132,37 @@ def test_render_and_diff(tmp_path):
     assert render.render_diff(before, edited, tmp_path / "diff.png") is True
     txt = (tmp_path / "diff.txt").read_text()
     assert "lightlevel 192 -> 99999" in txt and "removed line" in txt and "added line" in txt
+    for name in ("diff.png", "diff-before.png", "diff-after.png"):
+        assert (tmp_path / name).exists()
+    assert render.render_diff(edited, edited, tmp_path / "diff.png") is False
+    assert not any((tmp_path / n).exists() for n in ("diff.png", "diff-before.png", "diff-after.png"))
+
+
+def _pixel_colors(path):
+    from PIL import Image
+
+    return {c for _n, c in Image.open(path).convert("RGB").getcolors(maxcolors=1 << 24)}
+
+
+def test_diff_marks_added_green_and_removed_red(tmp_path):
+    from dms import render
+
+    def room_with(extra: bool):
+        m = MapBuilder()
+        room = m.room("room", 0, 0, 512, 512)
+        m.player_start(256, 128)
+        if extra:
+            box = m.sector("box", floor=16)
+            pts = [(64, 320), (64, 448), (192, 448), (192, 320)]
+            for i, (a, b) in enumerate(zip(pts, pts[1:] + pts[:1])):
+                m.two_sided(a, b, box, room, f"box.{i}")
+        return m.textmap()
+
+    plain, boxed = room_with(False), room_with(True)
+    render.render_diff(plain, boxed, tmp_path / "add.png")
+    assert render.ADDED in _pixel_colors(tmp_path / "add.png")
+    assert render.REMOVED not in _pixel_colors(tmp_path / "add.png")
+    render.render_diff(boxed, plain, tmp_path / "rm.png")
+    assert render.REMOVED in _pixel_colors(tmp_path / "rm.png")       # the ghost of the box
+    assert render.REMOVED in _pixel_colors(tmp_path / "rm-before.png")
+    assert render.REMOVED not in _pixel_colors(tmp_path / "rm-after.png")

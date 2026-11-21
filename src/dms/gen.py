@@ -54,23 +54,32 @@ class MapBuilder:
         return self._vertex_index[key]
 
     def sector(self, gid: str, *, floor: int = 0, ceiling: int = 128, light: int = 192,
-               floor_tex: str = FLOOR, ceiling_tex: str = CEILING) -> Sector:
-        self.sectors.append(Block("sector", {
+               floor_tex: str = FLOOR, ceiling_tex: str = CEILING, special: int = 0) -> Sector:
+        """`special`: a sector type in UZDoom's UDMF numbering, e.g. 72 = glowing light (fades
+        between this sector's light and its darkest neighbour's)."""
+        fields = {
             "heightfloor": int(floor),
             "heightceiling": int(ceiling),
             "texturefloor": floor_tex,
             "textureceiling": ceiling_tex,
             "lightlevel": int(light),
-            "user_gid": self._gid(gid),
-        }))
+        }
+        if special:
+            fields["special"] = int(special)
+        fields["user_gid"] = self._gid(gid)
+        self.sectors.append(Block("sector", fields))
         return Sector(len(self.sectors) - 1, gid)
 
-    def sidedef(self, sector: Sector, gid: str, *, middle: str = "-") -> int:
-        self.sidedefs.append(Block("sidedef", {
-            "sector": sector.index,
-            "texturemiddle": middle,
-            "user_gid": self._gid(gid),
-        }))
+    def sidedef(self, sector: Sector, gid: str, *, middle: str = "-", upper: str | None = None,
+                lower: str | None = None) -> int:
+        fields: dict = {"sector": sector.index}
+        if upper is not None:
+            fields["texturetop"] = upper
+        if lower is not None:
+            fields["texturebottom"] = lower
+        fields["texturemiddle"] = middle
+        fields["user_gid"] = self._gid(gid)
+        self.sidedefs.append(Block("sidedef", fields))
         return len(self.sidedefs) - 1
 
     def wall(self, a: tuple[float, float], b: tuple[float, float], sector: Sector, gid: str,
@@ -82,6 +91,22 @@ class MapBuilder:
             "v2": self.vertex(*b),
             "sidefront": front,
             "blocking": True,
+            "user_gid": self._gid(gid),
+        }))
+        return len(self.linedefs) - 1
+
+    def two_sided(self, a: tuple[float, float], b: tuple[float, float], front: Sector, back: Sector,
+                  gid: str, *, texture: str = WALL) -> int:
+        """A passable line from a to b between two sectors (`front` on its right). Both sides get
+        upper and lower textures, so any height difference between the sectors is textured."""
+        f = self.sidedef(front, f"{gid}.front", upper=texture, lower=texture)
+        k = self.sidedef(back, f"{gid}.back", upper=texture, lower=texture)
+        self.linedefs.append(Block("linedef", {
+            "v1": self.vertex(*a),
+            "v2": self.vertex(*b),
+            "sidefront": f,
+            "sideback": k,
+            "twosided": True,
             "user_gid": self._gid(gid),
         }))
         return len(self.linedefs) - 1
