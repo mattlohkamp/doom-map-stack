@@ -52,30 +52,36 @@ def cmd_build(args: argparse.Namespace) -> int:
     return 0
 
 
-def pick_map(root: Path, given: str | None):
-    """The map named or dropped on the command line; with none, the picker (not built yet)."""
-    from dms import maps
+def pick_map(root: Path, given: str | None, action: str):
+    """The map named on the command line or dropped onto a launcher; with none, the picker window.
+    Returns None if the picker was cancelled."""
+    from dms import maps, picker
 
     if given:
-        return maps.resolve(root, given)
-    raise maps.MapError(
-        "no map given. Drag a map folder (e.g. maps\\hello-room) onto the launcher.\n"
-        "    (Double-click to choose from a list is coming next.)"
-    )
+        info = maps.resolve(root, given)
+        picker.remember(root, info.name)
+        return info
+    return picker.pick_map(root, action)
 
 
 def cmd_play(args: argparse.Namespace) -> int:
     from dms import launch
 
     root = repo_root()
-    return launch.play(root, pick_map(root, args.map), skill=args.skill, nomonsters=args.nomonsters)
+    info = pick_map(root, args.map, "Play")
+    if info is None:
+        return 0
+    return launch.play(root, info, skill=args.skill, nomonsters=args.nomonsters)
 
 
 def cmd_edit(args: argparse.Namespace) -> int:
     from dms import launch
 
     root = repo_root()
-    return launch.edit(root, pick_map(root, args.map))
+    info = pick_map(root, args.map, "Edit")
+    if info is None:
+        return 0
+    return launch.edit(root, info)
 
 
 def build_parser() -> argparse.ArgumentParser:

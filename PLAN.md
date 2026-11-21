@@ -337,11 +337,11 @@ Roughly: UDMF TEXTMAP writer (+ reader), packer (`build/<map>/<map>.wad`), `dms 
 `dms edit` (packs `build/<map>/edit.wad`, opens it; Save then writes inside the repo with no dialog), and `.cmd`
 launchers for the mapper-facing ones. Then check that the editor keeps `user_gid` when saving (also on split or copied lines).
 
-**Decided (M1): picking a map from Explorer.** Launchers for commands that take a map (`Play Map.cmd`,
-`Edit Map.cmd`, later `Pull Map.cmd`) work three ways: double-click opens a small picker window listing the maps;
-dropping a map folder onto the launcher skips the picker; and the open picker also accepts a map folder dropped
-into it. The picker is part of `dms` (Python), so the rules stay in one place; the window needs Windows
-drag-and-drop support (tkinter has none built in, so this needs a little extra work or a small dependency).
+**Decided (M1): picking a map from Explorer.** Interactive menus are the default: double-clicking a map
+launcher (`Play Map.cmd`, `Edit Map.cmd`, later `Pull Map.cmd`) opens a picker window listing the maps.
+Dropping a map folder onto the launcher still works and skips the picker. A drop zone inside the picker
+window was considered and left out (dragging between Explorer panes is the awkward part; it would also need
+an extra package); easy to add later if wanted.
 
 **Model choice:** Opus for most milestones; Sonnet is fine for the routine scripting in M1.
 **Use Fable for M3** (first real map): spatial layout and design judgment are where it should pay off.

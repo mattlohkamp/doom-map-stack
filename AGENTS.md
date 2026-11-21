@@ -96,7 +96,7 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
 Code: `src/dms/udmf.py` (TEXTMAP read/write, keeps every field), `wad.py`, `gen.py` (the `MapBuilder` that
 `map.py` files use; every element gets a `user_gid`), `maps.py`, `build.py`, `launch.py`.
 
-*Planned, not built yet* (see `PLAN.md` §6): the map picker, `pull`, `watch`, `tour`, validator, renderer.
+*Planned, not built yet* (see `PLAN.md` §6): `pull`, `watch`, `tour`, validator, renderer.
 
 **Running uv directly** (e.g. `uv add`, `uv lock`): never call a bare `uv`. Run it inside the repo environment:
 
@@ -118,9 +118,9 @@ Move each one up into the list above as it lands.
 
 - **The mapper works from Explorer, not a terminal.** Every command the mapper runs gets a double-clickable
   `.cmd` launcher in the repo root (e.g. `Open Editor.cmd`), a thin wrapper around `dms.ps1` that pauses on error.
-  Where a command takes a file, accept it by drag-and-drop onto the launcher (`%*`). Where it takes a map, the
-  launcher works three ways: double-click opens a picker listing the maps, a map folder dropped onto the launcher
-  skips the picker, and a map folder dropped into the open picker selects it. `.cmd` files are ASCII with CRLF line endings.
+  Where a command takes a file, accept it by drag-and-drop onto the launcher (`%*`). **Interactive menus are the
+  default experience:** a launcher that takes a map opens a picker window on double-click (`src/dms/picker.py`,
+  tkinter; the last map chosen is preselected); dropping a map folder onto the launcher skips the picker. `.cmd` files are ASCII with CRLF line endings.
   Terminal commands are for Claude and for anyone who prefers them.
 
 - **Knowledge lives in the repo:** `AGENTS.md`, `docs/` and `maps/*/notes.md`, not in Claude's private memory.
