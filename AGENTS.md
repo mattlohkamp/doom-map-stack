@@ -81,7 +81,22 @@ It sets the environment and runs `uv run dms <command>`. Any other `.ps1` script
   test-play run UZDoom with `-nomusic` (per launch; nothing is saved in UZDoom's settings).
 - Tests: `. .\scripts\dms-env.ps1; Invoke-DmsScope -Root $PWD -Body { & .tools\uv\uv.exe run --locked pytest -q }`
 
-*Planned, not built yet* (see `PLAN.md` §6): `build`, `new`, `play`, `edit`, `pull`, `watch`, `tour`.
+Map commands take a map name (`maps/<name>`) or a path to a map folder:
+- `dms new <name> [--kind map|test|example]`: creates `maps/<name>/` with `map.toml`, `map.py` (one room) and `notes.md`.
+- `dms list`: the maps in `maps/`.
+- `dms build <map> | --all [--force]`: generated maps run `map.py` and write `TEXTMAP` (first line: a hash of the
+  content); then packs `build/<map>/<map>.wad` (MAPINFO with title/sky/music and `nojump`/`nocrouch`; the map in MAP01).
+  Refuses to overwrite a generated `TEXTMAP` that was edited by hand, or to build while `build/<map>/edit.wad` has
+  editor changes not brought back yet; `--force` discards them.
+- `dms play [<map>] [--skill N] [--nomonsters]` (**`Play Map.cmd`**): builds if the sources changed, starts UZDoom.
+  Console log: `build/<map>/play.log` (read it after a play session). Saves: `.tools/uzdoom/saves/<map>/`.
+- `dms edit [<map>]` (**`Edit Map.cmd`**): packs `build/<map>/edit.wad` from `TEXTMAP` and opens it in the editor,
+  so Save writes there. If the mapper already saved changes in it, it is reopened as it is, not overwritten.
+
+Code: `src/dms/udmf.py` (TEXTMAP read/write, keeps every field), `wad.py`, `gen.py` (the `MapBuilder` that
+`map.py` files use; every element gets a `user_gid`), `maps.py`, `build.py`, `launch.py`.
+
+*Planned, not built yet* (see `PLAN.md` §6): the map picker, `pull`, `watch`, `tour`, validator, renderer.
 
 **Running uv directly** (e.g. `uv add`, `uv lock`): never call a bare `uv`. Run it inside the repo environment:
 

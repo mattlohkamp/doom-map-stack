@@ -7,7 +7,9 @@ import os
 import subprocess
 from pathlib import Path
 
+from dms.build import build, edit_wad_changed, needs_build, pack_edit_wad
 from dms.configure import UDB_GAME_CONFIG, configure_udb, play_args, project_settings
+from dms.maps import MapInfo
 
 
 def tool_path(root: Path, name: str) -> Path:
@@ -45,13 +47,58 @@ def reapply_editor_settings(root: Path) -> None:
     )
 
 
-def open_editor(root: Path, wad: Path | None = None) -> int:
-    """Open Ultimate Doom Builder in portable mode, optionally with a WAD. Returns immediately."""
+def open_editor(root: Path, wad: Path | None = None, map_slot: str | None = None) -> int:
+    """Open Ultimate Doom Builder in portable mode, optionally with a WAD (and the map slot to
+    open in it). Returns immediately."""
     udb = tool_path(root, "udb")
     reapply_editor_settings(root)
     args = [str(udb), "-portable", "-cfg", UDB_GAME_CONFIG]
     if wad is not None:
+        if map_slot:
+            args += ["-map", map_slot]
         args.append(str(wad.resolve()))
     print(f"dms: opening Ultimate Doom Builder{f' with {wad}' if wad else ''}")
     subprocess.Popen(args, cwd=udb.parent, env=repo_env(root), close_fds=True)
     return 0
+
+
+def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False) -> int:
+    """Build the map if its sources changed, then start UZDoom on it. Returns immediately.
+    The console output goes to build/<map>/play.log; saves go to .tools/uzdoom/saves/<map>/."""
+    if needs_build(info, root):
+        build(info, root)
+    uzdoom = tool_path(root, "uzdoom")
+    out_wad = info.wad(root)
+    log = info.build_dir(root) / "play.log"
+    saves = uzdoom.parent / "saves" / info.name
+    saves.mkdir(parents=True, exist_ok=True)
+    args = [
+        str(uzdoom),
+        "-iwad", str(tool_path(root, "freedoom")),
+        "-file", str(out_wad),
+        "-skill", str(skill),
+        "-savedir", str(saves),
+        "+logfile", str(log),
+        "+map", "MAP01",
+    ]
+    args += play_args(project_settings(root))
+    if nomonsters:
+        args.append("-nomonsters")
+    print(f"dms play: {info.name} (skill {skill}{', no monsters' if nomonsters else ''})")
+    print(f"    log: {log}")
+    subprocess.Popen(args, cwd=uzdoom.parent, env=repo_env(root), close_fds=True)
+    return 0
+
+
+def edit(root: Path, info: MapInfo) -> int:
+    """Open the map in the editor as build/<map>/edit.wad. Packs a fresh edit.wad from TEXTMAP,
+    unless the mapper has saved changes in the current one, which is then reopened as it is."""
+    if not info.textmap.exists():
+        build(info, root)
+    ew = info.edit_wad(root)
+    if edit_wad_changed(info, root):
+        print(f"dms edit: {info.name}: reopening {ew} (it has your saved editor changes)")
+    else:
+        pack_edit_wad(info, root)
+        print(f"dms edit: {info.name}: packed {ew} from {info.textmap.name}")
+    return open_editor(root, ew, "MAP01")
