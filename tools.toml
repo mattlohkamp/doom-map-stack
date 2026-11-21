@@ -1,0 +1,37 @@
+# Doom tools that `dms setup` downloads into .tools/<name>/ (git-ignored, never committed).
+#
+# To update a tool: change version, url and sha256 together (the sha256 is from the release
+# page or the project's published checksums), then run `.\dms.ps1 setup --upgrade <name>`.
+#
+# Fields:
+#   url       official release download
+#   sha256    of the downloaded file; setup stops if it doesn't match
+#   strip     leading folder to drop from archive paths (optional)
+#   only      extract just these files (optional; paths after `strip`)
+#   main      file that proves the install worked; recorded in tools.local.json
+#   preserve  files/folders inside .tools/<name>/ kept across --upgrade (settings, saves)
+
+[tools.uzdoom]
+version = "5.0.3"
+url = "https://github.com/UZDoom/UZDoom/releases/download/5.0.3/Windows-UZDoom-Release-x86_64.zip"
+sha256 = "3a41131845415bc4bb5474f8de301a77736bd858e2ab489926325a2675e8263f"
+main = "uzdoom.exe"
+preserve = ["uzdoom.ini", "saves", "screenshots"]
+
+[tools.udb]
+# Ultimate Doom Builder. Bundles acc (Compilers/Hexen/acc.exe) and the UZDoom game config
+# (Configurations/UZDoom_DoomUDMF.cfg). Run with -portable so settings stay in this folder.
+version = "R4336"
+url = "https://github.com/UltimateDoomBuilder/UltimateDoomBuilder/releases/download/R4336/UltimateDoomBuilder-R4336-x64.7z"
+sha256 = "d1fafd1867ba031d72d2627653fc42b99740e4e455ec1aa57c67ef81d6ef4582"
+main = "Builder.exe"
+preserve = ["UDBuilder.cfg"]
+
+[tools.freedoom]
+# The IWAD. Pinned: the texture catalog is built from this exact file.
+version = "0.13.0"
+url = "https://github.com/freedoom/freedoom/releases/download/v0.13.0/freedoom-0.13.0.zip"
+sha256 = "3f9b264f3e3ce503b4fb7f6bdcb1f419d93c7b546f4df3e874dd878db9688f59"
+strip = "freedoom-0.13.0/"
+only = ["freedoom2.wad", "COPYING.txt", "CREDITS.txt"]
+main = "freedoom2.wad"

@@ -14,6 +14,7 @@ function Set-DmsEnvironment {
         ForEach-Object { Remove-Item "Env:\$($_.Name)" }
 
     $tools = Join-Path $Root '.tools'
+    $env:DMS_ROOT = $Root
 
     # uv reads only the repo's uv.toml (a user-level %APPDATA%\uv\uv.toml is ignored).
     $env:UV_CONFIG_FILE = Join-Path $Root 'uv.toml'

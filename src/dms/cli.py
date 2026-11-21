@@ -4,11 +4,13 @@ import argparse
 import sys
 
 from dms import __version__
+from dms.paths import repo_root
 
 
 def cmd_setup(args: argparse.Namespace) -> int:
-    print("dms setup: not implemented yet (M0 step 3).")
-    return 0
+    from dms import setup
+
+    return setup.run(repo_root(), upgrade=args.upgrade)
 
 
 def build_parser() -> argparse.ArgumentParser:

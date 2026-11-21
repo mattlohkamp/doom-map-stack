@@ -75,12 +75,12 @@ Running it again only fills in what's missing. No manual steps should be needed.
 
 ### Doom tools: `dms setup`
 
-A committed `tools.toml` lists each tool with its official source, a pinned version, a filename pattern for the download, and a SHA256 hash:
+A committed `tools.toml` lists each tool with its official source, a pinned version, the exact download URL, and a SHA256 hash:
 
 | Tool | Source | Notes |
 |---|---|---|
 | UZDoom | github: UZDoom/UZDoom releases | Portable Windows zip |
-| Ultimate Doom Builder | github: UltimateDoomBuilder/UltimateDoomBuilder releases | Includes `acc` in `Compilers\` (to verify) |
+| Ultimate Doom Builder | github: UltimateDoomBuilder/UltimateDoomBuilder releases | `.7z`, extracted with Windows' own `tar.exe`. Bundles `acc` (`Compilers\Hexen\acc.exe`) and BCC |
 | Freedoom | github: freedoom/freedoom releases, **0.13.0** | Only `freedoom2.wad` is used |
 | SLADE | optional, off by default | Resource browser |
 | ZDBSP | not needed (UZDoom builds nodes on load) | |
@@ -114,7 +114,7 @@ Plan:
   resources into `.tools\udb\UDBuilder.cfg`, so F9 test-play works with no clicking.
 - Fallback if writing the file from scratch is fragile: launch the editor once
   with `-portable` to create it, then `dms setup` fills in the keys.
-- To verify in M0: the exact UZDoom game config filename in `.tools\udb\Configurations\`.
+- The UZDoom game config is `Configurations\UZDoom_DoomUDMF.cfg`, so `<gamekey>` is `uzdoom_doomudmf` (checked in R4336).
 
 No manual step remains, if this works out.
 
@@ -324,6 +324,9 @@ Still to build later:
   `pyproject.toml` + `uv.lock`, a stub `dms` CLI (`src/dms/cli.py`), `.gitattributes` (LF everywhere).
   Bootstrap tested on the dev machine, including a re-run. Baseline of the user profile taken before it ran
   (an older uv Python 3.10/3.13 and their registry key / shortcut were already there and are not ours).
+- M0 step 3: `tools.toml` pins UZDoom 5.0.3, Ultimate Doom Builder R4336, Freedoom 0.13.0 (hashes match the
+  published ones). `dms setup` (`src/dms/setup.py`) downloads, checks, extracts, writes `tools.local.json`;
+  `--upgrade <tool>` keeps settings and saves. Tests in `tests/test_setup.py`. Installed and re-run on the dev machine.
 
 **Model choice:** Opus for most milestones; Sonnet is fine for the routine scripting in M0/M1.
 **Use Fable for M3** (first real map): spatial layout and design judgment are where it should pay off.
@@ -331,12 +334,11 @@ Still to build later:
 **Next: M0** (§8), roughly in this order:
 1. ~~Write `AGENTS.md`~~ done.
 2. ~~`bootstrap.ps1`, `dms.ps1`, `uv.toml`, `.python-version`, `pyproject.toml`, stub `dms`~~ done.
-3. `tools.toml` + `dms setup`: UZDoom, Ultimate Doom Builder, Freedoom 0.13.0 into `.tools\`, hashes checked.
+3. ~~`tools.toml` + `dms setup`~~ done.
 4. Configure Ultimate Doom Builder in portable mode; check that F9 launches UZDoom.
 5. Check that nothing was written outside the repo.
 
 **Still to verify** (marked inline): UZDoom `-config` and save/screenshot folders; whether the Visual C++ runtime is needed;
-the Ultimate Doom Builder UZDoom game config filename and whether `acc` is bundled;
 the ZScript note text box and crosshair trace; whether the editor keeps `user_gid`.
 
 ---

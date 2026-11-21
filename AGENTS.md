@@ -62,8 +62,11 @@ It sets the environment and runs `uv run dms <command>`. Any other `.ps1` script
 
 - `.\bootstrap.ps1`: one-time setup on a fresh clone: fetches uv (hash-checked), installs Python into
   `.tools\python\`, `uv sync`, `dms setup`. Safe to re-run; it only fills in what's missing.
-- `dms setup [--upgrade <tool>]`: downloads the Doom tools pinned in `tools.toml`, checks hashes, configures the editor.
-  *(Stub until M0 step 3.)*
+- `dms setup [--upgrade <tool>]`: downloads the Doom tools pinned in `tools.toml` (UZDoom, Ultimate Doom Builder,
+  Freedoom) into `.tools\<name>\`, checks hashes, writes `tools.local.json`. Skips tools already at the pinned version.
+  `--upgrade <tool>` reinstalls one after its pin changes, keeping the files in its `preserve` list (settings, saves).
+  An entry hand-edited in `tools.local.json` with `"managed": false` points at an outside install and is left alone.
+- Tests: `. .\scripts\dms-env.ps1; Invoke-DmsScope -Root $PWD -Body { & .tools\uv\uv.exe run --locked pytest -q }`
 
 *Planned, not built yet* (see `PLAN.md` §6): `build`, `new`, `play`, `edit`, `pull`, `watch`, `tour`.
 
