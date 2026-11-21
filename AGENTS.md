@@ -120,15 +120,45 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   becomes `TEXTMAP`. It also draws `render-edit.png`/`diff-edit.png`: look at them, and read the requests.
   Claude looks at `overrides.toml` for patterns: if a whole room got the same tweak, fix `map.py` and drop those
   overrides.
+- **Notes for Claude** (`src/dms/inbox.py`): one inbox per map, `build/<map>/inbox.jsonl` (append-only JSON lines,
+  so the board, the editor plugin and the game can all write to it). Each note has its source, position, what it's
+  about (sector/line/thing with its gid), the build it was made on, optional screenshot, and the mapper's text.
+  - `dms notes [<map>] [--all]` lists open notes; `dms notes <map> --close ID --reply "what was done"` closes one
+    (the reply shows on the board and in its console).
+  - **Images cost tokens** (about width x height / 750 each, after scaling to ~1568 px max): a 1920x1080 game
+    screenshot ~1,800, a 1024 render ~1,400, a note's text ~100. Read the note's text (position, facing, what
+    it's about, with gids) first; open the image only when the words aren't enough, and then the note's
+    `preview` (960-wide JPEG, ~700), not the full-size `screenshot`.
+  - `dms watch [<map>]` prints open notes, then each new one as it arrives (`[DMS-NOTE] ...`). **While the mapper is
+    working, Claude keeps it running with the Monitor tool** (re-arm it when it expires), acts on each note, and
+    closes it with a reply. Notes from a play session can be batched until the mapper says "go".
+  - Sources: the board (click a spot on a build's picture; each build records how its pictures map to the level,
+    and the server works out the thing within 24 units or the sector there); the editor (**Send to Claude**,
+    Ctrl+Shift+N, or Ctrl+right click for a "Message Claude about this..." menu, or Tools > Send to Claude; actions
+    of the `DmsBridge` plugin declared in `src/udb-plugin/Actions.cfg`, rebindable in the editor: a note
+    about the selected sectors/lines/things, or else the thing/line/sector under the mouse, with the main
+    element's properties as the editor showed them; the plugin appends it to `inbox.jsonl` itself); and the game
+    (key **N** while playing, rebindable under Customize Controls > doom-map-stack: the devtools mod in
+    `resources/devtools/` (ZScript, loaded by `dms play`) takes a screenshot into `build/<map>/shots/`, logs where the
+    player stands and what the crosshair is on, and opens a text box; `[DMS-NOTE-MARK]`/`[DMS-NOTE-TEXT]` lines in
+    `log-play.txt` become notes via `inbox.ingest_game_log`, called by the board, `dms watch` and `dms notes`; sector
+    and line numbers map straight to `TEXTMAP`, things by position).
+  - The board's `POST /api/note` only accepts its own page's requests (JSON + an `X-DMS-Board` header, same origin):
+    notes are instructions Claude acts on, so other web pages must not be able to add them.
 - `dms board [--port N] [--no-browser]` (**`Open Board.cmd`**): serves the board on 127.0.0.1 (port from `dms.toml`
   `[board]`, default 8765) and opens the browser; the console window keeps it running and prints a timestamped
   line for each new build (with the note's first line), editor change (opened, unsaved, saved edits waiting,
   closed) and finished play session. **Auto-pull** (`dms.toml` `[board] auto_pull`, on by default): while the board
   runs, a save in the editor is pulled about a second after it settles (once per save). Tweak/comment-only saves
   rebuild straight away; a save with structural changes shows as "Editor save waiting for Claude" at the top of
-  the board (pull's report and `diff-edit` pictures) until Claude ports it and runs `dms pull <map> --ported`. Per map, newest first: each
-  build's render and diff side by side, Claude's note, validation, the diff text; plus the editor's state and
-  warning/error lines from the last play log. It polls every 2 s, so new builds appear by themselves (`src/dms/board.py`,
+  the board (pull's report and `diff-edit` pictures) until Claude ports it and runs `dms pull <map> --ported`. Per map, one build at a
+  time (◀ ▶ or the arrow keys flip to older/newer, no animation, so steps can be compared; it follows the latest
+  unless the mapper flipped back; "replay" or Space plays every build from the oldest, 4 a second): its picture
+  (changes marked, or before/after), Claude's note, validation, the
+  diff text; plus the editor's state and
+  warning/error lines from the last play log. It polls every 2 s, so new builds appear by themselves. The page is
+  `src/dms/board.html`, read on every request: an open board reloads itself within 2 s when it changes. Changes to
+  `src/dms/board.py` (the server, API, console log, auto-pull) need the board restarted. (`src/dms/board.py`,
   standard library only). Builds that changed the map, or carry a note, are kept in `build/<map>/history/<n>/`
   (`src/dms/history.py`, newest 100). **When building something for the mapper to look at, pass
   `dms build <map> --note "what changed; what to check"`**: the note is shown with that build on the board.
@@ -163,9 +193,9 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
 
 Code: `src/dms/udmf.py` (TEXTMAP read/write, keeps every field), `wad.py`, `catalog.py`, `validate.py`, `gen.py` (the `MapBuilder` that
 `map.py` files use; every element gets a `user_gid`), `maps.py`, `build.py`, `launch.py`, `history.py`, `board.py`,
-`pull.py`, `overrides.py`, `movement.py`.
+`pull.py`, `overrides.py`, `movement.py`, `inbox.py`.
 
-*Planned, not built yet* (see `PLAN.md` §6): in-game and editor notes, "Send to Claude", `watch`, `tour`.
+*Planned, not built yet* (see `PLAN.md` §6): notes from the editor (hotkey) and the game (key), `tour`.
 
 **Running uv directly** (e.g. `uv add`, `uv lock`): never call a bare `uv`. Run it inside the repo environment:
 

@@ -158,6 +158,63 @@ def cmd_pull(args: argparse.Namespace) -> int:
     return pull.pull(info, root, ported=args.ported)
 
 
+def cmd_notes(args: argparse.Namespace) -> int:
+    from dms import inbox, maps
+
+    root = repo_root()
+    targets = [maps.resolve(root, args.map)] if args.map else maps.all_maps(root)
+    if args.close is not None:
+        if not args.map:
+            raise maps.MapError("--close needs the map name")
+        try:
+            n = inbox.close(targets[0], root, args.close, args.reply or "")
+        except KeyError as e:
+            raise maps.MapError(str(e.args[0])) from None
+        print(f"dms notes: closed {targets[0].name} #{n['id']}" + (f": {n['reply']}" if n.get("reply") else ""))
+        return 0
+    shown = 0
+    for info in targets:
+        inbox.ingest_game_log(info, root)
+        for n in inbox.notes(info, root):
+            if args.all or n["status"] == "open":
+                print(inbox.describe(n))
+                shown += 1
+    if not shown:
+        print("no open notes" if not args.all else "no notes")
+    return 0
+
+
+def cmd_watch(args: argparse.Namespace) -> int:
+    import time
+
+    from dms import inbox, maps
+
+    root = repo_root()
+    seen: dict[str, set[int]] = {}
+
+    def targets():
+        return [maps.resolve(root, args.map)] if args.map else maps.all_maps(root)
+
+    first = True
+    print(f"dms watch: notes for {args.map or 'every map'}; Ctrl+C stops", flush=True)
+    try:
+        while True:
+            for info in targets():
+                inbox.ingest_game_log(info, root)  # notes typed in the game
+                notes = inbox.notes(info, root)
+                known = seen.setdefault(info.name, set())
+                for n in notes:
+                    if n["id"] in known:
+                        continue
+                    known.add(n["id"])
+                    if not first or n["status"] == "open":
+                        print(inbox.describe(n), flush=True)
+            first = False
+            time.sleep(args.interval)
+    except KeyboardInterrupt:
+        return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="dms", description="Doom map stack.")
     parser.add_argument("--version", action="version", version=f"dms {__version__}")
@@ -215,6 +272,18 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("edit", help="open the map in Ultimate Doom Builder (as build/<map>/edit.wad)")
     p.add_argument("map", nargs="?", help=MAP_HELP + "; none: choose from a list")
     p.set_defaults(func=cmd_edit)
+
+    p = sub.add_parser("notes", help="list the mapper's notes (open ones by default), or close one")
+    p.add_argument("map", nargs="?", help=MAP_HELP + "; none: every map")
+    p.add_argument("--all", action="store_true", help="closed notes too")
+    p.add_argument("--close", type=int, metavar="ID", help="mark note ID as dealt with")
+    p.add_argument("--reply", help="with --close: what was done (shown on the board)")
+    p.set_defaults(func=cmd_notes)
+
+    p = sub.add_parser("watch", help="print the mapper's notes as they arrive (open ones first)")
+    p.add_argument("map", nargs="?", help=MAP_HELP + "; none: every map")
+    p.add_argument("--interval", type=float, default=1.0, help=argparse.SUPPRESS)
+    p.set_defaults(func=cmd_watch)
 
     p = sub.add_parser("pull", help="bring saved editor changes (build/<map>/edit.wad) back into the map's source")
     p.add_argument("map", nargs="?", help=MAP_HELP + "; none: choose from a list")

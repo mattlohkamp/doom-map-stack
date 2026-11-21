@@ -32,9 +32,10 @@ def _seqs(hist: Path) -> list[int]:
 
 
 def record(info: MapInfo, root: Path, *, changed: bool, counts: dict[str, int], issues: list[Issue],
-           note: str | None = None, forced: bool = False) -> Path | None:
+           note: str | None = None, forced: bool = False, views: dict | None = None) -> Path | None:
     """Add an entry for the build just made (its files are in build/<map>/). Returns its folder,
-    or None when nothing changed and there's no note."""
+    or None when nothing changed and there's no note. `views`: per image, how map coordinates
+    became pixels ({"minx", "maxy", "scale", ...}), so a click on it can be turned back."""
     hist = history_dir(info, root)
     seqs = _seqs(hist)
     if seqs and not changed and not note:
@@ -62,6 +63,7 @@ def record(info: MapInfo, root: Path, *, changed: bool, counts: dict[str, int], 
         "warnings": sum(1 for i in issues if i.severity != "error"),
         "issues": [str(i) for i in sorted(issues, key=lambda i: i.severity != "error")],
         "files": files,
+        "views": {f: v for f, v in (views or {}).items() if f in files},
     }
     (d / "entry.json").write_text(json.dumps(entry, indent=2) + "\n", encoding="utf-8", newline="\n")
     for old in seqs[: max(0, len(seqs) + 1 - KEEP)]:

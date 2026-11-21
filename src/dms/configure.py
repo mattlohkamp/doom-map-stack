@@ -211,8 +211,10 @@ def build_udb_plugin(root: Path, udb_exe: Path) -> bool:
     plugins = udb_exe.parent / "Plugins"
     dll = plugins / PLUGIN_DLL
     stamp = plugins / (PLUGIN_DLL + ".sha256")
-    # Rebuild when the source or the editor version changes.
-    digest = hashlib.sha256(src.read_bytes() + str(udb_version_number(udb_exe)).encode()).hexdigest()
+    actions = src.with_name("Actions.cfg")  # the plugin's editor actions (Send to Claude), embedded
+    # Rebuild when the source, its actions or the editor version changes.
+    digest = hashlib.sha256(src.read_bytes() + actions.read_bytes()
+                            + str(udb_version_number(udb_exe)).encode()).hexdigest()
     if dll.exists() and stamp.exists() and stamp.read_text(encoding="utf-8").strip() == digest:
         return True
     csc = csc_path()
@@ -221,7 +223,8 @@ def build_udb_plugin(root: Path, udb_exe: Path) -> bool:
         return False
     result = subprocess.run(
         [str(csc), "/nologo", "/target:library", "/optimize+", f"/out:{dll}",
-         f"/reference:{udb_exe}", "/reference:System.Windows.Forms.dll", "/reference:System.Drawing.dll", str(src)],
+         f"/reference:{udb_exe}", "/reference:System.Windows.Forms.dll", "/reference:System.Drawing.dll",
+         f"/resource:{actions},Dms.UdbBridge.Resources.Actions.cfg", str(src)],
         capture_output=True, text=True,
     )
     if result.returncode != 0:
@@ -229,7 +232,7 @@ def build_udb_plugin(root: Path, udb_exe: Path) -> bool:
         print(result.stdout + result.stderr)
         return False
     stamp.write_text(digest + "\n", encoding="utf-8")
-    print(f"    built {dll.name} (editor plugin: live reload, status)")
+    print(f"    built {dll.name} (editor plugin: live reload, status, Send to Claude)")
     return True
 
 

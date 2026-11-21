@@ -88,10 +88,19 @@ def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False) ->
     log = build_dir / "log-play.txt"
     saves = uzdoom.parent / "saves" / info.name
     saves.mkdir(parents=True, exist_ok=True)
+    # The devtools mod: key N = a note for Claude (resources/devtools/zscript.zs). Its screenshots go
+    # to build/<map>/shots/, where dms finds the one taken for each note.
+    devtools = root / "resources" / "devtools"
+    shots = info.build_dir(root) / "shots"
+    shots.mkdir(parents=True, exist_ok=True)
     args = [
         str(uzdoom),
         "-iwad", str(tool_path(root, "freedoom")),
-        "-file", str(out_wad),
+        "-file", str(out_wad), str(devtools),
+        "+screenshot_dir", str(shots),
+        # Lets the mod's script take the note's screenshot (LevelLocals.MakeScreenShot). A player
+        # setting, so it's set here, not by the mod; nothing else uses it.
+        "+enablescriptscreenshot", "true",
         "-skill", str(skill),
         "-savedir", str(saves),
         "+logfile", "play",

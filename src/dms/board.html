@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dms board</title>
+<style>
+  :root {
+    --bg: #18181c; --panel: #212127; --panel2: #2a2a31; --line: #3a3a44;
+    --text: #e4e4ea; --dim: #9a9aa8; --ok: #46dc64; --warn: #ffdc3c; --err: #ff4646; --accent: #8fb4ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.45 "Segoe UI", system-ui, sans-serif;
+         display: grid; grid-template-columns: 220px 1fr; }
+  aside { border-right: 1px solid var(--line); padding: 16px 12px; position: sticky; top: 0; height: 100vh;
+          overflow: auto; }
+  aside h1 { font-size: 15px; margin: 0 0 12px; letter-spacing: .04em; color: var(--dim); text-transform: uppercase; }
+  .map { display: block; width: 100%; text-align: left; background: none; border: 0; color: var(--text);
+         padding: 8px 10px; border-radius: 6px; cursor: pointer; font: inherit; }
+  .map:hover { background: var(--panel); }
+  .map.sel { background: var(--panel2); }
+  .map small { display: block; color: var(--dim); font-size: 12px; }
+  #conn { color: var(--err); font-size: 12px; margin-top: 16px; }
+  .howto { margin-top: 20px; padding: 10px 10px 2px; border: 1px solid var(--line); border-radius: 8px;
+           color: var(--dim); font-size: 12.5px; line-height: 1.5; }
+  .howto h2 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--dim); }
+  .howto p { margin: 0 0 8px; } .howto b { color: var(--text); font-weight: 600; }
+  kbd { font: 11.5px Consolas, monospace; background: var(--panel2); border: 1px solid var(--line);
+        border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; color: var(--text); }
+  /* Layout rule: the newest build's picture fits in the window without scrolling. Everything
+     above it (header, the entry's top line, captions) adds up to at most --chrome. */
+  :root { --chrome: 215px; }
+  main { padding: 12px 24px 40px; overflow: auto; min-width: 0; }
+  header .titlerow { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  header h2 { margin: 0; font-size: 20px; }
+  header .sub { color: var(--dim); }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 0; }
+  .bar .spacer { flex: 1; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  button.chip { font: inherit; font-size: 13px; color: inherit; cursor: pointer; }
+  .chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; font-size: 13px; }
+  .chip.ok { border-color: #2f6b3c; } .chip.warn { border-color: #8a7420; color: var(--warn); }
+  .chip.err { border-color: #8a2a2a; color: var(--err); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; margin: 10px 0; }
+  .panel h3 { margin: 0 0 6px; font-size: 13px; color: var(--dim); font-weight: 600; }
+  pre { margin: 0; white-space: pre-wrap; font: 12.5px/1.4 Consolas, "Cascadia Mono", monospace; color: var(--text); }
+  .entry { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin: 12px 0; padding: 10px 14px 12px; }
+  .entry .body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: 16px;
+                 align-items: start; margin-top: 8px; }
+  .entry .side > :first-child { margin-top: 0; }
+  @media (max-width: 1100px) { .entry .body { grid-template-columns: minmax(0, 1fr); } }
+  .entry.fresh { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .entry.pending { border-color: #8a7420; box-shadow: 0 0 0 1px #8a7420; }
+  .entry.pending .seq { color: var(--warn); }
+  .note.warnnote { border-left-color: var(--warn); }
+  .entry .top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+  .entry .seq { font-weight: 700; font-size: 16px; }
+  .entry .when { color: var(--dim); }
+  .entry .counts { color: var(--dim); font-size: 13px; }
+  .note { margin: 0 0 4px; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--panel2);
+          border-radius: 0 6px 6px 0; white-space: pre-wrap; }
+  .note b { color: var(--accent); font-weight: 600; }
+  .pics { display: flex; gap: 12px; min-width: 0; }
+  .pics figure { flex: 0 1 auto; min-width: 0; }
+  .pics:not(.single) figure { flex: 1 1 0; }
+  .viewbar { display: flex; align-items: center; gap: 10px; }
+  .viewbar .dim { color: var(--dim); font-size: 13px; }
+  .segs { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .seg { background: var(--panel); color: var(--text); border: 0; padding: 5px 14px; font: inherit; font-size: 13px; cursor: pointer; }
+  .seg + .seg { border-left: 1px solid var(--line); }
+  .seg.on { background: var(--accent); color: #10131a; font-weight: 600; }
+  .seg[disabled] { opacity: .35; cursor: default; }
+  .seg.replay { width: 84px; }  /* same width as "replay" and "stop", so the control never shifts */
+  .nav .navpos { display: inline-flex; align-items: center; padding: 0 12px; font-size: 13px; background: var(--panel2);
+                 border-left: 1px solid var(--line); border-right: 1px solid var(--line); justify-content: center;
+                 width: 170px; white-space: nowrap; overflow: hidden; }  /* fixed: the arrows stay under the cursor */
+  figure { margin: 0; position: relative; }
+  img.clickable { cursor: crosshair; }
+  .pin { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%;
+         background: var(--accent); box-shadow: 0 0 0 3px rgba(143,180,255,.35); pointer-events: none; }
+  .composer { position: absolute; z-index: 5; width: 300px; background: var(--panel2); border: 1px solid var(--accent);
+              border-radius: 8px; padding: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.5); }
+  .composer textarea { width: 100%; resize: vertical; background: var(--bg); color: var(--text); border: 1px solid var(--line);
+                       border-radius: 5px; font: inherit; padding: 6px; margin: 6px 0; }
+  .composer .row { display: flex; gap: 8px; align-items: center; }
+  .composer button, .panel button.small { background: var(--panel); color: var(--text); border: 1px solid var(--line);
+                       border-radius: 5px; padding: 3px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  .composer button.primary { background: var(--accent); color: #10131a; border-color: var(--accent); font-weight: 600; }
+  .dim { color: var(--dim); font-size: 12.5px; }
+  .notes li { margin: 4px 0; } .notes .closed { color: var(--dim); }
+  .notes .reply { color: var(--ok); }
+  figure img { display: block; width: auto; height: auto; max-width: 100%; max-height: calc(100vh - var(--chrome));
+               border-radius: 6px; border: 1px solid var(--line); background: #000; }
+  figcaption { color: var(--dim); font-size: 12px; margin-top: 4px; }
+  .nodiff { display: grid; place-items: center; min-height: 120px; border: 1px dashed var(--line); border-radius: 6px;
+            color: var(--dim); }
+  .issues { margin: 10px 0 0; padding-left: 18px; }
+  .issues li.error { color: var(--err); } .issues li.warning { color: var(--warn); }
+  details { margin-top: 10px; } summary { cursor: pointer; color: var(--dim); }
+  .empty { color: var(--dim); }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<aside>
+  <h1>dms board</h1>
+  <nav id="maplist"></nav>
+  <p id="conn"></p>
+  <div class="howto">
+    <h2>Send Claude a note</h2>
+    <p><b>Here:</b> click a spot on a build's picture.</p>
+    <p><b>In the editor:</b> select something (or point at it), then <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd>,
+       or <kbd>Ctrl</kbd>+right click, or Tools &gt; Send to Claude.</p>
+    <p><b>Board keys:</b> <kbd>&larr;</kbd> <kbd>&rarr;</kbd> flip builds, <kbd>End</kbd> latest,
+       <kbd>Space</kbd> replay.</p>
+  </div>
+</aside>
+<main id="main"><p class="empty">Loading...</p></main>
+<script>
+"use strict";
+const POLL_MS = 2000;
+let current = decodeURIComponent(location.hash.slice(1)) || localStorage.getItem("dms-board-map") || "";
+let shownFor = null, firstLoad = true, lastDetail = null, logOpen = false, notesOpen = false, lastPending = "";
+let pinned = null, shownDir = null, shownKey = "", lastLatest = null;
+let viewMode = localStorage.getItem("dms-board-view") === "beforeafter" ? "beforeafter" : "changes";
+
+function viewBar() {
+  const btn = (mode, label) => el("button", { class: "seg" + (viewMode === mode ? " on" : ""), onclick: () => setView(mode) }, label);
+  return el("div", { class: "viewbar" }, el("span", { class: "dim" }, "Show builds as"),
+    el("div", { class: "segs" }, btn("changes", "Changes"), btn("beforeafter", "Before / after")));
+}
+function setView(mode) {
+  if (mode === viewMode) return;
+  viewMode = mode;
+  localStorage.setItem("dms-board-view", mode);
+  closeComposer();
+  if (lastDetail) renderMap(lastDetail);  // the build is redrawn in the new view (its key changed)
+}
+
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k === "class") e.className = v; else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k !== null && k !== undefined && k !== false)
+    e.append(k instanceof Node ? k : document.createTextNode(String(k)));
+  return e;
+}
+
+function ago(iso) {
+  if (!iso) return "";
+  const s = Math.round((Date.now() - new Date(iso)) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return Math.round(s / 60) + " min ago";
+  if (s < 86400) return Math.round(s / 3600) + " h ago";
+  return Math.round(s / 86400) + " days ago";
+}
+function clock(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function select(name) {
+  current = name;
+  localStorage.setItem("dms-board-map", name);
+  if (replayTimer) { clearInterval(replayTimer); replayTimer = null; }
+  pinned = null;  // a different map opens on its latest build
+  history.replaceState(null, "", "#" + encodeURIComponent(name));
+
+  poll();
+}
+
+function renderMaps(maps) {
+  const nav = document.getElementById("maplist");
+  nav.replaceChildren(...maps.map(m => el("button", { class: "map" + (m.name === current ? " sel" : ""),
+      onclick: () => select(m.name) },
+    m.title, el("small", null, m.name + " · " + (m.builds ? m.builds + " build" + (m.builds > 1 ? "s" : "") +
+      " · " + ago(m.last) : "no builds yet")))));
+}
+
+function headerFor(d) {
+  const ed = d.editor, chips = [];
+  if (!ed.open) chips.push(el("span", { class: "chip" }, "Editor: closed"));
+  else if (ed.unsaved) chips.push(el("span", { class: "chip warn" }, "Editor: open, unsaved changes"));
+  else chips.push(el("span", { class: "chip ok" }, "Editor: open, no unsaved changes"));
+  if (ed.saved_edits) chips.push(el("span", { class: "chip warn" }, "Saved editor edits not brought back yet"));
+  const latest = d.entries[0];
+  if (latest) {
+    if (latest.errors) chips.push(el("span", { class: "chip err" }, "Latest build: " + latest.errors + " error(s)"));
+    else if (latest.warnings) chips.push(el("span", { class: "chip warn" }, "Latest build: " + latest.warnings + " warning(s)"));
+    else chips.push(el("span", { class: "chip ok" }, "Latest build: valid"));
+  }
+  // The play log is one chip; its problems open in a panel on click (kept closed so the picture fits).
+  const log = d.play_log;
+  let logPanel = null;
+  if (!log) chips.push(el("span", { class: "chip" }, "Not played yet"));
+  else if (!log.problems.length)
+    chips.push(el("span", { class: "chip ok", title: clock(log.time) }, "Last play " + ago(log.time) + ": no problems in the log"));
+  else {
+    const n = log.problems.length + log.more;
+    chips.push(el("button", { class: "chip warn", title: clock(log.time), onclick: () => { logOpen = !logOpen; renderMap(lastDetail); } },
+      "Last play " + ago(log.time) + ": " + n + " problem line(s) " + (logOpen ? "▴" : "▾")));
+    if (logOpen) logPanel = el("div", { class: "panel" }, el("h3", null, "Last play session, " + clock(log.time)),
+      el("pre", null, log.problems.join("\n") + (log.more ? "\n... and " + log.more + " more" : "")));
+  }
+  // Notes for Claude: one chip; the list opens on click (closed by default, so the picture fits).
+  const open = d.notes.filter(n => n.status === "open"), closed = d.notes.filter(n => n.status === "closed");
+  let notesPanel = null;
+  if (d.notes.length) {
+    chips.push(el("button", { class: "chip" + (open.length ? " warn" : " ok"), onclick: () => { notesOpen = !notesOpen; renderMap(lastDetail); } },
+      (open.length ? open.length + " note(s) for Claude" : "Notes: all done") + (closed.length ? ", " + closed.length + " done" : "") +
+      " " + (notesOpen ? "▴" : "▾")));
+    if (notesOpen) notesPanel = el("div", { class: "panel" }, el("h3", null, "Notes for Claude"),
+      el("ul", { class: "notes" }, d.notes.slice(0, 20).map(noteItem)));
+  } else {
+    chips.push(el("span", { class: "chip", title: "Click a spot on a picture to send Claude a note about it" }, "No notes yet"));
+  }
+  return el("header", null,
+    el("div", { class: "titlerow" }, el("h2", null, d.title), el("span", { class: "sub" }, d.name + " · " + d.kind + " · " + d.source)),
+    el("div", { class: "bar" }, el("div", { class: "chips" }, chips), el("span", { class: "spacer" }), navBar(d), viewBar()),
+    logPanel, notesPanel);
+}
+
+function noteItem(n) {
+  const where = [n.build ? "build #" + n.build : "", n.pos ? "(" + n.pos[0] + ", " + n.pos[1] + ")" : "",
+                 n.target ? n.target.kind + " " + (n.target.gid || n.target.index) : ""].filter(Boolean).join(" · ");
+  const src = { board: "board", editor: "editor", game: "game" }[n.source] || n.source;
+  return el("li", { class: n.status === "closed" ? "closed" : null },
+    el("b", null, "#" + n.id), " ", el("span", { class: "dim" }, src + (where ? " · " + where : "") + " · " + ago(n.time)),
+    el("div", null, n.text),
+    n.status === "closed" ? el("div", { class: "reply" }, "✓ " + (n.reply || "done")) : null);
+}
+
+let composer = null;
+function closeComposer() { if (composer) composer.forEach(x => x.remove()); composer = null; }
+
+function noteAt(ev, v, payload) {
+  const img = ev.currentTarget, r = img.getBoundingClientRect();
+  const px = (ev.clientX - r.left) * img.naturalWidth / r.width, py = (ev.clientY - r.top) * img.naturalHeight / r.height;
+  const x = Math.round(v.minx + px / v.scale), y = Math.round(v.maxy - py / v.scale);
+  const holder = img.parentElement, left = ev.clientX - r.left, top = ev.clientY - r.top;
+  closeComposer();
+  const ta = el("textarea", { rows: 3, placeholder: "e.g. make this taller (Enter sends, Shift+Enter new line, Esc cancels)" });
+  const status = el("span", { class: "dim" });
+  const send = async () => {
+    const text = ta.value.trim();
+    if (!text) return;
+    status.textContent = "sending...";
+    try {
+      const res = await fetch("/api/note", { method: "POST", headers: { "Content-Type": "application/json", "X-DMS-Board": "1" },
+                                             body: JSON.stringify({ ...payload, pos: [x, y], text }) });
+      if (!res.ok) { status.textContent = "couldn't send: " + await res.text(); return; }
+      closeComposer();
+      poll();
+    } catch (err) { status.textContent = "couldn't send (is the board running?)"; }
+  };
+  ta.addEventListener("keydown", k => {
+    if (k.key === "Enter" && !k.shiftKey) { k.preventDefault(); send(); }
+    else if (k.key === "Escape") closeComposer();
+  });
+  const pin = el("div", { class: "pin", style: "left:" + left + "px;top:" + top + "px" });
+  const box = el("div", { class: "composer", style: "left:" + Math.max(0, Math.min(left - 20, r.width - 310)) + "px;top:" + (top + 14) + "px" },
+    el("div", { class: "dim" }, "Note for Claude about (" + x + ", " + y + ")"), ta,
+    el("div", { class: "row" }, el("button", { class: "primary", onclick: send }, "Send"), el("button", { onclick: closeComposer }, "Cancel"), status));
+  holder.append(pin, box);
+  composer = [pin, box];
+  ta.focus();
+}
+
+function entryFor(d, e, fresh, newest) {
+  const base = "/history/" + encodeURIComponent(d.name) + "/" + e.dir + "/";
+  const has = f => e.files.includes(f);
+  const counts = Object.entries(e.counts || {}).map(([k, n]) => n + " " + k).join(", ");
+  const status = e.errors ? el("span", { class: "chip err" }, e.errors + " error(s)")
+    : e.warnings ? el("span", { class: "chip warn" }, e.warnings + " warning(s)") : el("span", { class: "chip ok" }, "valid");
+  const flags = [e.first ? "first build" : "", e.forced ? "built with --force" : "", e.changed || e.first ? "" : "no map change"]
+    .filter(Boolean).join(" · ");
+  // Images with a recorded view can be clicked to send Claude a note about that spot.
+  const pic = (f, caption) => {
+    const v = e.views && e.views[f];
+    const img = el("img", { src: base + f, alt: caption, loading: "lazy", class: v ? "clickable" : null,
+                            title: v ? "Click a spot to send Claude a note about it" : null });
+    if (v) img.addEventListener("click", ev => noteAt(ev, v, { map: d.name, build: e.seq, image: f }));
+    return el("figure", null, img,
+      el("figcaption", null, caption, " · ", el("a", { href: base + f, target: "_blank" }, "full size")));
+  };
+  const none = el("figure", null, el("div", { class: "nodiff" }, e.first ? "First build: nothing to compare with" : "No map change"),
+                  el("figcaption", null, "Before"));
+  let pics;
+  if (viewMode === "changes") {
+    pics = has("diff.png")
+      ? el("div", { class: "pics single" }, pic("diff.png", "Now, with the changes marked: green added, yellow changed, red removed"))
+      : el("div", { class: "pics single" }, has("render.png") ? pic("render.png", e.first ? "First build" : "No map change") : null);
+  } else if (has("diff-before.png") && has("diff-after.png")) {
+    pics = el("div", { class: "pics" }, pic("diff-before.png", "Before: red removed, yellow changed"),
+                                        pic("diff-after.png", "After: green added, yellow changed"));
+  } else {  // the first build, an unchanged one, or an entry from before the before/after images
+    pics = el("div", { class: "pics" }, has("diff.png") ? pic("diff.png", "Changes") : none,
+                                        has("render.png") ? pic("render.png", "After") : null);
+  }
+  return el("article", { class: "entry" + (fresh ? " fresh" : ""), "data-dir": e.dir },
+    el("div", { class: "top" }, el("span", { class: "seq" }, "#" + e.seq),
+      el("span", { class: "when", title: e.time }, clock(e.time)), status, el("span", { class: "counts" }, counts),
+      flags ? el("span", { class: "counts" }, flags) : null),
+    el("div", { class: "body" }, pics,
+      el("div", { class: "side" },
+        e.note ? el("div", { class: "note" }, el("b", null, "Claude: "), e.note) : null,
+        e.issues.length ? el("ul", { class: "issues" }, e.issues.map(i => el("li", { class: i.split(":")[0] }, i))) : null,
+        e.diff_text ? el("details", { open: newest || null }, el("summary", null, "What changed (text)"), el("pre", null, e.diff_text)) : null)));
+}
+
+function pendingFor(p) {
+  const img = (f, caption) => p.images[f] ? el("figure", null,
+    el("a", { href: p.images[f], target: "_blank" }, el("img", { src: p.images[f], alt: caption })),
+    el("figcaption", null, caption)) : null;
+  let title, text;
+  if (p.report === null) {
+    title = "Editor save, not pulled yet";
+    text = "Run Pull Map (or turn on auto_pull in dms.toml) to bring it into the map's source.";
+  } else if (p.structural) {
+    title = "Editor save waiting for Claude";
+    text = p.structural + " structural change(s) need porting into map.py; tweaks and comments wait with them. " +
+           "Ask Claude to pull it.";
+  } else {
+    title = "Editor save being pulled";
+    text = "";
+  }
+  const pics = viewMode === "changes"
+    ? el("div", { class: "pics single" }, img("diff-edit.png", "Your save, with its changes marked") || img("render-edit.png", "Your save"))
+    : el("div", { class: "pics" }, img("diff-edit-before.png", "Before your save"), img("diff-edit-after.png", "Your save"));
+  return el("article", { class: "entry pending" },
+    el("div", { class: "top" }, el("span", { class: "seq" }, title),
+      el("span", { class: "when", title: p.time }, "saved " + clock(p.time) + " (" + ago(p.time) + ")")),
+    el("div", { class: "body" }, Object.keys(p.images).length ? pics : el("div"),
+      el("div", { class: "side" }, text ? el("div", { class: "note warnnote" }, text) : null,
+        p.report ? el("details", { open: true }, el("summary", null, "What's in the save"), el("pre", null, p.report)) : null)));
+}
+
+// One build at a time, flipped with the arrows (no animation: the picture is just replaced, so
+// consecutive builds can be compared). `pinned` is the build being looked at, or null = follow the latest.
+function navBar(d) {
+  const es = d.entries;
+  if (!es.length) return null;
+  const i = Math.max(0, es.findIndex(e => e.dir === shownDir));
+  const btn = (label, enabled, title, onclick) =>
+    el("button", { class: "seg", disabled: enabled ? null : "disabled", title, onclick }, label);
+  return el("div", { class: "nav" },
+    el("div", { class: "segs" },
+      btn("◀", i < es.length - 1, "Older build (← key)", () => flip(+1)),
+      el("span", { class: "navpos" }, "build #" + es[i].seq + (i === 0 ? " · latest" : " · " + i + " newer")),
+      btn("▶", i > 0, "Newer build (→ key)", () => flip(-1)),
+      // Always there (greyed out on the latest), so nothing in this control changes width as you flip.
+      btn("latest", i > 0, "Back to the latest build (End key)", () => flip(-i)),
+      el("button", { class: "seg replay" + (replayTimer ? " on" : ""), disabled: es.length > 1 ? null : "disabled",
+                     title: "Play every build from the oldest, 4 a second (Space)", onclick: toggleReplay },
+         replayTimer ? "■ stop" : "▶ replay")));
+}
+
+// Replay: every build from the oldest to the latest, 4 a second, in the current view.
+const REPLAY_MS = 250;
+let replayTimer = null;
+
+function toggleReplay() {
+  if (replayTimer) return stopReplay();
+  const es = lastDetail && lastDetail.entries;
+  if (!es || es.length < 2) return;
+  const want = viewMode === "changes" ? ["diff.png", "render.png"] : ["diff-before.png", "diff-after.png", "render.png"];
+  for (const e of es)  // load every picture first, so playback doesn't wait on the network
+    for (const f of want) if (e.files.includes(f)) new Image().src = "/history/" + encodeURIComponent(lastDetail.name) + "/" + e.dir + "/" + f;
+  closeComposer();
+  pinned = es[es.length - 1].dir;
+  replayTimer = setInterval(() => {
+    const list = lastDetail.entries, i = list.findIndex(e => e.dir === shownDir);
+    if (i <= 0) return stopReplay();
+    pinned = i - 1 === 0 ? null : list[i - 1].dir;
+    renderMap(lastDetail);
+    if (!pinned) stopReplay();  // reached the latest: stop, and follow new builds again
+  }, REPLAY_MS);
+  renderMap(lastDetail);
+}
+
+function stopReplay() {
+  if (replayTimer) clearInterval(replayTimer);
+  replayTimer = null;
+  if (lastDetail) renderMap(lastDetail);
+}
+
+function flip(step) {
+  if (replayTimer) stopReplay();  // flipping by hand stops a replay where it is
+  if (!lastDetail || !lastDetail.entries.length) return;
+  const es = lastDetail.entries;
+  const i = Math.min(es.length - 1, Math.max(0, es.findIndex(e => e.dir === shownDir) + step));
+  pinned = i === 0 ? null : es[i].dir;
+  closeComposer();
+  renderMap(lastDetail);
+}
+
+document.addEventListener("keydown", k => {
+  if (k.target.closest("textarea, input") || k.altKey || k.ctrlKey || k.metaKey) return;
+  if (k.key === "ArrowLeft") { flip(+1); k.preventDefault(); }
+  else if (k.key === "ArrowRight") { flip(-1); k.preventDefault(); }
+  else if (k.key === "End") { flip(-1e9); k.preventDefault(); }
+  else if (k.key === " " && !k.target.closest("button")) { toggleReplay(); k.preventDefault(); }
+});
+
+function renderMap(d) {
+  const main = document.getElementById("main");
+  lastDetail = d;
+  if (shownFor !== d.name) {
+    main.replaceChildren(el("div", { id: "head" }), el("div", { id: "pending" }), el("div", { id: "timeline" }));
+    lastPending = ""; shownKey = ""; shownDir = null; lastLatest = null;
+    shownFor = d.name; firstLoad = true;
+  }
+  const es = d.entries, latest = es.length ? es[0].dir : null;
+  if (pinned && !es.some(e => e.dir === pinned)) pinned = null;  // that build was pruned
+  const target = pinned || latest;
+  const key = target + "|" + viewMode;
+  if (key !== shownKey) {  // only when the build or view changes: keeps an open note box, no flicker
+    const e = es.find(x => x.dir === target);
+    const arrived = !firstLoad && !pinned && latest !== lastLatest;  // following the latest and a new one came in
+    const node = e ? entryFor(d, e, arrived, e.dir === latest)
+                   : el("p", { class: "empty" }, "No builds recorded yet. They appear here after the next `dms build`.");
+    document.getElementById("timeline").replaceChildren(node);
+    if (arrived) setTimeout(() => node.classList.remove("fresh"), 15000);
+    shownKey = key; shownDir = target;
+  }
+  lastLatest = latest;
+  document.getElementById("head").replaceChildren(headerFor(d));  // cheap; keeps "x min ago" current
+  const pendingKey = JSON.stringify([d.pending, viewMode]);
+  if (pendingKey !== lastPending) {  // only when it changes, so its pictures don't flicker
+    document.getElementById("pending").replaceChildren(...(d.pending ? [pendingFor(d.pending)] : []));
+    lastPending = pendingKey;
+  }
+  firstLoad = false;
+}
+
+// Reload when board.html changes on disk (Claude edited the page), unless a note is being typed.
+let pageVersion = null;
+async function checkPage() {
+  const v = (await (await fetch("/api/ping")).json()).page;
+  if (pageVersion === null) pageVersion = v;
+  else if (v !== pageVersion && !composer && !replayTimer) location.reload();
+}
+
+async function poll() {
+  try {
+    await checkPage();
+    const maps = await (await fetch("/api/maps")).json();
+    if (!current || !maps.some(m => m.name === current)) current = maps.length ? maps[0].name : "";
+    renderMaps(maps);
+    if (current) {
+      const r = await fetch("/api/map?name=" + encodeURIComponent(current));
+      if (r.ok) renderMap(await r.json());
+    } else document.getElementById("main").replaceChildren(el("p", { class: "empty" }, "No maps yet."));
+    document.getElementById("conn").textContent = "";
+  } catch (err) {
+    document.getElementById("conn").textContent = "The board server isn't running. Start it again with Open Board.cmd.";
+  }
+}
+
+window.addEventListener("hashchange", () => { const n = decodeURIComponent(location.hash.slice(1)); if (n && n !== current) select(n); });
+poll();
+setInterval(poll, POLL_MS);
+</script>
+</body>
+</html>

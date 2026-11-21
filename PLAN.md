@@ -309,6 +309,9 @@ Still to build later:
 - **Load check without a window** (idea for M2 `dms build`): `uzdoom -iwad ... -file <map>.wad -norun +logfile check`
   loads everything and parses MAPINFO/definitions, then quits (exit code 1337) before opening a window; scan its log for errors.
 - Later: playtest stats (kills, secrets, time) dumped at the end of a level.
+- **Idea, later (mapper, 2026-11-21): our own editor context menu** (e.g. Shift+right click) with agentic
+  iteration actions, beyond "Message Claude about this..." (which is on Ctrl+right click now). The editor has no
+  right-click menu of its own to add to: plain right click is its "Edit" action (properties, right-drag draws).
 - **Idea, tabled (mapper, 2026-11-21): one background "manager" for a dev session.** Today the board needs its
   console window kept open, and closing it doesn't close the browser tab. A single manager process (tray icon or
   small window) could own the board server, `dms watch`, and launching play/edit, and stop everything together.

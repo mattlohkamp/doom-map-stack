@@ -23,7 +23,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from dms import history
+from dms import history, inbox
 from dms.build import edit_wad_changed, editor_state
 from dms.launch import pid_alive
 from dms.maps import MapInfo, all_maps
@@ -99,7 +99,34 @@ def pending_save(info: MapInfo, root: Path, editor: dict) -> dict | None:
     return out
 
 
+def note_target(info: MapInfo, pos: list[float]) -> dict | None:
+    """What a click at `pos` is about, in the map's current TEXTMAP: a thing within 24 units, else
+    the sector there."""
+    from dms import udmf
+    from dms.validate import sector_at
+
+    try:
+        tm = udmf.parse(info.textmap.read_text(encoding="utf-8"))
+    except (OSError, udmf.UdmfError):
+        return None
+    x, y = pos
+    near = [(abs(t["x"] - x) + abs(t["y"] - y), i, t) for i, t in enumerate(tm.things) if "x" in t.fields]
+    near = [n for n in near if n[0] <= 24]
+    if near:
+        _, i, t = min(near, key=lambda n: n[0])
+        return {"kind": "thing", "index": i, "gid": t.get("user_gid"), "type": t.get("type")}
+    s = sector_at(tm, x, y)
+    if s is None:
+        return None
+    return {"kind": "sector", "index": s, "gid": tm.sectors[s].get("user_gid")}
+
+
+MAX_NOTE = 2000
+
+
 def map_detail(info: MapInfo, root: Path) -> dict:
+    from dms import inbox
+
     editor = editor_summary(info, root)
     return {
         "name": info.name,
@@ -108,6 +135,7 @@ def map_detail(info: MapInfo, root: Path) -> dict:
         "source": info.source,
         "editor": editor,
         "pending": pending_save(info, root, editor),
+        "notes": list(reversed(inbox.notes(info, root)))[:50],
         "play_log": play_log(info, root),
         "entries": history.entries(info, root),
     }
@@ -149,12 +177,14 @@ class Watcher:
     def snapshot(self) -> dict:
         out = {}
         for info in all_maps(self.root):
+            inbox.ingest_game_log(info, self.root)  # notes typed in the game -> the inbox
             out[info.name] = {
                 "info": info,
                 "entry": history.latest(info, self.root),
                 "editor": editor_summary(info, self.root),
                 "log": self._sig(info.build_dir(self.root) / "log-play.txt"),
                 "edit": self._sig(info.edit_wad(self.root)),
+                "notes": {n["id"]: n for n in inbox.notes(info, self.root)},
             }
         return out
 
@@ -173,6 +203,14 @@ class Watcher:
                 msgs.append(_build_line(name, ce))
             if p:
                 msgs += [f"{name}: {m}" for m in self._editor_changes(name, p["editor"], c["editor"])]
+            if p:
+                for nid, n in c["notes"].items():
+                    old = p["notes"].get(nid)
+                    if old is None:
+                        src = inbox.SOURCES.get(n.get("source"), n.get("source"))
+                        msgs.append(f"{name}: note #{nid} from {src}: {_first_line(n['text'], 90)}")
+                    elif old["status"] == "open" and n["status"] == "closed":
+                        msgs.append(f"{name}: note #{nid} done" + (f": {_first_line(n['reply'], 90)}" if n.get("reply") else ""))
             # Auto-pull a save once edit.wad has stopped changing (one look), and only once per save.
             ed = c["editor"]
             if (self.auto_pull and p and ed["saved_edits"] and not ed["unsaved"]
@@ -202,7 +240,7 @@ class Watcher:
     def _editor_changes(self, name: str, p: dict, c: dict) -> list[str]:
         out = []
         if c["open"] and not p["open"]:
-            out.append("editor opened")
+            out.append("editor opened (select something, then Ctrl+Shift+N or Ctrl+right click, to send Claude a note)")
         if c["unsaved"] and not p["unsaved"]:
             out.append("editor has unsaved changes (new builds won't reload until they're saved or undone)")
         if c["saved_edits"] and not p["saved_edits"]:
@@ -303,16 +341,51 @@ def make_handler(root: Path, announce: bool = False):
         def _missing(self) -> None:
             self._send(HTTPStatus.NOT_FOUND, b"not found", "text/plain; charset=utf-8")
 
+        def do_POST(self) -> None:
+            from dms import inbox
+
+            if urlparse(self.path).path != "/api/note":
+                return self._missing()
+            # Only the board's own page may add notes (they're instructions Claude acts on). It sends
+            # JSON with this header; another web page can't, without a CORS preflight this server
+            # never answers. Origin, when sent, must be this server.
+            port = self.server.server_address[1]
+            origin = self.headers.get("Origin")
+            if (self.headers.get("X-DMS-Board") != "1"
+                    or not (self.headers.get("Content-Type") or "").startswith("application/json")
+                    or origin not in (None, f"http://127.0.0.1:{port}", f"http://localhost:{port}")):
+                return self._send(HTTPStatus.FORBIDDEN, b"not from the board", "text/plain; charset=utf-8")
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                if not 0 < length <= 16384:
+                    raise ValueError("bad length")
+                data = json.loads(self.rfile.read(length))
+                info = _find(root, str(data.get("map", "")))
+                text = str(data.get("text", "")).strip()[:MAX_NOTE]
+                pos = data.get("pos")
+                if pos is not None:
+                    pos = [round(float(pos[0]), 1), round(float(pos[1]), 1)]
+                build = int(data["build"]) if data.get("build") is not None else None
+                image = str(data.get("image")) if data.get("image") in history.COPIED else None
+                if info is None or not text:
+                    raise ValueError("needs a known map and some text")
+            except (ValueError, TypeError, KeyError, IndexError, json.JSONDecodeError) as e:
+                return self._send(HTTPStatus.BAD_REQUEST, f"bad note: {e}".encode(), "text/plain; charset=utf-8")
+            note = inbox.add(info, root, text, "board", pos=pos, build=build, image=image,
+                             target=note_target(info, pos) if pos else None)
+            self._json(note)
+
         def do_GET(self) -> None:
             url = urlparse(self.path)
             parts = [p for p in url.path.split("/") if p]
             try:
                 if not parts:
-                    self._send(HTTPStatus.OK, PAGE.encode("utf-8"), "text/html; charset=utf-8")
+                    self._send(HTTPStatus.OK, page().encode("utf-8"), "text/html; charset=utf-8")
                     if announce:
                         say("board opened in a browser")
                 elif parts == ["api", "ping"]:
-                    self._json({"dms_board": True, "root": str(root)})
+                    # "page": board.html's version, so an open board reloads itself when it changes.
+                    self._json({"dms_board": True, "root": str(root), "page": PAGE_FILE.stat().st_mtime_ns})
                 elif parts == ["api", "maps"]:
                     self._json(map_list(root))
                 elif parts == ["api", "map"]:
@@ -390,295 +463,11 @@ def serve(root: Path, port: int, open_browser: bool = True, auto_pull: bool = Tr
     return 0
 
 
-PAGE = r"""<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>dms board</title>
-<style>
-  :root {
-    --bg: #18181c; --panel: #212127; --panel2: #2a2a31; --line: #3a3a44;
-    --text: #e4e4ea; --dim: #9a9aa8; --ok: #46dc64; --warn: #ffdc3c; --err: #ff4646; --accent: #8fb4ff;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; }
-  body { background: var(--bg); color: var(--text); font: 14px/1.45 "Segoe UI", system-ui, sans-serif;
-         display: grid; grid-template-columns: 220px 1fr; }
-  aside { border-right: 1px solid var(--line); padding: 16px 12px; position: sticky; top: 0; height: 100vh;
-          overflow: auto; }
-  aside h1 { font-size: 15px; margin: 0 0 12px; letter-spacing: .04em; color: var(--dim); text-transform: uppercase; }
-  .map { display: block; width: 100%; text-align: left; background: none; border: 0; color: var(--text);
-         padding: 8px 10px; border-radius: 6px; cursor: pointer; font: inherit; }
-  .map:hover { background: var(--panel); }
-  .map.sel { background: var(--panel2); }
-  .map small { display: block; color: var(--dim); font-size: 12px; }
-  #conn { color: var(--err); font-size: 12px; margin-top: 16px; }
-  /* Layout rule: the newest build's picture fits in the window without scrolling. Everything
-     above it (header, the entry's top line, captions) adds up to at most --chrome. */
-  :root { --chrome: 215px; }
-  main { padding: 12px 24px 40px; overflow: auto; min-width: 0; }
-  header .titlerow { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-  header h2 { margin: 0; font-size: 20px; }
-  header .sub { color: var(--dim); }
-  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 0; }
-  .bar .spacer { flex: 1; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  button.chip { font: inherit; font-size: 13px; color: inherit; cursor: pointer; }
-  .chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; font-size: 13px; }
-  .chip.ok { border-color: #2f6b3c; } .chip.warn { border-color: #8a7420; color: var(--warn); }
-  .chip.err { border-color: #8a2a2a; color: var(--err); }
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; margin: 10px 0; }
-  .panel h3 { margin: 0 0 6px; font-size: 13px; color: var(--dim); font-weight: 600; }
-  pre { margin: 0; white-space: pre-wrap; font: 12.5px/1.4 Consolas, "Cascadia Mono", monospace; color: var(--text); }
-  .entry { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin: 12px 0; padding: 10px 14px 12px; }
-  .entry .body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: 16px;
-                 align-items: start; margin-top: 8px; }
-  .entry .side > :first-child { margin-top: 0; }
-  @media (max-width: 1100px) { .entry .body { grid-template-columns: minmax(0, 1fr); } }
-  .entry.fresh { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-  .entry.pending { border-color: #8a7420; box-shadow: 0 0 0 1px #8a7420; }
-  .entry.pending .seq { color: var(--warn); }
-  .note.warnnote { border-left-color: var(--warn); }
-  .entry .top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
-  .entry .seq { font-weight: 700; font-size: 16px; }
-  .entry .when { color: var(--dim); }
-  .entry .counts { color: var(--dim); font-size: 13px; }
-  .note { margin: 0 0 4px; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--panel2);
-          border-radius: 0 6px 6px 0; white-space: pre-wrap; }
-  .note b { color: var(--accent); font-weight: 600; }
-  .pics { display: flex; gap: 12px; min-width: 0; }
-  .pics figure { flex: 0 1 auto; min-width: 0; }
-  .pics:not(.single) figure { flex: 1 1 0; }
-  .viewbar { display: flex; align-items: center; gap: 10px; }
-  .viewbar .dim { color: var(--dim); font-size: 13px; }
-  .segs { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
-  .seg { background: var(--panel); color: var(--text); border: 0; padding: 5px 14px; font: inherit; font-size: 13px; cursor: pointer; }
-  .seg + .seg { border-left: 1px solid var(--line); }
-  .seg.on { background: var(--accent); color: #10131a; font-weight: 600; }
-  figure { margin: 0; }
-  figure img { display: block; width: auto; height: auto; max-width: 100%; max-height: calc(100vh - var(--chrome));
-               border-radius: 6px; border: 1px solid var(--line); background: #000; }
-  figcaption { color: var(--dim); font-size: 12px; margin-top: 4px; }
-  .nodiff { display: grid; place-items: center; min-height: 120px; border: 1px dashed var(--line); border-radius: 6px;
-            color: var(--dim); }
-  .issues { margin: 10px 0 0; padding-left: 18px; }
-  .issues li.error { color: var(--err); } .issues li.warning { color: var(--warn); }
-  details { margin-top: 10px; } summary { cursor: pointer; color: var(--dim); }
-  .empty { color: var(--dim); }
-  a { color: var(--accent); }
-</style>
-</head>
-<body>
-<aside>
-  <h1>dms board</h1>
-  <nav id="maplist"></nav>
-  <p id="conn"></p>
-</aside>
-<main id="main"><p class="empty">Loading...</p></main>
-<script>
-"use strict";
-const POLL_MS = 2000;
-let current = decodeURIComponent(location.hash.slice(1)) || localStorage.getItem("dms-board-map") || "";
-let shown = new Set(), shownFor = null, firstLoad = true, lastDetail = null, logOpen = false, lastPending = "";
-let viewMode = localStorage.getItem("dms-board-view") === "beforeafter" ? "beforeafter" : "changes";
+PAGE_FILE = Path(__file__).with_name("board.html")
 
-function viewBar() {
-  const btn = (mode, label) => el("button", { class: "seg" + (viewMode === mode ? " on" : ""), onclick: () => setView(mode) }, label);
-  return el("div", { class: "viewbar" }, el("span", { class: "dim" }, "Show builds as"),
-    el("div", { class: "segs" }, btn("changes", "Changes"), btn("beforeafter", "Before / after")));
-}
-function setView(mode) {
-  if (mode === viewMode) return;
-  viewMode = mode;
-  localStorage.setItem("dms-board-view", mode);
-  shownFor = null;  // rebuild the timeline in the new view
-  if (lastDetail) renderMap(lastDetail);
-}
 
-function el(tag, attrs, ...kids) {
-  const e = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs || {})) {
-    if (v === null || v === undefined || v === false) continue;
-    if (k === "class") e.className = v; else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
-    else e.setAttribute(k, v);
-  }
-  for (const k of kids.flat()) if (k !== null && k !== undefined && k !== false)
-    e.append(k instanceof Node ? k : document.createTextNode(String(k)));
-  return e;
-}
+def page() -> str:
+    """The board page (HTML, CSS and script in one file). Read on every request, so a change to it
+    shows up with a browser refresh; changes to this Python file still need the board restarted."""
+    return PAGE_FILE.read_text(encoding="utf-8")
 
-function ago(iso) {
-  if (!iso) return "";
-  const s = Math.round((Date.now() - new Date(iso)) / 1000);
-  if (s < 60) return "just now";
-  if (s < 3600) return Math.round(s / 60) + " min ago";
-  if (s < 86400) return Math.round(s / 3600) + " h ago";
-  return Math.round(s / 86400) + " days ago";
-}
-function clock(iso) {
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
-}
-
-function select(name) {
-  current = name;
-  localStorage.setItem("dms-board-map", name);
-  history.replaceState(null, "", "#" + encodeURIComponent(name));
-
-  poll();
-}
-
-function renderMaps(maps) {
-  const nav = document.getElementById("maplist");
-  nav.replaceChildren(...maps.map(m => el("button", { class: "map" + (m.name === current ? " sel" : ""),
-      onclick: () => select(m.name) },
-    m.title, el("small", null, m.name + " · " + (m.builds ? m.builds + " build" + (m.builds > 1 ? "s" : "") +
-      " · " + ago(m.last) : "no builds yet")))));
-}
-
-function headerFor(d) {
-  const ed = d.editor, chips = [];
-  if (!ed.open) chips.push(el("span", { class: "chip" }, "Editor: closed"));
-  else if (ed.unsaved) chips.push(el("span", { class: "chip warn" }, "Editor: open, unsaved changes"));
-  else chips.push(el("span", { class: "chip ok" }, "Editor: open, no unsaved changes"));
-  if (ed.saved_edits) chips.push(el("span", { class: "chip warn" }, "Saved editor edits not brought back yet"));
-  const latest = d.entries[0];
-  if (latest) {
-    if (latest.errors) chips.push(el("span", { class: "chip err" }, "Latest build: " + latest.errors + " error(s)"));
-    else if (latest.warnings) chips.push(el("span", { class: "chip warn" }, "Latest build: " + latest.warnings + " warning(s)"));
-    else chips.push(el("span", { class: "chip ok" }, "Latest build: valid"));
-  }
-  // The play log is one chip; its problems open in a panel on click (kept closed so the picture fits).
-  const log = d.play_log;
-  let logPanel = null;
-  if (!log) chips.push(el("span", { class: "chip" }, "Not played yet"));
-  else if (!log.problems.length)
-    chips.push(el("span", { class: "chip ok", title: clock(log.time) }, "Last play " + ago(log.time) + ": no problems in the log"));
-  else {
-    const n = log.problems.length + log.more;
-    chips.push(el("button", { class: "chip warn", title: clock(log.time), onclick: () => { logOpen = !logOpen; renderMap(lastDetail); } },
-      "Last play " + ago(log.time) + ": " + n + " problem line(s) " + (logOpen ? "▴" : "▾")));
-    if (logOpen) logPanel = el("div", { class: "panel" }, el("h3", null, "Last play session, " + clock(log.time)),
-      el("pre", null, log.problems.join("\n") + (log.more ? "\n... and " + log.more + " more" : "")));
-  }
-  return el("header", null,
-    el("div", { class: "titlerow" }, el("h2", null, d.title), el("span", { class: "sub" }, d.name + " · " + d.kind + " · " + d.source)),
-    el("div", { class: "bar" }, el("div", { class: "chips" }, chips), el("span", { class: "spacer" }), viewBar()),
-    logPanel);
-}
-
-function entryFor(d, e, fresh, newest) {
-  const base = "/history/" + encodeURIComponent(d.name) + "/" + e.dir + "/";
-  const has = f => e.files.includes(f);
-  const counts = Object.entries(e.counts || {}).map(([k, n]) => n + " " + k).join(", ");
-  const status = e.errors ? el("span", { class: "chip err" }, e.errors + " error(s)")
-    : e.warnings ? el("span", { class: "chip warn" }, e.warnings + " warning(s)") : el("span", { class: "chip ok" }, "valid");
-  const flags = [e.first ? "first build" : "", e.forced ? "built with --force" : "", e.changed || e.first ? "" : "no map change"]
-    .filter(Boolean).join(" · ");
-  const pic = (f, caption) => el("figure", null,
-    el("a", { href: base + f, target: "_blank" }, el("img", { src: base + f, alt: caption, loading: "lazy" })),
-    el("figcaption", null, caption));
-  const none = el("figure", null, el("div", { class: "nodiff" }, e.first ? "First build: nothing to compare with" : "No map change"),
-                  el("figcaption", null, "Before"));
-  let pics;
-  if (viewMode === "changes") {
-    pics = has("diff.png")
-      ? el("div", { class: "pics single" }, pic("diff.png", "Now, with the changes marked: green added, yellow changed, red removed"))
-      : el("div", { class: "pics single" }, has("render.png") ? pic("render.png", e.first ? "First build" : "No map change") : null);
-  } else if (has("diff-before.png") && has("diff-after.png")) {
-    pics = el("div", { class: "pics" }, pic("diff-before.png", "Before: red removed, yellow changed"),
-                                        pic("diff-after.png", "After: green added, yellow changed"));
-  } else {  // the first build, an unchanged one, or an entry from before the before/after images
-    pics = el("div", { class: "pics" }, has("diff.png") ? pic("diff.png", "Changes") : none,
-                                        has("render.png") ? pic("render.png", "After") : null);
-  }
-  return el("article", { class: "entry" + (fresh ? " fresh" : ""), "data-dir": e.dir },
-    el("div", { class: "top" }, el("span", { class: "seq" }, "#" + e.seq),
-      el("span", { class: "when", title: e.time }, clock(e.time)), status, el("span", { class: "counts" }, counts),
-      flags ? el("span", { class: "counts" }, flags) : null),
-    el("div", { class: "body" }, pics,
-      el("div", { class: "side" },
-        e.note ? el("div", { class: "note" }, el("b", null, "Claude: "), e.note) : null,
-        e.issues.length ? el("ul", { class: "issues" }, e.issues.map(i => el("li", { class: i.split(":")[0] }, i))) : null,
-        e.diff_text ? el("details", { open: newest || null }, el("summary", null, "What changed (text)"), el("pre", null, e.diff_text)) : null)));
-}
-
-function pendingFor(p) {
-  const img = (f, caption) => p.images[f] ? el("figure", null,
-    el("a", { href: p.images[f], target: "_blank" }, el("img", { src: p.images[f], alt: caption })),
-    el("figcaption", null, caption)) : null;
-  let title, text;
-  if (p.report === null) {
-    title = "Editor save, not pulled yet";
-    text = "Run Pull Map (or turn on auto_pull in dms.toml) to bring it into the map's source.";
-  } else if (p.structural) {
-    title = "Editor save waiting for Claude";
-    text = p.structural + " structural change(s) need porting into map.py; tweaks and comments wait with them. " +
-           "Ask Claude to pull it.";
-  } else {
-    title = "Editor save being pulled";
-    text = "";
-  }
-  const pics = viewMode === "changes"
-    ? el("div", { class: "pics single" }, img("diff-edit.png", "Your save, with its changes marked") || img("render-edit.png", "Your save"))
-    : el("div", { class: "pics" }, img("diff-edit-before.png", "Before your save"), img("diff-edit-after.png", "Your save"));
-  return el("article", { class: "entry pending" },
-    el("div", { class: "top" }, el("span", { class: "seq" }, title),
-      el("span", { class: "when", title: p.time }, "saved " + clock(p.time) + " (" + ago(p.time) + ")")),
-    el("div", { class: "body" }, Object.keys(p.images).length ? pics : el("div"),
-      el("div", { class: "side" }, text ? el("div", { class: "note warnnote" }, text) : null,
-        p.report ? el("details", { open: true }, el("summary", null, "What's in the save"), el("pre", null, p.report)) : null)));
-}
-
-function renderMap(d) {
-  const main = document.getElementById("main");
-  lastDetail = d;
-  if (shownFor !== d.name) {
-    main.replaceChildren(el("div", { id: "head" }), el("div", { id: "pending" }), el("div", { id: "timeline" }));
-    lastPending = "";
-    shown = new Set(); shownFor = d.name; firstLoad = true;
-  }
-  document.getElementById("head").replaceChildren(headerFor(d));  // cheap; keeps "x min ago" current
-  const pendingKey = JSON.stringify([d.pending, viewMode]);
-  if (pendingKey !== lastPending) {  // only when it changes, so its pictures don't flicker
-    document.getElementById("pending").replaceChildren(...(d.pending ? [pendingFor(d.pending)] : []));
-    lastPending = pendingKey;
-  }
-  const tl = document.getElementById("timeline");
-  const dirs = new Set(d.entries.map(e => e.dir));
-  for (const node of [...tl.children]) if (!dirs.has(node.dataset.dir)) { node.remove(); shown.delete(node.dataset.dir); }
-  const fresh = d.entries.filter(e => !shown.has(e.dir));
-  for (const e of fresh.slice().reverse()) {
-    const node = entryFor(d, e, !firstLoad, e.dir === d.entries[0].dir);
-    tl.prepend(node); shown.add(e.dir);
-    if (!firstLoad) setTimeout(() => node.classList.remove("fresh"), 15000);
-  }
-  if (!d.entries.length && !tl.children.length)
-    tl.replaceChildren(el("p", { class: "empty" }, "No builds recorded yet. They appear here after the next `dms build`."));
-  else { const p = tl.querySelector("p.empty"); if (p) p.remove(); }
-  firstLoad = false;
-}
-
-async function poll() {
-  try {
-    const maps = await (await fetch("/api/maps")).json();
-    if (!current || !maps.some(m => m.name === current)) current = maps.length ? maps[0].name : "";
-    renderMaps(maps);
-    if (current) {
-      const r = await fetch("/api/map?name=" + encodeURIComponent(current));
-      if (r.ok) renderMap(await r.json());
-    } else document.getElementById("main").replaceChildren(el("p", { class: "empty" }, "No maps yet."));
-    document.getElementById("conn").textContent = "";
-  } catch (err) {
-    document.getElementById("conn").textContent = "The board server isn't running. Start it again with Open Board.cmd.";
-  }
-}
-
-window.addEventListener("hashchange", () => { const n = decodeURIComponent(location.hash.slice(1)); if (n && n !== current) select(n); });
-poll();
-setInterval(poll, POLL_MS);
-</script>
-</body>
-</html>
-"""

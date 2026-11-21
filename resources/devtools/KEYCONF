@@ -1,0 +1,8 @@
+// dms devtools: the "Note for Claude" key (default N; rebind it in Options > Customize Controls).
+// The screenshot is taken by the mod's script (LevelLocals.MakeScreenShot), which UZDoom allows when the
+// player's setting enablescriptscreenshot is on; `dms play` turns it on. (A mod's alias may not run the
+// `screenshot` command: "Cannot execute unsafe command".)
+addkeysection "doom-map-stack" dms_keys
+addmenukey "Note for Claude" dms_note
+alias dms_note "netevent dms_mark"
+defaultbind n dms_note

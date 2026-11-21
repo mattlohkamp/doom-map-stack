@@ -226,9 +226,17 @@ def build(info: MapInfo, root: Path, force: bool = False, note: str | None = Non
     wad.write(out, map_lumps(info, data))
     print(f"    wrote {out}")
     changed = draw(info, root, tm, issues, previous, moves=moves)
-    from dms import history
+    from dms import history, render
 
-    if history.record(info, root, changed=changed, counts=counts, issues=issues, note=note, forced=force):
+    def view(v) -> dict:  # how map coordinates became pixels, so the board can map a click back
+        return {"minx": v.minx, "maxy": v.maxy, "scale": v.scale, "width": v.width, "height": v.height}
+
+    views = {"render.png": view(render.view_for(tm))}
+    if previous is not None and changed:
+        dv = view(render.view_for(previous, tm))
+        views.update({f: dv for f in ("diff.png", "diff-before.png", "diff-after.png")})
+    if history.record(info, root, changed=changed, counts=counts, issues=issues, note=note, forced=force,
+                      views=views):
         print("    added to the board's history" + (" (with a note)" if note else ""))
     _refresh_edit_wad(info, root, force)
     return BuildResult(out, issues)

@@ -119,7 +119,7 @@ def test_watcher_reports_builds_editor_and_play_sessions(repo):
     state = info.build_dir(repo) / "editor-state.json"
     import os
     state.write_text(json.dumps({"open": True, "unsaved_changes": True, "pid": os.getpid()}))
-    assert w.step() == ["a: editor opened",
+    assert w.step() == ["a: editor opened (select something, then Ctrl+Shift+N or Ctrl+right click, to send Claude a note)",
                         "a: editor has unsaved changes (new builds won't reload until they're saved or undone)"]
     state.write_text(json.dumps({"open": False, "unsaved_changes": False, "pid": os.getpid()}))
     assert w.step() == ["a: editor closed"]
