@@ -174,9 +174,39 @@ def build(info: MapInfo, root: Path, force: bool = False) -> BuildResult:
     issues = check(tm, root, "validate", info.build_dir(root) / "validate.txt")
 
     out = info.wad(root)
+    previous = _packed_textmap(out)
     wad.write(out, map_lumps(info, data))
     print(f"    wrote {out}")
+    draw(info, root, tm, issues, previous)
     return BuildResult(out, issues)
+
+
+def _packed_textmap(path: Path) -> udmf.Textmap | None:
+    """The TEXTMAP inside an existing WAD (the previous build), or None."""
+    if not path.exists():
+        return None
+    try:
+        _, lumps = wad.read(path)
+        i = wad.find(lumps, "TEXTMAP")
+        return udmf.parse(lumps[i].data.decode("utf-8")) if i >= 0 else None
+    except (wad.WadError, udmf.UdmfError, UnicodeDecodeError):
+        return None
+
+
+def draw(info: MapInfo, root: Path, tm: udmf.Textmap, issues: list[Issue], previous: udmf.Textmap | None,
+         suffix: str = "", diff_title: str = "") -> None:
+    """render<suffix>.png/.txt, and diff<suffix>.png/.txt against `previous` when given."""
+    from dms import render
+
+    d = info.build_dir(root)
+    png = render.render(tm, d / f"render{suffix}.png", issues, title=f"{info.name}{suffix}")
+    print(f"    wrote {png} (+ {png.with_suffix('.txt').name})")
+    if previous is not None:
+        diff_png = d / f"diff{suffix}.png"
+        if render.render_diff(previous, tm, diff_png, title=diff_title or f"{info.name}{suffix}"):
+            print(f"    wrote {diff_png} (+ {diff_png.with_suffix('.txt').name})")
+        else:
+            print("    no changes since the previous build")
 
 
 def needs_build(info: MapInfo, root: Path) -> bool:

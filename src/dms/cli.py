@@ -95,6 +95,27 @@ def pick_map(root: Path, given: str | None, action: str):
     return picker.pick_map(root, action)
 
 
+def cmd_render(args: argparse.Namespace) -> int:
+    from dms import build, maps, udmf
+
+    root = repo_root()
+    info = maps.resolve(root, args.map)
+    if not info.textmap.exists():
+        raise build.BuildError(f"{info.textmap} doesn't exist yet (run `dms build {info.name}`)")
+    source = udmf.parse(info.textmap.read_text(encoding="utf-8"))
+    if args.edit:
+        tm = build.read_edit_wad_textmap(info, root)
+        print(f"dms render {info.name} (edit.wad: the mapper's saved editor version)")
+        issues = build.check(tm, root, "validate", info.build_dir(root) / "validate-edit.txt")
+        build.draw(info, root, tm, issues, source, suffix="-edit",
+                   diff_title=f"{info.name}: edit.wad compared with TEXTMAP")
+    else:
+        print(f"dms render {info.name}")
+        issues = build.check(source, root, "validate", info.build_dir(root) / "validate.txt")
+        build.draw(info, root, source, issues, None)
+    return 0
+
+
 def cmd_play(args: argparse.Namespace) -> int:
     from dms import launch
 
@@ -151,6 +172,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("map", help=MAP_HELP)
     p.add_argument("--edit", action="store_true", help="check build/<map>/edit.wad (the mapper's saved edits)")
     p.set_defaults(func=cmd_validate)
+
+    p = sub.add_parser("render", help="draw build/<map>/render.png (+ .txt); --edit: the mapper's edit.wad, with a diff")
+    p.add_argument("map", help=MAP_HELP)
+    p.add_argument("--edit", action="store_true", help="render build/<map>/edit.wad and diff it against TEXTMAP")
+    p.set_defaults(func=cmd_render)
 
     p = sub.add_parser("play", help="build if needed, then play the map in UZDoom")
     p.add_argument("map", nargs="?", help=MAP_HELP + "; none: choose from a list")

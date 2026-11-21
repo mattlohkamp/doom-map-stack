@@ -5,7 +5,9 @@ description = "Doom map stack: write, check and play UDMF maps for UZDoom"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "pillow>=13.0.0",
+]
 
 [project.scripts]
 dms = "dms.cli:main"

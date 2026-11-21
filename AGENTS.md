@@ -102,10 +102,17 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   one-sided walls without a middle texture, unclosed/orphan sectors, light 0-255, ceiling below floor, textures and
   flats against the catalog, player 1 start, things outside every sector or on no skill level, tagged specials.
 
+- **Renders** (`src/dms/render.py`): every build writes `build/<map>/render.png` + `render.txt` (sectors shaded by
+  floor height, walls, specials, things, grid, validation issues ringed in red) and, when the map changed,
+  `diff.png` + `diff.txt` against the previous build (green added, red removed, yellow changed).
+  `dms render <map> [--edit]` redraws; `--edit` draws the mapper's `edit.wad` (`render-edit.png`) and diffs it
+  against `TEXTMAP` (`diff-edit.png`): that's how Claude sees the mapper's editor changes. **Look at the PNG
+  (and read the .txt) after every build.**
+
 Code: `src/dms/udmf.py` (TEXTMAP read/write, keeps every field), `wad.py`, `catalog.py`, `validate.py`, `gen.py` (the `MapBuilder` that
 `map.py` files use; every element gets a `user_gid`), `maps.py`, `build.py`, `launch.py`.
 
-*Planned, not built yet* (see `PLAN.md` §6): renderer, `pull`, movement check, notes, `watch`, `tour`.
+*Planned, not built yet* (see `PLAN.md` §6): `pull`, movement check, notes, `watch`, `tour`.
 
 **Running uv directly** (e.g. `uv add`, `uv lock`): never call a bare `uv`. Run it inside the repo environment:
 

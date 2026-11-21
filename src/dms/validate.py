@@ -197,8 +197,14 @@ def validate(tm: Textmap, catalog: Catalog | None = None) -> list[Issue]:
 
     # -- sectors ----------------------------------------------------------
     edges = sector_edges(tm)
+
+    def sector_pos(i):
+        pts = [vpos[v] for e in edges.get(i, []) for v in e if 0 <= v < len(vpos)]
+        return (sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts)) if pts else None
+
     for i, s in enumerate(sectors):
         n = _name("sector", i, s)
+        here = sector_pos(i)
         if i not in used_sectors:
             err("isn't used by any sidedef (orphan sector)", n)
             continue
@@ -211,18 +217,18 @@ def validate(tm: Textmap, catalog: Catalog | None = None) -> list[Issue]:
             err("isn't closed (its walls don't form complete loops)", n, vpos[open_at[0]])
         light = s.get("lightlevel", 160)
         if not (isinstance(light, int) and 0 <= light <= 255):
-            err(f"light level {light} is outside 0-255", n)
+            err(f"light level {light} is outside 0-255", n, here)
         floor, ceil = s.get("heightfloor", 0), s.get("heightceiling", 0)
         if isinstance(floor, (int, float)) and isinstance(ceil, (int, float)) and ceil < floor:
-            err(f"ceiling ({ceil}) is below the floor ({floor})", n)
+            err(f"ceiling ({ceil}) is below the floor ({floor})", n, here)
         if catalog:
             for key in ("texturefloor", "textureceiling"):
                 flat = s.get(key, "-")
                 if not catalog.has_flat(flat):
                     if catalog.has_texture(flat):
-                        warn(f"{key} {flat!r} is a wall texture, not a flat", n)
+                        warn(f"{key} {flat!r} is a wall texture, not a flat", n, here)
                     else:
-                        err(f"{key} {flat!r} isn't in the flat catalog", n)
+                        err(f"{key} {flat!r} isn't in the flat catalog", n, here)
 
     # -- things -----------------------------------------------------------
     starts = [t for t in things if t.get("type") == PLAYER1_START]

@@ -98,3 +98,20 @@ def test_mapper_edited_fixture():
     assert any("light level 99999 is outside 0-255" in e for e in errs)
     assert any("no front side" in e for e in errs)  # the lone pasted line
     assert not any("isn't closed" in e for e in errs)  # both halves of the divided room are closed
+
+
+def test_render_and_diff(tmp_path):
+    from dms import render
+
+    m = MapBuilder()
+    m.room("room", 0, 0, 512, 512)
+    m.player_start(256, 256)
+    before = m.textmap()
+    png = render.render(before, tmp_path / "render.png", title="t")
+    assert png.exists() and "sectors (1)" in png.with_suffix(".txt").read_text()
+    assert render.render_diff(before, before, tmp_path / "diff.png") is False
+
+    edited = udmf.parse((FIXTURES / "hello-room-udb-edited.textmap").read_text(encoding="utf-8"))
+    assert render.render_diff(before, edited, tmp_path / "diff.png") is True
+    txt = (tmp_path / "diff.txt").read_text()
+    assert "lightlevel 192 -> 99999" in txt and "removed line" in txt and "added line" in txt
