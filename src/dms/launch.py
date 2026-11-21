@@ -8,7 +8,14 @@ import subprocess
 from pathlib import Path
 
 from dms.build import build, edit_wad_changed, needs_build, pack_edit_wad
-from dms.configure import UDB_GAME_CONFIG, UDB_SCRIPT_CONFIG, configure_udb, play_args, project_settings
+from dms.configure import (
+    UDB_GAME_CONFIG,
+    UDB_SCRIPT_CONFIG,
+    build_udb_plugin,
+    configure_udb,
+    play_args,
+    project_settings,
+)
 from dms.maps import MapInfo
 
 
@@ -45,6 +52,7 @@ def reapply_editor_settings(root: Path) -> None:
         extra_args=play_args(project_settings(root)),
         repo=root,
     )
+    build_udb_plugin(root, tool_path(root, "udb"))
 
 
 def open_editor(root: Path, wad: Path | None = None, map_slot: str | None = None) -> int:

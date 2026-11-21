@@ -190,6 +190,49 @@ def configure_udb(
         print(f"    configured {cfg_path.name}: F9 runs {f9}; resources {names}")
 
 
+PLUGIN_SOURCE = Path("src") / "udb-plugin" / "DmsBridge.cs"
+PLUGIN_DLL = "DmsBridge.dll"
+
+
+def csc_path() -> Path:
+    """The C# compiler that ships with Windows (.NET Framework 4.8)."""
+    import os
+
+    return Path(os.environ.get("WINDIR", r"C:\Windows")) / "Microsoft.NET" / "Framework64" / "v4.0.30319" / "csc.exe"
+
+
+def build_udb_plugin(root: Path, udb_exe: Path) -> bool:
+    """Compile src/udb-plugin/DmsBridge.cs into the editor's Plugins folder (live reload, status).
+    Skipped when the DLL is up to date with the source. Returns False if it couldn't be built."""
+    import hashlib
+    import subprocess
+
+    src = root / PLUGIN_SOURCE
+    plugins = udb_exe.parent / "Plugins"
+    dll = plugins / PLUGIN_DLL
+    stamp = plugins / (PLUGIN_DLL + ".sha256")
+    # Rebuild when the source or the editor version changes.
+    digest = hashlib.sha256(src.read_bytes() + str(udb_version_number(udb_exe)).encode()).hexdigest()
+    if dll.exists() and stamp.exists() and stamp.read_text(encoding="utf-8").strip() == digest:
+        return True
+    csc = csc_path()
+    if not csc.exists():
+        print(f"    warning: {csc} not found; the editor plugin (live reload) wasn't built")
+        return False
+    result = subprocess.run(
+        [str(csc), "/nologo", "/target:library", "/optimize+", f"/out:{dll}",
+         f"/reference:{udb_exe}", "/reference:System.Windows.Forms.dll", "/reference:System.Drawing.dll", str(src)],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        print("    warning: the editor plugin didn't compile:")
+        print(result.stdout + result.stderr)
+        return False
+    stamp.write_text(digest + "\n", encoding="utf-8")
+    print(f"    built {dll.name} (editor plugin: live reload, status)")
+    return True
+
+
 def configure_all(root: Path, paths: dict[str, Path], managed: set[str]) -> None:
     """paths: tool name -> main file. Only tools in `managed` (installed in .tools/) are modified;
     an outside install listed in tools.local.json is only referenced."""
@@ -198,3 +241,4 @@ def configure_all(root: Path, paths: dict[str, Path], managed: set[str]) -> None
     if "udb" in managed and all(k in paths for k in ("uzdoom", "freedoom")):
         extra = play_args(project_settings(root))
         configure_udb(paths["udb"], paths["uzdoom"], paths["freedoom"], extra_args=extra, repo=root)
+        build_udb_plugin(root, paths["udb"])

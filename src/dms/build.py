@@ -91,15 +91,30 @@ def _edit_state_path(info: MapInfo, root: Path) -> Path:
 
 
 def edit_wad_changed(info: MapInfo, root: Path) -> bool:
-    """True if the mapper saved edit.wad in the editor since dms last packed it."""
+    """True if the mapper saved changes to the map in edit.wad since dms last packed it.
+    A save that only rewrote the file (same map data, plus the editor's nodes) doesn't count."""
     ew = info.edit_wad(root)
     state = _edit_state_path(info, root)
     if not ew.exists():
         return False
-    if not state.exists():
+    if state.exists() and json.loads(state.read_text(encoding="utf-8")).get("sha256") == sha256(ew.read_bytes()):
+        return False
+    if not info.textmap.exists():
         return True
-    packed = json.loads(state.read_text(encoding="utf-8")).get("sha256")
-    return packed != sha256(ew.read_bytes())
+    try:
+        saved = read_edit_wad_textmap(info, root)
+        return not udmf.same(saved, udmf.parse(info.textmap.read_text(encoding="utf-8")))
+    except (BuildError, wad.WadError, udmf.UdmfError, UnicodeDecodeError):
+        return True
+
+
+def editor_state(info: MapInfo, root: Path) -> dict:
+    """What the editor plugin last reported for this map: {"open": bool, "unsaved_changes": bool, ...}."""
+    p = info.build_dir(root) / "editor-state.json"
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
 
 
 def pack_edit_wad(info: MapInfo, root: Path) -> Path:
@@ -178,7 +193,23 @@ def build(info: MapInfo, root: Path, force: bool = False) -> BuildResult:
     wad.write(out, map_lumps(info, data))
     print(f"    wrote {out}")
     draw(info, root, tm, issues, previous)
+    _refresh_edit_wad(info, root)
     return BuildResult(out, issues)
+
+
+def _refresh_edit_wad(info: MapInfo, root: Path) -> None:
+    """Keep edit.wad in step with the new build so an open editor reloads it (via the dms bridge
+    plugin). Only when the mapper has no saved edits in it; build refuses earlier otherwise."""
+    if not info.edit_wad(root).exists() or edit_wad_changed(info, root):
+        return
+    pack_edit_wad(info, root)
+    state = editor_state(info, root)
+    if state.get("open") and state.get("unsaved_changes"):
+        print("    updated edit.wad; the editor has unsaved changes, so it won't reload until they're saved or undone")
+    elif state.get("open"):
+        print("    updated edit.wad; the open editor reloads it")
+    else:
+        print("    updated edit.wad")
 
 
 def _packed_textmap(path: Path) -> udmf.Textmap | None:

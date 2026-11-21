@@ -289,6 +289,15 @@ Still to build later:
   field of the selected sector/line/thing (properties dialog; the editor has a comments view),
   then save. `pull` collects every comment as a request tied to that element's gid,
   then clears them. Later: a JavaScript hotkey script in the editor (select, press key, type).
+- **"Send to Claude" from the editor** (mapper's idea, 2026-11-21; builds on the `DmsBridge` plugin): a hotkey on the
+  focused/selected sector, line or thing sends a reference (map, element kind and index, `user_gid`, position, key
+  properties, optional typed comment) either to the clipboard or straight into the live channel below.
+- **"Send to Claude" from the board** (mapper's idea): on the browser board that shows each build's render and diff,
+  click a change (or a spot on the render) to send a reference to it with a comment ("make this taller", "why?").
+  Same channel and format as the editor version.
+- **The board** (`Open Board.cmd`, a small local web server in `dms`): a per-map timeline of builds, newest first:
+  render + diff side by side, diff text, Claude's note on what changed and what to check, validation issues,
+  play-log warnings, and the editor state from `editor-state.json`. Updates by itself; history in `build/<map>/history/`.
 - **Live delivery** (`dms watch <map>`): a background process follows UZDoom's log and
   the saved working WAD, and prints each new note. Claude Code watches it, so notes
   arrive in the conversation within seconds, with reference and screenshot.

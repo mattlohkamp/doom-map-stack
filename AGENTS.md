@@ -93,6 +93,13 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   in its working directory, so play runs UZDoom from `build/<map>/`). Saves: `.tools/uzdoom/saves/<map>/`.
 - `dms edit [<map>]` (**`Edit Map.cmd`**): packs `build/<map>/edit.wad` from `TEXTMAP` and opens it in the editor,
   so Save writes there. If the mapper already saved changes in it, it is reopened as it is, not overwritten.
+- **Live reload in the editor:** `dms setup` compiles `src/udb-plugin/DmsBridge.cs` (Windows' own C# compiler,
+  .NET Framework 4.8, so C# 5) into `.tools/udb/Plugins/DmsBridge.dll`. For maps opened through `dms edit`, the
+  plugin reloads `edit.wad` in place (view, zoom and mode kept) when it changes on disk, unless the mapper has
+  unsaved changes (then it says so in the status bar), and writes `build/<map>/editor-state.json`
+  (`open`, `unsaved_changes`). After a build, `dms` refreshes `edit.wad` from the new `TEXTMAP` whenever the
+  mapper has no saved edits in it, so **an open editor shows Claude's change within a second or two**. A save that
+  doesn't change the map data (only nodes) doesn't count as an edit.
 
 - `dms catalog`: lists the IWAD's wall textures (with sizes) and flats into `catalog/` (committed; names only).
   Re-run after changing the Freedoom pin.
@@ -167,6 +174,8 @@ Move each one up into the list above as it lands.
   include Freedoom's BSD license notice with them.
 - ZScript/ACS is written from scratch. Don't copy from UZDoom's built-in scripts (GPL) or other mods
   without checking their license first.
+- The editor plugin (`src/udb-plugin/`) is our own MIT code; it is compiled locally against Ultimate Doom Builder
+  (GPL) and never committed or distributed as a binary. Don't copy code from the editor's source into it.
 
 ## Writing conventions
 

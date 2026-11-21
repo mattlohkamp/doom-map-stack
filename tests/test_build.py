@@ -60,7 +60,9 @@ def test_saved_edit_wad_blocks_build(repo):
     build.build(info, repo)
     ew = build.pack_edit_wad(info, repo)
     assert not build.edit_wad_changed(info, repo)
-    ew.write_bytes(ew.read_bytes() + b"x")  # the editor saved it
+    _, lumps = wad.read(ew)  # the mapper changes a light level and saves
+    lumps[2] = wad.Lump("TEXTMAP", lumps[2].data.replace(b"lightlevel = 192", b"lightlevel = 200"))
+    wad.write(ew, lumps)
     assert build.edit_wad_changed(info, repo)
     with pytest.raises(build.BuildError, match="editor changes"):
         build.build(info, repo)
@@ -74,3 +76,27 @@ def test_resolve_by_name_or_folder(repo):
         maps.resolve(repo, "nope")
     with pytest.raises(maps.MapError):
         maps.new(repo, "Bad Name")
+
+
+def test_resaved_edit_wad_with_same_map_is_not_a_change(repo):
+    info = maps.new(repo, "a")
+    build.build(info, repo)
+    ew = build.pack_edit_wad(info, repo)
+    # The editor re-saves: same map data (no hash header comment), plus a nodes lump.
+    kind, lumps = wad.read(ew)
+    body = info.textmap.read_text().split("\n", 1)[1]
+    lumps[2] = wad.Lump("TEXTMAP", body.encode())
+    lumps.insert(3, wad.Lump("ZNODES", b"nodes"))
+    wad.write(ew, lumps)
+    assert not build.edit_wad_changed(info, repo)
+
+
+def test_build_refreshes_unedited_edit_wad(repo):
+    info = maps.new(repo, "a")
+    build.build(info, repo)
+    ew = build.pack_edit_wad(info, repo)
+    info.generator.write_text(info.generator.read_text().replace("light=192", "light=160"))
+    build.build(info, repo)
+    _, lumps = wad.read(ew)
+    assert b"lightlevel = 160" in lumps[2].data  # the open editor would reload this
+    assert not build.edit_wad_changed(info, repo)
