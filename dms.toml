@@ -1,0 +1,7 @@
+# Project settings for how dms runs the tools. Committed; change them here (or ask Claude to).
+# They take effect the next time the editor is opened with `Open Editor.cmd` (or `.\dms.ps1 setup` runs).
+
+[play]
+# Music when test-playing (F9 in the editor, and later `dms play`). false = UZDoom runs with
+# -nomusic for that launch only; sound effects stay on and nothing is saved in UZDoom's settings.
+music = false

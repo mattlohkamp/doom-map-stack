@@ -19,7 +19,11 @@ This section keeps only what M0 still has to verify:
   `UV_*` variable in `scripts\dms-env.ps1`. per its docs, uv registers managed Pythons in HKCU by default;
   `--no-registry --no-bin` plus `UV_PYTHON_INSTALL_REGISTRY=0` / `UV_PYTHON_INSTALL_BIN=0` /
   `UV_PYTHON_NO_REGISTRY=1` prevent it (checked: no new registry key or shortcut after bootstrap).
-- **UZDoom:** that `-config` works as expected and that saves and screenshots can be pointed inside the repo.
+- ~~UZDoom `-config`, saves, screenshots~~ **resolved in step 4:** UZDoom has a portable mode instead
+  (`uzdoom_portable.ini` next to the exe), which keeps config, saves and screenshots in `.tools\uzdoom\`.
+  Its graphics cache still goes to `%LOCALAPPDATA%\doom\` (see "Known exceptions" in `AGENTS.md`).
+- **Visual C++ runtime, note:** UZDoom and the editor run on the dev machine, but it may already have the runtime
+  installed, so this needs a clean machine (or VM) to settle.
 - **Final check:** after a fresh bootstrap plus a build/play/edit cycle, look in the user profile and confirm nothing new appeared.
 
 Planned reference (M2): `docs/udmf-cheatsheet.md`, covering the UDMF fields we use, line specials,
@@ -327,6 +331,17 @@ Still to build later:
 - M0 step 3: `tools.toml` pins UZDoom 5.0.3, Ultimate Doom Builder R4336, Freedoom 0.13.0 (hashes match the
   published ones). `dms setup` (`src/dms/setup.py`) downloads, checks, extracts, writes `tools.local.json`;
   `--upgrade <tool>` keeps settings and saves. Tests in `tests/test_setup.py`. Installed and re-run on the dev machine.
+- M0 step 4: `dms setup` configures UZDoom (portable mode) and the editor (`src/dms/configure.py`, `src/dms/udbcfg.py`).
+  `Open Editor.cmd` / `dms editor` re-applies the editor settings on every launch. `dms.toml` holds project settings
+  (`[play] music = false` → `-nomusic`). **The mapper confirmed: new map defaults to UZDoom UDMF, resources present,
+  F9 starts UZDoom in the room.** Found along the way: the editor discards a settings file without `currentversion`;
+  the UZDoom game config requires `uzdoom.pk3` as an excluded-from-testing resource.
+  Limitation: the Save dialog for a never-saved map starts where Windows decides (the editor sets no folder);
+  M1's `dms new` + `dms edit` open a WAD inside the repo, so saving goes there without a dialog.
+
+**Open design question (M1):** the mapper uses `.cmd` launchers from Explorer, not the terminal (rule in
+`AGENTS.md`). Commands that take a map (`play`, `edit`, `pull`) need a way to pick it from Explorer:
+drag the map folder onto the launcher, a launcher inside each map folder, or a small picker. Decide with the mapper.
 
 **Model choice:** Opus for most milestones; Sonnet is fine for the routine scripting in M0/M1.
 **Use Fable for M3** (first real map): spatial layout and design judgment are where it should pay off.
@@ -335,10 +350,11 @@ Still to build later:
 1. ~~Write `AGENTS.md`~~ done.
 2. ~~`bootstrap.ps1`, `dms.ps1`, `uv.toml`, `.python-version`, `pyproject.toml`, stub `dms`~~ done.
 3. ~~`tools.toml` + `dms setup`~~ done.
-4. Configure Ultimate Doom Builder in portable mode; check that F9 launches UZDoom.
-5. Check that nothing was written outside the repo.
+4. ~~Configure Ultimate Doom Builder in portable mode; check that F9 launches UZDoom~~ done.
+5. Check that nothing was written outside the repo. Snapshot of the user profile before bootstrap is in the
+   session scratchpad (not the repo); after F9 testing, only UZDoom's cache file changed (a known exception).
 
-**Still to verify** (marked inline): UZDoom `-config` and save/screenshot folders; whether the Visual C++ runtime is needed;
+**Still to verify** (marked inline): whether the Visual C++ runtime is needed (clean machine);
 the ZScript note text box and crosshair trace; whether the editor keeps `user_gid`.
 
 ---

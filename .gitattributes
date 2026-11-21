@@ -2,6 +2,10 @@
 # TEXTMAP and the scripts stay byte-identical to what's committed.
 * text=auto eol=lf
 
+# Windows batch files need CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
 # Binary files.
 *.wad binary
 *.pk3 binary

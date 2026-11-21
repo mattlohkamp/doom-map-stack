@@ -16,7 +16,7 @@ version = "5.0.3"
 url = "https://github.com/UZDoom/UZDoom/releases/download/5.0.3/Windows-UZDoom-Release-x86_64.zip"
 sha256 = "3a41131845415bc4bb5474f8de301a77736bd858e2ab489926325a2675e8263f"
 main = "uzdoom.exe"
-preserve = ["uzdoom.ini", "saves", "screenshots"]
+preserve = ["uzdoom_portable.ini", "Save", "Screenshots"]   # portable mode: config, saves, screenshots
 
 [tools.udb]
 # Ultimate Doom Builder. Bundles acc (Compilers/Hexen/acc.exe) and the UZDoom game config

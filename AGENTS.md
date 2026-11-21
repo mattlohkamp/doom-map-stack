@@ -51,8 +51,14 @@ Deleting the repo folder removes everything.
 - **Isolation from global Python/uv:** `uv.toml` pins the uv version (`required-version`) and sets
   `python-preference = "only-managed"`; `UV_CONFIG_FILE` makes uv ignore a user-level `%APPDATA%\uv\uv.toml`; `.python-version` pins Python;
   `dms.ps1` clears `PYTHONPATH`, `PYTHONHOME`, `VIRTUAL_ENV`, `PIP_*` and outside `UV_*` variables.
-- **UZDoom** is always launched with `-config .tools\uzdoom\uzdoom.ini`, with saves and screenshots inside the repo.
-- **Ultimate Doom Builder** is always launched with `-portable`, so its settings stay in `.tools\udb\`.
+- **UZDoom** runs in its portable mode (`uzdoom_portable.ini` next to the exe, created by `dms setup`), so its config,
+  saves (`Save\`) and screenshots (`Screenshots\`) stay in `.tools\uzdoom\`.
+- **Ultimate Doom Builder** is always launched with `-portable`, so its settings stay in `.tools\udb\`, and with
+  `TEMP`/`TMP` pointed at `.tools\tmp\` (it builds the F9 test WAD there).
+- **Known exceptions** (outside our control; caches only, safe to delete):
+  - UZDoom writes its graphics cache to `%LOCALAPPDATA%\doom\uzdoom\` (`vulkanpipelinecache`, or the OpenGL shader cache)
+    even in portable mode: it asks Windows for that folder directly, and neither renderer can turn the cache off.
+  - Windows file dialogs remember the last-used folder per program in the registry.
 - Never change PATH, global config or anything in the user profile.
 
 ## Commands
@@ -66,6 +72,13 @@ It sets the environment and runs `uv run dms <command>`. Any other `.ps1` script
   Freedoom) into `.tools\<name>\`, checks hashes, writes `tools.local.json`. Skips tools already at the pinned version.
   `--upgrade <tool>` reinstalls one after its pin changes, keeping the files in its `preserve` list (settings, saves).
   An entry hand-edited in `tools.local.json` with `"managed": false` points at an outside install and is left alone.
+  It also configures the tools (`src/dms/configure.py`): UZDoom portable mode; in the editor's `UDBuilder.cfg`, the
+  UZDoom UDMF game config as the default for new maps, UZDoom as the F9 engine, `uzdoom.pk3` (excluded from testing)
+  and `freedoom2.wad` as resources, and the Open dialog starting in `build\scratch\`.
+- `dms editor [wad]` (**`Open Editor.cmd`**): opens the editor. Re-applies the settings above first, because the
+  editor rewrites `UDBuilder.cfg` on exit.
+- **`dms.toml`**: committed project settings, applied at the next editor launch. `[play] music = false` makes
+  test-play run UZDoom with `-nomusic` (per launch; nothing is saved in UZDoom's settings).
 - Tests: `. .\scripts\dms-env.ps1; Invoke-DmsScope -Root $PWD -Body { & .tools\uv\uv.exe run --locked pytest -q }`
 
 *Planned, not built yet* (see `PLAN.md` §6): `build`, `new`, `play`, `edit`, `pull`, `watch`, `tour`.
@@ -84,6 +97,11 @@ explicitly with `--no-registry --no-bin`.
 Move each one up into the list above as it lands.
 
 ## Working rules
+
+- **The mapper works from Explorer, not a terminal.** Every command the mapper runs gets a double-clickable
+  `.cmd` launcher in the repo root (e.g. `Open Editor.cmd`), a thin wrapper around `dms.ps1` that pauses on error.
+  Where a command takes a file, accept it by drag-and-drop onto the launcher (`%*`). `.cmd` files are ASCII with CRLF line endings.
+  Terminal commands are for Claude and for anyone who prefers them.
 
 - **Knowledge lives in the repo:** `AGENTS.md`, `docs/` and `maps/*/notes.md`, not in Claude's private memory.
 - **Rules live in scripts:** overwrite protection and similar checks go in `dms`, not in Claude Code hooks.

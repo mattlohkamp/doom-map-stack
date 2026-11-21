@@ -225,4 +225,11 @@ def run(root: Path, upgrade: str | None = None) -> int:
         local[tool.name] = {"managed": True, "version": tool.version, "path": str(main)}
 
     write_local(local_path, local)
+    if not failed:
+        from dms.configure import configure_all
+
+        paths = {name: Path(e["path"]) for name, e in local.items() if e.get("path")}
+        managed = {name for name, e in local.items() if e.get("managed")}
+        print("==> configuring")
+        configure_all(root, paths, managed)
     return 1 if failed else 0
