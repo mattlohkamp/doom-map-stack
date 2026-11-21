@@ -1,0 +1,9 @@
+# Text files are LF in the working tree on every machine, whatever core.autocrlf says.
+# TEXTMAP and the scripts stay byte-identical to what's committed.
+* text=auto eol=lf
+
+# Binary files.
+*.wad binary
+*.pk3 binary
+*.png binary
+*.zip binary

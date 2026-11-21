@@ -48,9 +48,8 @@ Deleting the repo folder removes everything.
 - **uv:** a standalone `uv.exe` in `.tools\uv\`, fetched by `bootstrap.ps1`. Never install uv with winget
   or use a `uv` from PATH. uv's Pythons and cache go in `.tools\python\` and `.tools\uv-cache\`.
   This isn't conventional Python practice (normally they're shared machine-wide); it's a deliberate choice for this project.
-- **Isolation from global Python/uv:** `uv.toml` pins the uv version (`required-version`), sets
-  `python-preference = "only-managed"` and sets every setting that matters explicitly
-  (a user-level `%APPDATA%\uv\uv.toml` would otherwise apply); `.python-version` pins Python;
+- **Isolation from global Python/uv:** `uv.toml` pins the uv version (`required-version`) and sets
+  `python-preference = "only-managed"`; `UV_CONFIG_FILE` makes uv ignore a user-level `%APPDATA%\uv\uv.toml`; `.python-version` pins Python;
   `dms.ps1` clears `PYTHONPATH`, `PYTHONHOME`, `VIRTUAL_ENV`, `PIP_*` and outside `UV_*` variables.
 - **UZDoom** is always launched with `-config .tools\uzdoom\uzdoom.ini`, with saves and screenshots inside the repo.
 - **Ultimate Doom Builder** is always launched with `-portable`, so its settings stay in `.tools\udb\`.
@@ -61,10 +60,24 @@ Deleting the repo folder removes everything.
 The real interface is one Python command, run as **`.\dms.ps1 <command>`** from the repo root.
 It sets the environment and runs `uv run dms <command>`. Any other `.ps1` scripts are thin wrappers around it.
 
-- `.\bootstrap.ps1`: one-time setup on a fresh clone (fetches uv, `uv sync`, `dms setup`). Safe to re-run.
+- `.\bootstrap.ps1`: one-time setup on a fresh clone: fetches uv (hash-checked), installs Python into
+  `.tools\python\`, `uv sync`, `dms setup`. Safe to re-run; it only fills in what's missing.
 - `dms setup [--upgrade <tool>]`: downloads the Doom tools pinned in `tools.toml`, checks hashes, configures the editor.
+  *(Stub until M0 step 3.)*
 
 *Planned, not built yet* (see `PLAN.md` §6): `build`, `new`, `play`, `edit`, `pull`, `watch`, `tour`.
+
+**Running uv directly** (e.g. `uv add`, `uv lock`): never call a bare `uv`. Run it inside the repo environment:
+
+```powershell
+. .\scripts\dms-env.ps1; Invoke-DmsScope -Root $PWD -Body { & .tools\uv\uv.exe lock }
+```
+
+`scripts\dms-env.ps1` sets every uv location to an absolute path under `.tools\`, points `UV_CONFIG_FILE`
+at `uv.toml`, turns off registry entries and Python shortcuts, and restores the caller's environment afterwards.
+`uv.toml` sets `python-downloads = "manual"`, so uv never fetches a Python on its own; `bootstrap.ps1` installs it
+explicitly with `--no-registry --no-bin`.
+**Upgrading uv:** change `required-version` in `uv.toml` and the matching zip hash in `bootstrap.ps1` together.
 Move each one up into the list above as it lands.
 
 ## Working rules
@@ -104,6 +117,9 @@ Move each one up into the list above as it lands.
   their computer or their accounts and subscriptions. The repo URL and the LICENSE copyright line are the exceptions.
 - **Text files are UTF-8 without a BOM.** Windows PowerShell 5.1's `Set-Content` / `Out-File` add a BOM by default;
   use `[IO.File]::WriteAllText` with `UTF8Encoding($false)`, or the editing tools.
+- **`.ps1` files are ASCII only.** Windows PowerShell 5.1 reads BOM-less scripts in the ANSI code page,
+  so any non-ASCII character (an em dash, an arrow) can break a script.
+- **Line endings are LF** in the working tree (`.gitattributes`: `* text=auto eol=lf`), whatever `core.autocrlf` says.
 
 ## Who each document is for
 

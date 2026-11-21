@@ -1,0 +1,14 @@
+# uv settings for this repo. dms.ps1 and bootstrap.ps1 point UV_CONFIG_FILE here, so a
+# user-level %APPDATA%\uv\uv.toml is ignored. All paths (cache, Pythons, tools) are set as
+# absolute environment variables in scripts\dms-env.ps1: relative paths in this file would
+# resolve against the current directory, not this file.
+
+# Pins uv. bootstrap.ps1 reads this version (and holds the matching download hash).
+required-version = "==0.13.9"
+
+# Only uv-managed Pythons (installed into .tools\python), never one found on the machine.
+python-preference = "only-managed"
+
+# Never download a Python implicitly; bootstrap.ps1 installs it explicitly
+# with --no-registry --no-bin. A bare `uv` run here fails instead of writing to the user profile.
+python-downloads = "manual"

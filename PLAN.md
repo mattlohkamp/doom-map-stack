@@ -14,11 +14,11 @@ writing conventions and who each document is for are settled and live in **`AGEN
 This section keeps only what M0 still has to verify:
 
 - **Visual C++ runtime:** whether UZDoom or the editor need it. If so, try app-local DLLs before a system install.
-- **uv locations:** whether `uv.toml` supports `cache-dir` / `python-install-dir`. Fallback: set the `UV_*`
-  environment variables in `dms.ps1`. (Side benefit of an in-repo cache: on the same drive as `.venv`,
-  so uv can hard-link packages instead of copying.)
-- **uv and the registry:** whether uv registers its Pythons in HKCU or puts `python3.x.exe` shortcuts in a
-  user folder. If so, turn that off with uv's no-registry / no-shortcut options or environment variables.
+- ~~uv locations / registry~~ **resolved in step 2:** `uv.toml` has `cache-dir` but no `python-install-dir`,
+  and relative paths in it resolve against the current directory, so every location is an absolute
+  `UV_*` variable in `scripts\dms-env.ps1`. per its docs, uv registers managed Pythons in HKCU by default;
+  `--no-registry --no-bin` plus `UV_PYTHON_INSTALL_REGISTRY=0` / `UV_PYTHON_INSTALL_BIN=0` /
+  `UV_PYTHON_NO_REGISTRY=1` prevent it (checked: no new registry key or shortcut after bootstrap).
 - **UZDoom:** that `-config` works as expected and that saves and screenshots can be pointed inside the repo.
 - **Final check:** after a fresh bootstrap plus a build/play/edit cycle, look in the user profile and confirm nothing new appeared.
 
@@ -149,6 +149,7 @@ doom-map-stack/
 ├── README.md            public-facing summary (never a source of truth)
 ├── bootstrap.ps1        one-time setup: fetches uv, then runs uv sync + dms setup
 ├── dms.ps1              entry point for every command (sets UV_* environment variables, runs uv run dms)
+├── scripts/dms-env.ps1  shared by both scripts: the repo-local uv/Python environment
 ├── uv.toml              keeps uv's Python + cache inside .tools\ (if supported)
 ├── .python-version      pinned Python version
 ├── pyproject.toml       Python project + dependencies (uv)
@@ -318,29 +319,25 @@ Still to build later:
 - Repo cloned; the working folder is renamed to match it (`doom-map-stack`).
 - `docs/map-design-notes.md` added: the mapper's design guidelines. **Not yet read by Claude.** Read before M3.
 - `.gitignore`: Python template + `.tools/`, `tools.local.json`, `feedback/`.
-
 - M0 step 1: `AGENTS.md` written (rules from §1 and §5a moved in).
-
-**Nothing else built yet.** No `src/`, no scripts.
+- M0 step 2: `bootstrap.ps1`, `dms.ps1`, `scripts/dms-env.ps1`, `uv.toml` (uv 0.13.9), `.python-version` (3.14),
+  `pyproject.toml` + `uv.lock`, a stub `dms` CLI (`src/dms/cli.py`), `.gitattributes` (LF everywhere).
+  Bootstrap tested on the dev machine, including a re-run. Baseline of the user profile taken before it ran
+  (an older uv Python 3.10/3.13 and their registry key / shortcut were already there and are not ours).
 
 **Model choice:** Opus for most milestones; Sonnet is fine for the routine scripting in M0/M1.
 **Use Fable for M3** (first real map): spatial layout and design judgment are where it should pay off.
 
 **Next: M0** (§8), roughly in this order:
-1. Write `AGENTS.md`. Move the settled rules from §1 (self-contained, licensing, writing
-   conventions, who each document is for) and §5a into it. Confirm with `/memory` that it loaded.
-2. `bootstrap.ps1`, `dms.ps1`, `uv.toml`, `.python-version`, `pyproject.toml` with a stub `dms` command.
+1. ~~Write `AGENTS.md`~~ done.
+2. ~~`bootstrap.ps1`, `dms.ps1`, `uv.toml`, `.python-version`, `pyproject.toml`, stub `dms`~~ done.
 3. `tools.toml` + `dms setup`: UZDoom, Ultimate Doom Builder, Freedoom 0.13.0 into `.tools\`, hashes checked.
 4. Configure Ultimate Doom Builder in portable mode; check that F9 launches UZDoom.
 5. Check that nothing was written outside the repo.
 
-**Still to verify** (marked inline): uv `cache-dir` / `python-install-dir` / registry behavior;
-UZDoom `-config` and save/screenshot folders; whether the Visual C++ runtime is needed;
+**Still to verify** (marked inline): UZDoom `-config` and save/screenshot folders; whether the Visual C++ runtime is needed;
 the Ultimate Doom Builder UZDoom game config filename and whether `acc` is bundled;
 the ZScript note text box and crosshair trace; whether the editor keeps `user_gid`.
-
-**Also decide in M0:** a `.gitattributes` for line endings. Git currently warns that it
-will convert LF to CRLF; TEXTMAP and scripts should probably stay LF.
 
 ---
 
