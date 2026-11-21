@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path
 
 from dms.build import build, edit_wad_changed, needs_build, pack_edit_wad
-from dms.configure import UDB_GAME_CONFIG, configure_udb, play_args, project_settings
+from dms.configure import UDB_GAME_CONFIG, UDB_SCRIPT_CONFIG, configure_udb, play_args, project_settings
 from dms.maps import MapInfo
 
 
@@ -55,7 +55,9 @@ def open_editor(root: Path, wad: Path | None = None, map_slot: str | None = None
     args = [str(udb), "-portable", "-cfg", UDB_GAME_CONFIG]
     if wad is not None:
         if map_slot:
-            args += ["-map", map_slot]
+            # Opening a map directly (-map) skips the dialog that would fill in the game config's
+            # default script compiler, so name it; without it the editor can't compile SCRIPTS.
+            args += ["-map", map_slot, "-scriptconfig", UDB_SCRIPT_CONFIG]
         args.append(str(wad.resolve()))
     print(f"dms: opening Ultimate Doom Builder{f' with {wad}' if wad else ''}")
     subprocess.Popen(args, cwd=udb.parent, env=repo_env(root), close_fds=True)

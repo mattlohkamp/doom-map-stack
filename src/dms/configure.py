@@ -21,6 +21,9 @@ from dms import udbcfg
 
 UDB_GAME_CONFIG = "UZDoom_DoomUDMF.cfg"
 UDB_GAMEKEY = "uzdoom_doomudmf"  # lowercased config filename without extension
+# The UDMF format's default ACS compiler config (Scripting/ZDoom_ACS.cfg; `defaultscriptcompiler` in
+# the mapformat_udmf section of Configurations/Includes/ZDoom_common.cfg). The editor lowercases names.
+UDB_SCRIPT_CONFIG = "zdoom_acs.cfg"
 UZDOOM_PORTABLE_INI = "uzdoom_portable.ini"
 
 DEFAULT_SETTINGS = {"play": {"music": False}}
