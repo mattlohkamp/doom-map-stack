@@ -103,7 +103,9 @@ Move each one up into the list above as it lands.
 
 - **The mapper works from Explorer, not a terminal.** Every command the mapper runs gets a double-clickable
   `.cmd` launcher in the repo root (e.g. `Open Editor.cmd`), a thin wrapper around `dms.ps1` that pauses on error.
-  Where a command takes a file, accept it by drag-and-drop onto the launcher (`%*`). `.cmd` files are ASCII with CRLF line endings.
+  Where a command takes a file, accept it by drag-and-drop onto the launcher (`%*`). Where it takes a map, the
+  launcher works three ways: double-click opens a picker listing the maps, a map folder dropped onto the launcher
+  skips the picker, and a map folder dropped into the open picker selects it. `.cmd` files are ASCII with CRLF line endings.
   Terminal commands are for Claude and for anyone who prefers them.
 
 - **Knowledge lives in the repo:** `AGENTS.md`, `docs/` and `maps/*/notes.md`, not in Claude's private memory.
