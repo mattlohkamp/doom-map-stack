@@ -3,106 +3,27 @@
 A workflow where Claude writes DOOM levels and the mapper views them in an editor,
 test-plays them in the engine, and gives feedback for the next round.
 
-Status: **planning complete; M0 not started.** Remaining unknowns are marked *to verify* inline.
+Status: **M0 in progress** (see §9). Remaining unknowns are marked *to verify* inline.
 
 ---
 
-## 1. The loop
+## 1. The loop and the ground rules
 
-```
-Claude edits source ──► build ──► validate + render PNG ──► Claude checks the PNG
-        ▲                                                       │
-        │                                                       ▼
-   feedback (notes, marks, screenshots, log) ◄── the mapper views in UDB / plays in UZDoom
-```
+How the loop works, the supported environment, the self-contained rules, licensing,
+writing conventions and who each document is for are settled and live in **`AGENTS.md`**.
+This section keeps only what M0 still has to verify:
 
-One iteration should be: Claude runs `build`, then the mapper runs `play` (or presses F9 in UDB).
+- **Visual C++ runtime:** whether UZDoom or the editor need it. If so, try app-local DLLs before a system install.
+- **uv locations:** whether `uv.toml` supports `cache-dir` / `python-install-dir`. Fallback: set the `UV_*`
+  environment variables in `dms.ps1`. (Side benefit of an in-repo cache: on the same drive as `.venv`,
+  so uv can hard-link packages instead of copying.)
+- **uv and the registry:** whether uv registers its Pythons in HKCU or puts `python3.x.exe` shortcuts in a
+  user folder. If so, turn that off with uv's no-registry / no-shortcut options or environment variables.
+- **UZDoom:** that `-config` works as expected and that saves and screenshots can be pointed inside the repo.
+- **Final check:** after a fresh bootstrap plus a build/play/edit cycle, look in the user profile and confirm nothing new appeared.
 
-### Supported environment
-
-- **OS:** Windows 11 only. Scripts are PowerShell (`.ps1`), with no bash/macOS/Linux support.
-- **Agent:** Claude Code only. Other agents may work, but nothing is done to make sure of it.
-- The README says both plainly.
-
-### Self-contained: everything lives in the repo root
-
-**Goal:** everything needed to work in this environment is installed into, configured in, and run from
-the repo folder. Nothing goes into Program Files, `%APPDATA%`, `%LOCALAPPDATA%`,
-Documents or the registry. Deleting the repo folder removes everything.
-
-- **System prerequisites:** Windows 11 (PowerShell and .NET Framework 4.8 come with it), git, GPU drivers.
-  Possibly the Visual C++ runtime (to verify; if needed, try app-local DLLs before a system install).
-- **Claude Code itself** is the one exception: it lives in the user profile and keeps its
-  own settings in `~\.claude`. Settings for this project go in `.claude\settings.json` in the repo.
-- **uv:** a standalone `uv.exe` fetched by `bootstrap.ps1` into `.tools\uv\`, not installed with winget.
-- **uv's Python and cache:** redirected to `.tools\python\` and `.tools\uv-cache\`.
-  Preferred: a committed `uv.toml` with `cache-dir` / `python-install-dir` (to verify those
-  keys exist), so even running bare `uv` stays inside the repo. Fallback: the `UV_*`
-  environment variables set in `dms.ps1`.
-  - This isn't conventional Python practice (normally uv, its Pythons and its cache are
-    shared machine-wide). It's a deliberate choice for this project, and AGENTS.md and the
-    README should say so.
-  - Side benefit: with the repo on D:, a cache inside the repo is on the same drive as `.venv`,
-    so uv can hard-link packages instead of copying them.
-- **UZDoom:** always launched with `-config .tools\uzdoom\uzdoom.ini`, with the save and
-  screenshot folders pointed inside the repo. This works whether or not UZDoom has a portable mode.
-- **Isolation from any global Python/uv** (we never touch PATH or global config, so
-  nothing leaks out; these settings stop global things leaking in):
-  - `uv.toml`: `required-version` pins uv (a different global uv refuses to run);
-    `python-preference = "only-managed"`; every setting that matters is set explicitly,
-    since a user-level `%APPDATA%\uv\uv.toml` would otherwise apply too.
-  - `.python-version` pins the Python version.
-  - `dms.ps1` calls `.tools\uv\uv.exe` directly, never a `uv` on PATH, and clears `PYTHONPATH`,
-    `PYTHONHOME`, `VIRTUAL_ENV`, `PIP_*` and outside `UV_*` variables before running.
-  - **To verify in M0:** whether uv registers its Pythons in the Windows registry (HKCU) or puts
-    `python3.x.exe` shortcuts in a user folder. If so, turn that off (uv's no-registry /
-    no-shortcut options or environment variables).
-- **Ultimate Doom Builder:** always launched with `-portable`.
-- **Entry point:** `.\dms.ps1 <command>` in the repo root sets the environment variables and runs
-  `uv run dms <command>`, so nothing falls back to the default locations in the user profile.
-- **Check:** after a fresh bootstrap plus a build/play/edit cycle, look in the user profile and confirm nothing new appeared.
-
-### Habits we keep anyway (cheap, and they help Claude too)
-
-- **Commands:** the real interface is one Python command, run as `.\dms.ps1 <command>`.
-  Any other `.ps1` scripts are thin wrappers around it.
-- **Knowledge lives in the repo:** `AGENTS.md`, `docs/` and `maps/*/notes.md`, not
-  in Claude's private memory.
-- **Rules live in scripts:** overwrite protection and similar checks go in `dms`,
-  not in Claude Code hooks.
-- **Text alongside images:** every image output (render, tour) also has a text report.
-- **Doom reference:** `docs/udmf-cheatsheet.md` covers the fields we use, line
-  specials, thing IDs and Doom's movement limits.
-
-### Licensing rules (to go into AGENTS.md)
-
-- The repo is **MIT** (`LICENSE`), covering our code, scripts, maps and docs.
-- **Never commit third-party binaries or IWADs** (UZDoom, Ultimate Doom Builder,
-  acc, freedoom2.wad). `dms setup` downloads them into the git-ignored `.tools/`.
-- Freedoom texture/flat/thing **names** in `catalog/` are fine. If Freedoom
-  **graphics** are ever committed, include Freedoom's BSD license notice with them.
-- ZScript/ACS is written from scratch. Don't copy from UZDoom's built-in scripts
-  (GPL) or other mods without checking their license first.
-
-### Writing conventions (to go into AGENTS.md)
-
-- **Keep it impersonal:** repo files refer to roles ("the mapper", "the dev machine"),
-  not to the person, their computer or their accounts and subscriptions. Anyone could be
-  doing this work. The repo URL and the LICENSE copyright line are the exceptions.
-- **Text files are UTF-8 without a BOM.** Windows PowerShell 5.1's `Set-Content` /
-  `Out-File` add a BOM by default, so use `[IO.File]::WriteAllText` with
-  `UTF8Encoding($false)`, or the editing tools.
-
-### Who each document is for
-
-| File | Audience | Role |
-|------|----------|------|
-| `AGENTS.md` | agents | **Source of truth** for how to work in this repo: conventions, commands, rules |
-| *(no CLAUDE.md)* | Claude Code | Not needed: Claude Code ≥ v2.1.277 reads AGENTS.md natively when no CLAUDE.md exists (default "Project instructions" mode; dev machine is on 2.1.330). Adding a CLAUDE.md would take priority, so if one is ever needed it must `@AGENTS.md`. |
-| `docs/` | agents + humans | Detailed reference and design notes, linked from AGENTS.md |
-| `maps/*/notes.md` | agents + mapper | Design intent and feedback history for each map |
-| `PLAN.md` | mapper + Claude | Roadmap and open decisions; settled items move into AGENTS.md/docs |
-| `README.md` | **the public** | A readable summary of the project. **Never a source of truth**: it is written *from* the files above, and agents don't use it for instructions. It's updated when something people would notice changes. |
+Planned reference (M2): `docs/udmf-cheatsheet.md`, covering the UDMF fields we use, line specials,
+thing IDs and Doom's movement limits.
 
 ---
 
@@ -122,7 +43,7 @@ Documents or the registry. Deleting the repo folder removes everything.
 
 ## 3. Project install (M0)
 
-Everything installs into the repo (see "Self-contained" in §1).
+Everything installs into the repo (see "Self-contained" in `AGENTS.md`).
 
 ### Fresh-machine install
 
@@ -236,7 +157,7 @@ doom-map-stack/
 ├── tools.local.json     resolved tool paths (git-ignored)
 ├── .tools/              everything downloaded (git-ignored): uv, Python, uv cache,
 │                        UZDoom (+ its ini, saves), Ultimate Doom Builder (+ portable settings), Freedoom
-├── maps/                one self-contained folder per map, named by name (see §5a)
+├── maps/                one self-contained folder per map, named by name (see `AGENTS.md`)
 │   └── light-test2/
 │       ├── map.toml     title, kind (map|test|example), status, source mode, sky, music
 │       ├── map.py       generator source (while the map is generator-driven)
@@ -264,18 +185,10 @@ doom-map-stack/
 
 ### 5a. Several maps at once
 
-- **Named by name:** maps are identified by a name (`light-test2`), never by slot. Built
-  on its own, a map always goes into the **MAP01** slot of its own WAD.
-- **Self-contained:** everything a map owns (sources, notes, per-map resources, build
-  output, feedback, UZDoom saves in `.tools\uzdoom\saves\<map>\`) is kept under its name.
-- **Map name always explicit:** every map command requires the name (`dms build light-test2`)
-  and prints which map it's acting on. No hidden "current map" setting. Tab-completion in `dms.ps1` is optional.
-- **Switching:** when work moves to a map, Claude reads its `notes.md` first.
-- **Shared code stays safe:** `src/` and `resources/devtools/` are shared. TEXTMAP is
-  committed, so a generator change only affects a map when it's rebuilt, and the change
-  shows up in git. Maps edited by hand in TEXTMAP are never regenerated.
-  `dms build --all` + review the diff after generator changes.
-- **Releases (later):** `episodes/<name>.toml` assigns maps to slots;
+The rules (named by name, self-contained, map name always explicit, shared code stays safe) are in `AGENTS.md`.
+Still to build later:
+
+- **Releases:** `episodes/<name>.toml` assigns maps to slots;
   `dms build --episode <name>` produces one WAD with combined MAPINFO and an idgames-style `.txt`.
 
 ---
@@ -406,7 +319,12 @@ doom-map-stack/
 - `docs/map-design-notes.md` added: the mapper's design guidelines. **Not yet read by Claude.** Read before M3.
 - `.gitignore`: Python template + `.tools/`, `tools.local.json`, `feedback/`.
 
-**Nothing built yet.** No AGENTS.md, no `src/`, no scripts.
+- M0 step 1: `AGENTS.md` written (rules from §1 and §5a moved in).
+
+**Nothing else built yet.** No `src/`, no scripts.
+
+**Model choice:** Opus for most milestones; Sonnet is fine for the routine scripting in M0/M1.
+**Use Fable for M3** (first real map): spatial layout and design judgment are where it should pay off.
 
 **Next: M0** (§8), roughly in this order:
 1. Write `AGENTS.md`. Move the settled rules from §1 (self-contained, licensing, writing
@@ -423,8 +341,6 @@ the ZScript note text box and crosshair trace; whether the editor keeps `user_gi
 
 **Also decide in M0:** a `.gitattributes` for line endings. Git currently warns that it
 will convert LF to CRLF; TEXTMAP and scripts should probably stay LF.
-
-Once AGENTS.md takes over the rules, this section can be trimmed. PLAN.md then stays the roadmap.
 
 ---
 
