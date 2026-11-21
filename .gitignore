@@ -221,3 +221,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- doom-map-stack ---
+# Downloaded tools, Python, caches, engine/editor settings and saves (dms setup / bootstrap.ps1)
+.tools/
+tools.local.json
+# Per-map temporary feedback (note screenshots)
+feedback/
