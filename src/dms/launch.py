@@ -66,12 +66,17 @@ def open_editor(root: Path, wad: Path | None = None, map_slot: str | None = None
 
 def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False) -> int:
     """Build the map if its sources changed, then start UZDoom on it. Returns immediately.
-    The console output goes to build/<map>/play.log; saves go to .tools/uzdoom/saves/<map>/."""
+    The console output goes to build/<map>/log-play.txt; saves go to .tools/uzdoom/saves/<map>/.
+
+    UZDoom 5 writes `+logfile NAME` to log-NAME.txt in its working directory (a path is mangled,
+    not honoured), so it runs with build/<map>/ as its working directory. Portable mode isn't
+    affected: UZDoom finds its own files relative to the exe."""
     if needs_build(info, root):
         build(info, root)
     uzdoom = tool_path(root, "uzdoom")
     out_wad = info.wad(root)
-    log = info.build_dir(root) / "play.log"
+    build_dir = info.build_dir(root)
+    log = build_dir / "log-play.txt"
     saves = uzdoom.parent / "saves" / info.name
     saves.mkdir(parents=True, exist_ok=True)
     args = [
@@ -80,7 +85,7 @@ def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False) ->
         "-file", str(out_wad),
         "-skill", str(skill),
         "-savedir", str(saves),
-        "+logfile", str(log),
+        "+logfile", "play",
         "+map", "MAP01",
     ]
     args += play_args(project_settings(root))
@@ -88,7 +93,7 @@ def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False) ->
         args.append("-nomonsters")
     print(f"dms play: {info.name} (skill {skill}{', no monsters' if nomonsters else ''})")
     print(f"    log: {log}")
-    subprocess.Popen(args, cwd=uzdoom.parent, env=repo_env(root), close_fds=True)
+    subprocess.Popen(args, cwd=build_dir, env=repo_env(root), close_fds=True)
     return 0
 
 

@@ -89,7 +89,8 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   Refuses to overwrite a generated `TEXTMAP` that was edited by hand, or to build while `build/<map>/edit.wad` has
   editor changes not brought back yet; `--force` discards them.
 - `dms play [<map>] [--skill N] [--nomonsters]` (**`Play Map.cmd`**): builds if the sources changed, starts UZDoom.
-  Console log: `build/<map>/play.log` (read it after a play session). Saves: `.tools/uzdoom/saves/<map>/`.
+  Console log: `build/<map>/log-play.txt` (read it after a play session; UZDoom 5 names logs `log-<name>.txt`
+  in its working directory, so play runs UZDoom from `build/<map>/`). Saves: `.tools/uzdoom/saves/<map>/`.
 - `dms edit [<map>]` (**`Edit Map.cmd`**): packs `build/<map>/edit.wad` from `TEXTMAP` and opens it in the editor,
   so Save writes there. If the mapper already saved changes in it, it is reopened as it is, not overwritten.
 

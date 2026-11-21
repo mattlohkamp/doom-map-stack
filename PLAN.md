@@ -185,7 +185,7 @@ doom-map-stack/
 │                           points to it as required reading before designing a map
 ├── feedback/<map>/      note screenshots, per map (git-ignored, temporary)
 └── build/<map>/         per-map output (git-ignored): playable WAD, working edit WAD,
-                         last generated TEXTMAP, fingerprints, render, tour/, play.log
+                         last generated TEXTMAP, fingerprints, render, tour/, log-play.txt
 ```
 
 ### 5a. Several maps at once
@@ -294,7 +294,9 @@ Still to build later:
   - Only works while a Claude Code session is open. Otherwise notes stay in the log or
     map and are picked up by `pull` or when asked. Nothing is lost.
 - **Screenshots**: UZDoom saves to a per-map folder, which Claude can view.
-- **Engine log**: `play.log` shows script errors and warnings, which Claude reads after a play session.
+- **Engine log**: `log-play.txt` shows script errors and warnings, which Claude reads after a play session.
+- **Load check without a window** (idea for M2 `dms build`): `uzdoom -iwad ... -file <map>.wad -norun +logfile check`
+  loads everything and parses MAPINFO/definitions, then quits (exit code 1337) before opening a window; scan its log for errors.
 - Later: playtest stats (kills, secrets, time) dumped at the end of a level.
 
 ---
