@@ -140,9 +140,20 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   map can be opened to look at the problem. Checks: references, zero-length and crossing lines, missing front sides,
   one-sided walls without a middle texture, unclosed/orphan sectors, light 0-255, ceiling below floor, textures and
   flats against the catalog, player 1 start, things outside every sector or on no skill level, tagged specials.
+- **Movement check** (`src/dms/movement.py`): every build (and `dms render`) works out which sectors the player can
+  reach from the player 1 start and writes `build/<map>/movement.txt`. Rules: step up at most 24, any drop (one-way
+  drops listed), 56 headroom, gaps at least 32 wide (collinear lines end to end count as one gap); blocking lines are
+  walls. Doors (11-13; tag 0 = the sector behind) open to the lowest neighbouring ceiling - 4, locked doors (13,
+  lock in arg3) need a reachable key, lifts/floor/ceiling movers span their neighbours' heights; a special counts
+  once its line is reachable (front side for use/shoot, either side for walk-over). Its problems are warnings:
+  unreachable sectors, keys, weapons and notable items, exits, secrets; locked doors that never open; soft-locks
+  (reachable, but no way on to an exit; only checked when the map has a reachable exit). Optimistic on purpose:
+  "unreachable" is reliable, "reachable" means "probably". Not yet: teleporters, crushers, scripts.
+  Door and lift use lines must have the player's side as their **front** side.
 
 - **Renders** (`src/dms/render.py`): every build writes `build/<map>/render.png` + `render.txt` (sectors shaded by
-  floor height, walls, specials, things, grid, validation issues ringed in red) and, when the map changed,
+  floor height, walls, specials, things, grid, validation and movement issues ringed in red, unreachable sectors
+  hatched red, soft-lock sectors tinted orange) and, when the map changed,
   `diff.png` + `diff.txt` against the previous build: the current map with the changes marked (green added,
   yellow changed, red see-through ghosts of what was removed), plus `diff-before.png` / `diff-after.png` (previous
   and current map, same view, each with its side of the changes) for the board's before/after view.
@@ -151,9 +162,10 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   (and read the .txt) after every build.**
 
 Code: `src/dms/udmf.py` (TEXTMAP read/write, keeps every field), `wad.py`, `catalog.py`, `validate.py`, `gen.py` (the `MapBuilder` that
-`map.py` files use; every element gets a `user_gid`), `maps.py`, `build.py`, `launch.py`, `history.py`, `board.py`.
+`map.py` files use; every element gets a `user_gid`), `maps.py`, `build.py`, `launch.py`, `history.py`, `board.py`,
+`pull.py`, `overrides.py`, `movement.py`.
 
-*Planned, not built yet* (see `PLAN.md` §6): movement check, notes, `watch`, `tour`.
+*Planned, not built yet* (see `PLAN.md` §6): in-game and editor notes, "Send to Claude", `watch`, `tour`.
 
 **Running uv directly** (e.g. `uv add`, `uv lock`): never call a bare `uv`. Run it inside the repo environment:
 

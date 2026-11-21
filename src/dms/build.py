@@ -163,6 +163,22 @@ def check(tm: udmf.Textmap, root: Path, title: str, report_path: Path | None) ->
     return issues
 
 
+def check_movement(tm: udmf.Textmap, report_path: Path | None = None):
+    """Run the movement check, print its summary and write the report to report_path."""
+    from dms import movement
+
+    res = movement.check(tm)
+    head, *rest = res.report.rstrip().split("\n")
+    print(f"    {head}")
+    for line in rest:
+        if line.startswith("problems") or line.startswith("  warning"):
+            print(f"    {line}")
+    if report_path is not None:
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(res.report, encoding="utf-8", newline="\n")
+    return res
+
+
 def build(info: MapInfo, root: Path, force: bool = False, note: str | None = None) -> BuildResult:
     """Generate (if needed), validate and pack. The WAD is written even when validation finds
     errors, so the map can still be opened to look at the problem; the result carries them.
@@ -202,12 +218,14 @@ def build(info: MapInfo, root: Path, force: bool = False, note: str | None = Non
     counts = {plural.get(k, k + "s"): len(tm.of(k)) for k in udmf.KINDS}
     print("    " + ", ".join(f"{n} {k}" for k, n in counts.items()))
     issues = check(tm, root, "validate", info.build_dir(root) / "validate.txt")
+    moves = check_movement(tm, info.build_dir(root) / "movement.txt")
+    issues = issues + moves.issues
 
     out = info.wad(root)
     previous = _packed_textmap(out)
     wad.write(out, map_lumps(info, data))
     print(f"    wrote {out}")
-    changed = draw(info, root, tm, issues, previous)
+    changed = draw(info, root, tm, issues, previous, moves=moves)
     from dms import history
 
     if history.record(info, root, changed=changed, counts=counts, issues=issues, note=note, forced=force):
@@ -245,13 +263,16 @@ def _packed_textmap(path: Path) -> udmf.Textmap | None:
 
 
 def draw(info: MapInfo, root: Path, tm: udmf.Textmap, issues: list[Issue], previous: udmf.Textmap | None,
-         suffix: str = "", diff_title: str = "") -> bool:
+         suffix: str = "", diff_title: str = "", moves=None) -> bool:
     """render<suffix>.png/.txt, and diff<suffix>.png/.txt against `previous` when given.
+    `moves` (a movement check result) hatches unreachable sectors and tints soft-locks.
     Returns whether the map changed (True when there's nothing to compare with)."""
     from dms import render
 
     d = info.build_dir(root)
-    png = render.render(tm, d / f"render{suffix}.png", issues, title=f"{info.name}{suffix}")
+    png = render.render(tm, d / f"render{suffix}.png", issues, title=f"{info.name}{suffix}",
+                        unreachable=moves.unreachable if moves else (),
+                        softlocks=moves.softlocks if moves else ())
     print(f"    wrote {png} (+ {png.with_suffix('.txt').name})")
     if previous is not None:
         diff_png = d / f"diff{suffix}.png"

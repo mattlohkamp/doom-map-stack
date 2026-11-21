@@ -117,12 +117,14 @@ def cmd_render(args: argparse.Namespace) -> int:
         tm = build.read_edit_wad_textmap(info, root)
         print(f"dms render {info.name} (edit.wad: the mapper's saved editor version)")
         issues = build.check(tm, root, "validate", info.build_dir(root) / "validate-edit.txt")
-        build.draw(info, root, tm, issues, source, suffix="-edit",
-                   diff_title=f"{info.name}: edit.wad compared with TEXTMAP")
+        moves = build.check_movement(tm, info.build_dir(root) / "movement-edit.txt")
+        build.draw(info, root, tm, issues + moves.issues, source, suffix="-edit",
+                   diff_title=f"{info.name}: edit.wad compared with TEXTMAP", moves=moves)
     else:
         print(f"dms render {info.name}")
         issues = build.check(source, root, "validate", info.build_dir(root) / "validate.txt")
-        build.draw(info, root, source, issues, None)
+        moves = build.check_movement(source, info.build_dir(root) / "movement.txt")
+        build.draw(info, root, source, issues + moves.issues, None, moves=moves)
     return 0
 
 

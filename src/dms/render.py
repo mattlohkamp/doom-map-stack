@@ -198,23 +198,62 @@ def _draw_map(img: Image.Image, view: View, tm: Textmap, *, dim: bool = False, l
             draw.text((cx + r + 2, cy), str(t.get("type")), fill=color, font=font, anchor="lm")
 
 
-def render(tm: Textmap, out_png: Path, issues: list[Issue] = (), title: str = "") -> Path:
+SOFTLOCK = (255, 150, 40)
+
+
+def _mark_sectors(img: Image.Image, view: View, tm: Textmap, unreachable, softlocks) -> Image.Image:
+    """Hatch unreachable sectors in red; tint soft-lock sectors orange (movement check)."""
+    if not unreachable and not softlocks:
+        return img
+    loops = sector_loops(tm)
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    for sec in softlocks:
+        d = ImageDraw.Draw(layer)
+        for poly in loops.get(sec, []):
+            d.polygon([view.px(*p) for p in poly], fill=SOFTLOCK + (70,), outline=SOFTLOCK + (255,))
+    if unreachable:
+        mask = Image.new("L", img.size, 0)
+        dm = ImageDraw.Draw(mask)
+        for sec in unreachable:
+            for poly in loops.get(sec, []):
+                dm.polygon([view.px(*p) for p in poly], fill=255)
+        hatch = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        dh = ImageDraw.Draw(hatch)
+        w, h = img.size
+        for x in range(-h, w, 14):
+            dh.line([(x, h), (x + h, 0)], fill=ISSUE + (150,), width=2)
+        layer.paste(hatch, (0, 0), mask)
+    return Image.alpha_composite(img.convert("RGBA"), layer).convert("RGB")
+
+
+def render(tm: Textmap, out_png: Path, issues: list[Issue] = (), title: str = "",
+           unreachable=(), softlocks=()) -> Path:
     view = view_for(tm)
     img = Image.new("RGB", (view.width, view.height), BG)
     _grid(ImageDraw.Draw(img), view, _font(11))
     _draw_map(img, view, tm)
+    img = _mark_sectors(img, view, tm, set(unreachable), set(softlocks))
     draw = ImageDraw.Draw(img)
     font = _font(13)
+    at_same_spot: dict[tuple, int] = {}
     for n, issue in enumerate([i for i in issues if i.pos], 1):
         cx, cy = view.px(*issue.pos)
-        r = max(10, 28 * view.scale)
+        k = at_same_spot.get(issue.pos, 0)  # several issues at one spot: bigger rings, labels stacked
+        at_same_spot[issue.pos] = k + 1
+        r0 = max(10, 28 * view.scale)
+        r = r0 + 7 * k
         draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=ISSUE, width=3)
-        draw.text((cx + r + 2, cy - r), f"#{n}", fill=ISSUE, font=font)
+        draw.text((cx + r0 + 24, cy - r0 + 17 * k), f"#{n}", fill=ISSUE, font=font)
     if title:
         draw.text((view.width - 6, view.height - 6), title, fill=GRID_LABEL, font=font, anchor="rd")
     out_png.parent.mkdir(parents=True, exist_ok=True)
     img.save(out_png)
-    out_png.with_suffix(".txt").write_text(describe(tm, issues, view, title), encoding="utf-8", newline="\n")
+    text = describe(tm, issues, view, title)
+    if unreachable:
+        text += f"hatched red: unreachable from the player start: sectors {', '.join(map(str, sorted(unreachable)))}\n"
+    if softlocks:
+        text += f"tinted orange: soft-locks (no way to an exit): sectors {', '.join(map(str, sorted(softlocks)))}\n"
+    out_png.with_suffix(".txt").write_text(text, encoding="utf-8", newline="\n")
     return out_png
 
 

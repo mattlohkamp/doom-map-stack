@@ -17,7 +17,8 @@ from dms.maps import MapInfo
 from dms.validate import Issue
 
 KEEP = 100
-COPIED = ("render.png", "render.txt", "diff.png", "diff-before.png", "diff-after.png", "diff.txt", "validate.txt")
+COPIED = ("render.png", "render.txt", "diff.png", "diff-before.png", "diff-after.png", "diff.txt", "validate.txt",
+          "movement.txt")
 
 
 def history_dir(info: MapInfo, root: Path) -> Path:
