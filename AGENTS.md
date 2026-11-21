@@ -89,7 +89,10 @@ It sets the environment and runs `uv run dms <command>`. Any other `.ps1` script
 . .\scripts\dms-env.ps1; Invoke-DmsScope -Root $PWD -Body { & .tools\uv\uv.exe lock }
 ```
 
-`scripts\dms-env.ps1` sets every uv location to an absolute path under `.tools\`, points `UV_CONFIG_FILE`
+The same goes for ad-hoc Python (one-off scripts, quick checks): run it with the repo's Python inside that scope
+(`& .tools\uv\uv.exe run python ...`), never a system `python`, which writes caches into the user profile.
+
+`scripts\dms-env.ps1` points `TEMP`/`TMP` at `.tools\tmp\`, sets every uv location to an absolute path under `.tools\`, points `UV_CONFIG_FILE`
 at `uv.toml`, turns off registry entries and Python shortcuts, and restores the caller's environment afterwards.
 `uv.toml` sets `python-downloads = "manual"`, so uv never fetches a Python on its own; `bootstrap.ps1` installs it
 explicitly with `--no-registry --no-bin`.

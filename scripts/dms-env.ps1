@@ -16,6 +16,12 @@ function Set-DmsEnvironment {
     $tools = Join-Path $Root '.tools'
     $env:DMS_ROOT = $Root
 
+    # Temp files (uv's lock files, the editor's F9 test WAD) stay in the repo too.
+    $tmp = Join-Path $tools 'tmp'
+    New-Item -ItemType Directory -Force $tmp | Out-Null
+    $env:TEMP = $tmp
+    $env:TMP = $tmp
+
     # uv reads only the repo's uv.toml (a user-level %APPDATA%\uv\uv.toml is ignored).
     $env:UV_CONFIG_FILE = Join-Path $Root 'uv.toml'
 

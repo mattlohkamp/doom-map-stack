@@ -3,7 +3,7 @@
 A workflow where Claude writes DOOM levels and the mapper views them in an editor,
 test-plays them in the engine, and gives feedback for the next round.
 
-Status: **M0 in progress** (see §9). Remaining unknowns are marked *to verify* inline.
+Status: **M0 done; M1 next** (see §9). Remaining unknowns are marked *to verify* inline.
 
 ---
 
@@ -24,7 +24,7 @@ This section keeps only what M0 still has to verify:
   Its graphics cache still goes to `%LOCALAPPDATA%\doom\` (see "Known exceptions" in `AGENTS.md`).
 - **Visual C++ runtime, note:** UZDoom and the editor run on the dev machine, but it may already have the runtime
   installed, so this needs a clean machine (or VM) to settle.
-- **Final check:** after a fresh bootstrap plus a build/play/edit cycle, look in the user profile and confirm nothing new appeared.
+- ~~Final check~~ **done at the end of M0** (see §9). Repeat it once `build`/`play`/`edit` exist in M1.
 
 Planned reference (M2): `docs/udmf-cheatsheet.md`, covering the UDMF fields we use, line specials,
 thing IDs and Doom's movement limits.
@@ -316,46 +316,36 @@ Still to build later:
 
 ## 9. Where we left off
 
-*Handoff from the planning session (2026-11-21). A new session starts here.*
+*Updated at the end of M0 (2026-11-21). A new session starts here.*
 
-**Done:**
-- Planning: everything in this file was discussed and agreed with the mapper. Decisions in §2 and §10 are final.
-- Repo cloned; the working folder is renamed to match it (`doom-map-stack`).
-- `docs/map-design-notes.md` added: the mapper's design guidelines. **Not yet read by Claude.** Read before M3.
-- `.gitignore`: Python template + `.tools/`, `tools.local.json`, `feedback/`.
-- M0 step 1: `AGENTS.md` written (rules from §1 and §5a moved in).
-- M0 step 2: `bootstrap.ps1`, `dms.ps1`, `scripts/dms-env.ps1`, `uv.toml` (uv 0.13.9), `.python-version` (3.14),
-  `pyproject.toml` + `uv.lock`, a stub `dms` CLI (`src/dms/cli.py`), `.gitattributes` (LF everywhere).
-  Bootstrap tested on the dev machine, including a re-run. Baseline of the user profile taken before it ran
-  (an older uv Python 3.10/3.13 and their registry key / shortcut were already there and are not ours).
-- M0 step 3: `tools.toml` pins UZDoom 5.0.3, Ultimate Doom Builder R4336, Freedoom 0.13.0 (hashes match the
-  published ones). `dms setup` (`src/dms/setup.py`) downloads, checks, extracts, writes `tools.local.json`;
-  `--upgrade <tool>` keeps settings and saves. Tests in `tests/test_setup.py`. Installed and re-run on the dev machine.
-- M0 step 4: `dms setup` configures UZDoom (portable mode) and the editor (`src/dms/configure.py`, `src/dms/udbcfg.py`).
-  `Open Editor.cmd` / `dms editor` re-applies the editor settings on every launch. `dms.toml` holds project settings
-  (`[play] music = false` → `-nomusic`). **The mapper confirmed: new map defaults to UZDoom UDMF, resources present,
-  F9 starts UZDoom in the room.** Found along the way: the editor discards a settings file without `currentversion`;
-  the UZDoom game config requires `uzdoom.pk3` as an excluded-from-testing resource.
-  Limitation: the Save dialog for a never-saved map starts where Windows decides (the editor sets no folder);
-  M1's `dms new` + `dms edit` open a WAD inside the repo, so saving goes there without a dialog.
+**M0 is done** (step-by-step history is in git). What exists now:
+- `AGENTS.md`: the rules and commands. Read it first.
+- `Bootstrap.cmd` / `bootstrap.ps1`: uv 0.13.9 and Python 3.14 into `.tools\`, then `uv sync` and `dms setup`.
+- `dms setup`: UZDoom 5.0.3, Ultimate Doom Builder R4336, Freedoom 0.13.0 (pinned in `tools.toml`, hash-checked),
+  then configures both tools so they stay in the repo and F9 in the editor runs UZDoom.
+- `Open Editor.cmd` / `dms editor`. `dms.toml` for project settings (music off in test-play).
+- 15 tests (`tests/`).
+- **The mapper confirmed** the editor setup and F9 test-play end to end.
+- **Nothing-outside-the-repo check** done against a snapshot taken before bootstrap: no new registry keys, Python
+  shortcuts or tool folders in the user profile. A uv lock file in the system TEMP was found and fixed (TEMP now
+  points into `.tools\tmp\`). The one remaining write is UZDoom's graphics cache in `%LOCALAPPDATA%\doom\`,
+  which can't be redirected (a known exception in `AGENTS.md`).
+- `docs/map-design-notes.md`: **not yet read by Claude.** Read before M3.
+
+**Next: M1, Hello room** (§8): one square room with a player start, packed and playable; proves the loop.
+Roughly: UDMF TEXTMAP writer (+ reader), packer (`build/<map>/<map>.wad`), `dms new`, `dms build`, `dms play`,
+`dms edit` (packs `build/<map>/edit.wad`, opens it; Save then writes inside the repo with no dialog), and `.cmd`
+launchers for the mapper-facing ones. Then check that the editor keeps `user_gid` when saving (also on split or copied lines).
 
 **Open design question (M1):** the mapper uses `.cmd` launchers from Explorer, not the terminal (rule in
 `AGENTS.md`). Commands that take a map (`play`, `edit`, `pull`) need a way to pick it from Explorer:
 drag the map folder onto the launcher, a launcher inside each map folder, or a small picker. Decide with the mapper.
 
-**Model choice:** Opus for most milestones; Sonnet is fine for the routine scripting in M0/M1.
+**Model choice:** Opus for most milestones; Sonnet is fine for the routine scripting in M1.
 **Use Fable for M3** (first real map): spatial layout and design judgment are where it should pay off.
 
-**Next: M0** (§8), roughly in this order:
-1. ~~Write `AGENTS.md`~~ done.
-2. ~~`bootstrap.ps1`, `dms.ps1`, `uv.toml`, `.python-version`, `pyproject.toml`, stub `dms`~~ done.
-3. ~~`tools.toml` + `dms setup`~~ done.
-4. ~~Configure Ultimate Doom Builder in portable mode; check that F9 launches UZDoom~~ done.
-5. Check that nothing was written outside the repo. Snapshot of the user profile before bootstrap is in the
-   session scratchpad (not the repo); after F9 testing, only UZDoom's cache file changed (a known exception).
-
-**Still to verify** (marked inline): whether the Visual C++ runtime is needed (clean machine);
-the ZScript note text box and crosshair trace; whether the editor keeps `user_gid`.
+**Still to verify:** whether the Visual C++ runtime is needed (needs a clean machine or VM);
+the ZScript note text box and crosshair trace (M2); whether the editor keeps `user_gid` (M1).
 
 ---
 
