@@ -1,5 +1,5 @@
 // dms devtools: register the in-game notes handler (zscript.zs).
 GameInfo
 {
-	AddEventHandlers = "DmsNotes"
+	AddEventHandlers = "DmsNotes", "DmsLive"
 }

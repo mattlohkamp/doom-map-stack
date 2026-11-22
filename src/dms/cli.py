@@ -172,6 +172,8 @@ def cmd_notes(args: argparse.Namespace) -> int:
             raise maps.MapError(str(e.args[0])) from None
         print(f"dms notes: closed {targets[0].name} #{n['id']}" + (f": {n['reply']}" if n.get("reply") else ""))
         return 0
+    if args.hook:
+        return _notes_hook(root, targets)
     shown = 0
     for info in targets:
         inbox.ingest_game_log(info, root)
@@ -181,6 +183,49 @@ def cmd_notes(args: argparse.Namespace) -> int:
                 shown += 1
     if not shown:
         print("no open notes" if not args.all else "no notes")
+    return 0
+
+
+def _notes_hook(root: Path, targets) -> int:
+    """For Claude Code's UserPromptSubmit hook (.claude/settings.json): whatever it prints is added to
+    the mapper's message. Silent when nothing is open; in full when no `dms watch` delivered the notes.
+    Never fails the prompt."""
+    from dms import inbox
+
+    try:
+        unheard, heard = [], []
+        for info in targets:
+            inbox.ingest_game_log(info, root)
+            open_ = [n for n in inbox.notes(info, root) if n["status"] == "open"]
+            if not open_:
+                continue
+            if inbox.listening(root, info.name):
+                heard.append(f"{info.name} " + ", ".join(f"#{n['id']}" for n in open_))
+            else:
+                unheard.append((info.name, open_))
+        for name, open_ in unheard:
+            print(f"dms: {len(open_)} open note(s) for {name} that no `dms watch` delivered. Act on them "
+                  f"(AGENTS.md, Notes for Claude), and arm `dms watch {name}` with the Monitor tool:")
+            for n in open_:
+                print(inbox.describe(n))
+        if heard:
+            print("dms: open notes (already shown by dms watch): " + "; ".join(heard))
+    except Exception as e:  # noqa: BLE001 - a broken hook must not block the mapper's message
+        print(f"dms: the notes hook failed ({e}); run `dms notes` by hand")
+    return 0
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    from dms import live, maps
+
+    root = repo_root()
+    info = maps.resolve(root, args.map)
+    text = " ".join(args.text).strip()
+    if not live.game_running(info, root):
+        print(f"dms status: {info.name} isn't being played (start it with Play Map)")
+        return 0
+    live.set_status(info, root, text)
+    print(f"dms status: {info.name}: " + (f"showing \"{text}\" in the game" if text else "cleared"))
     return 0
 
 
@@ -199,6 +244,8 @@ def cmd_watch(args: argparse.Namespace) -> int:
     print(f"dms watch: notes for {args.map or 'every map'}; Ctrl+C stops", flush=True)
     try:
         while True:
+            # Tell the board, the game and the editor that Claude is listening (inbox.listening).
+            inbox.mark_listening(root, [maps.resolve(root, args.map).name] if args.map else None)
             for info in targets():
                 inbox.ingest_game_log(info, root)  # notes typed in the game
                 notes = inbox.notes(info, root)
@@ -212,6 +259,7 @@ def cmd_watch(args: argparse.Namespace) -> int:
             first = False
             time.sleep(args.interval)
     except KeyboardInterrupt:
+        inbox.stop_listening(root)
         return 0
 
 
@@ -278,7 +326,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--all", action="store_true", help="closed notes too")
     p.add_argument("--close", type=int, metavar="ID", help="mark note ID as dealt with")
     p.add_argument("--reply", help="with --close: what was done (shown on the board)")
+    p.add_argument("--hook", action="store_true", help=argparse.SUPPRESS)  # Claude Code's prompt hook
     p.set_defaults(func=cmd_notes)
+
+    p = sub.add_parser("status", help="show what Claude is doing in the running game (a line with moving dots)")
+    p.add_argument("map", help=MAP_HELP)
+    p.add_argument("text", nargs="*", help="e.g. cutting the hallway; nothing clears it")
+    p.set_defaults(func=cmd_status)
 
     p = sub.add_parser("watch", help="print the mapper's notes as they arrive (open ones first)")
     p.add_argument("map", nargs="?", help=MAP_HELP + "; none: every map")

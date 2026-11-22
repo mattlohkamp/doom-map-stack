@@ -179,3 +179,41 @@ def test_watcher_leaves_structural_saves_for_claude(repo, server):
     assert d["pending"]["structural"] == 1 and "new thing type 2001" in d["pending"]["report"]
     url = d["pending"]["images"]["diff-edit.png"]
     assert _get(server + url)[2].startswith(b"\x89PNG")
+
+
+def test_reload_in_place(repo, monkeypatch):
+    import time as _time
+
+    from dms import inbox, launch
+
+    info = maps.new(repo, "a")
+    build.build(info, repo)
+    (info.build_dir(repo) / "play.json").write_text(json.dumps({"pid": 1, "started": _time.time() - 60, "skill": 4}))
+    launched, stopped = [], []
+    monkeypatch.setattr(launch, "play", lambda root, i, **kw: launched.append(kw) or 0)
+    monkeypatch.setattr(launch, "stop_game", lambda i, root: stopped.append(i.name) or True)
+    log = info.build_dir(repo) / "log-play.txt"
+    log.write_text("Log started: one\n[DMS-RELOAD] 9 9 0 0 0\n")  # from before the board started: ignored
+
+    w = board.Watcher(repo)
+    w.step()
+    assert launched == []
+
+    n = inbox.add(info, repo, "darker here", "game", game_key="1:1")
+    inbox.close(info, repo, n["id"], "light 128 now")
+    inbox.add(info, repo, "and a door", "game", game_key="1:2")
+    _relight(info, 160)  # Claude changed map.py: the reload rebuilds
+    log.write_text("Log started: one\n[DMS-RELOAD] 9 9 0 0 0\n[DMS-RELOAD] 120.5 64 0 90 -5\n")
+    msgs = w.step()
+    assert stopped == ["a"] and len(launched) == 1
+    kw = launched[0]
+    assert kw["spawn"] == [120.5, 64.0, 0.0, 90.0, -5.0] and kw["skill"] == 4
+    lines = kw["message"].split("|")
+    assert lines[0] == "Reloaded in place (build #2)"
+    assert "Claude, note #1: light 128 now" in lines and any("#2" in x and "still on it" in x for x in lines)
+    assert any("reloaded the game in place at (120.5, 64) with build #2" in m for m in msgs)
+
+    # The restarted game writes a new log: nothing to do until a new request.
+    log.write_text("Log started: two\n")
+    w.step()
+    assert len(launched) == 1

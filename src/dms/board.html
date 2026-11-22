@@ -218,6 +218,11 @@ function headerFor(d) {
   } else {
     chips.push(el("span", { class: "chip", title: "Click a spot on a picture to send Claude a note about it" }, "No notes yet"));
   }
+  // Whether a `dms watch` is running for this map, so notes reach Claude as they arrive.
+  chips.push(d.claude_listening
+    ? el("span", { class: "chip ok", title: "dms watch is running: new notes reach Claude within a second" }, "Claude is watching notes")
+    : el("span", { class: "chip warn", title: "No dms watch is running: notes wait until Claude checks. Tell Claude, or just send any message (the hook shows Claude the open notes)." },
+        "Claude isn't watching notes"));
   return el("header", null,
     el("div", { class: "titlerow" }, el("h2", null, d.title), el("span", { class: "sub" }, d.name + " · " + d.kind + " · " + d.source)),
     el("div", { class: "bar" }, el("div", { class: "chips" }, chips), el("span", { class: "spacer" }), navBar(d), viewBar()),

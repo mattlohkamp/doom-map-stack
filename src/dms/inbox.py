@@ -86,6 +86,11 @@ def close(info: MapInfo, root: Path, note_id: int, reply: str = "") -> dict:
     if note_id not in known:
         raise KeyError(f"{info.name} has no note #{note_id}")
     _append(path(info, root), {"event": "close", "id": note_id, "time": _now(), "reply": reply.strip()})
+    from dms import live
+
+    if live.game_running(info, root):  # show the reply in the game, within a second (live.py)
+        live.post(info, root, f"Claude, note #{note_id}: {reply.strip() or 'done'}")
+        live.set_status(info, root, _working_on(info, root))  # the next open note, or clear
     return {**known[note_id], "status": "closed", "reply": reply.strip()}
 
 
@@ -263,7 +268,70 @@ def ingest_game_log(info: MapInfo, root: Path) -> list[dict]:
             fields["screenshot"] = _screenshot(info, root, int(t["time"]))
             fields["preview"] = _preview(root, fields["screenshot"])
             added.append(add(info, root, t["text"], "game", **fields))
+    if added:
+        from dms import live
+
+        if live.game_running(info, root):  # tell the mapper, in the game, that it arrived
+            heard = listening(root, info.name)
+            for n in added:
+                short = n["text"] if len(n["text"]) <= 60 else n["text"][:57] + "..."
+                live.post(info, root, f"Got note #{n['id']}: \"{short}\"" + (
+                    "" if heard else " - but Claude isn't watching notes: tell Claude to check them"))
+            live.set_status(info, root, _working_on(info, root))
     return added
+
+
+def _working_on(info: MapInfo, root: Path) -> str:
+    """The automatic status line: the oldest open note (Claude refines it with `dms status`), or, when
+    no `dms watch` is running, that the notes are waiting unseen."""
+    open_notes = [n for n in notes(info, root) if n["status"] == "open"]
+    if not open_notes:
+        return ""
+    if not listening(root, info.name):
+        return f"{len(open_notes)} note(s) waiting, but Claude isn't watching: tell Claude to check notes"
+    more = f" ({len(open_notes) - 1} more waiting)" if len(open_notes) > 1 else ""
+    return f"working on note #{open_notes[0]['id']}{more}"
+
+
+# ---------------------------------------------------------------- is Claude listening?
+
+# `dms watch` rewrites this every second or so; the board, the game's acknowledgements, the editor
+# plugin and Claude Code's prompt hook read it. Stale (the watch was stopped or killed) = not listening.
+WATCH_FILE = "claude-watch.json"
+WATCH_FRESH = 10  # seconds
+
+
+def watch_path(root: Path) -> Path:
+    return root / "build" / WATCH_FILE
+
+
+def mark_listening(root: Path, map_names: list[str] | None) -> None:
+    """Called by `dms watch` on every look. map_names None = every map."""
+    p = watch_path(root)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    data = {"time": _now(), "maps": "*" if map_names is None else sorted(map_names)}
+    try:
+        p.write_text(json.dumps(data) + "\n", encoding="utf-8")
+    except OSError:
+        pass  # someone was reading it; next look
+
+
+def stop_listening(root: Path) -> None:
+    watch_path(root).unlink(missing_ok=True)
+
+
+def listening(root: Path, map_name: str) -> bool:
+    """Whether a `dms watch` covering this map has looked in the last WATCH_FRESH seconds."""
+    import time
+
+    p = watch_path(root)
+    try:
+        if time.time() - p.stat().st_mtime > WATCH_FRESH:
+            return False
+        maps_ = json.loads(p.read_text(encoding="utf-8")).get("maps")
+    except (OSError, ValueError, AttributeError):
+        return False
+    return maps_ == "*" or (isinstance(maps_, list) and map_name in maps_)
 
 
 def describe(n: dict) -> str:

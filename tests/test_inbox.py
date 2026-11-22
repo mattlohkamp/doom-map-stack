@@ -113,9 +113,44 @@ def test_board_console_announces_notes(repo):
     w = board.Watcher(repo)
     w.step()
     inbox.add(info, repo, "make this taller\nand wider", "editor")
-    assert w.step() == ["a: note #1 from the editor: make this taller"]
+    assert w.step() == ["a: note #1 from the editor: make this taller",
+                        "a: Claude isn't watching notes (no dms watch): tell Claude to check them"]
     inbox.close(info, repo, 1, "raised to 192")
     assert w.step() == ["a: note #1 done: raised to 192"]
+    inbox.mark_listening(repo, None)  # a dms watch is running: no warning
+    inbox.add(info, repo, "more light", "editor")
+    assert w.step() == ["a: note #2 from the editor: more light"]
+
+
+def test_listening(repo):
+    import os
+    import time
+
+    maps.new(repo, "a")
+    assert not inbox.listening(repo, "a")
+    inbox.mark_listening(repo, ["a"])
+    assert inbox.listening(repo, "a") and not inbox.listening(repo, "b")
+    inbox.mark_listening(repo, None)
+    assert inbox.listening(repo, "b")
+    old = time.time() - inbox.WATCH_FRESH - 5  # the watch was killed: the file goes stale
+    os.utime(inbox.watch_path(repo), (old, old))
+    assert not inbox.listening(repo, "a")
+    inbox.mark_listening(repo, None)
+    inbox.stop_listening(repo)
+    assert not inbox.listening(repo, "a")
+
+
+def test_notes_hook(repo, capsys):
+    info = maps.new(repo, "a")
+    cli.main(["notes", "--hook"])
+    assert capsys.readouterr().out == ""  # nothing open: silent
+    inbox.add(info, repo, "add some decor", "game")
+    cli.main(["notes", "--hook"])
+    out = capsys.readouterr().out
+    assert "no `dms watch` delivered" in out and '"add some decor"' in out
+    inbox.mark_listening(repo, ["a"])
+    cli.main(["notes", "--hook"])
+    assert capsys.readouterr().out.strip() == "dms: open notes (already shown by dms watch): a #1"
 
 
 def test_editor_note_as_the_plugin_writes_it(repo):

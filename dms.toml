@@ -5,6 +5,10 @@
 # Music when test-playing (F9 in the editor, and later `dms play`). false = UZDoom runs with
 # -nomusic for that launch only; sound effects stay on and nothing is saved in UZDoom's settings.
 music = false
+# A testing automap (F9 in the editor and `dms play`): every monster, item and key shown as its own
+# picture, and every trigger line in its own colour. Skull-locked doors get lighter colours than
+# card-locked ones (`dms play` only: that's the devtools mod). Set on every launch, on or off.
+test_automap = true
 
 [board]
 # Port for the board (`Open Board.cmd`), served on this computer only (127.0.0.1).

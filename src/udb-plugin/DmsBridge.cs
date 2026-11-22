@@ -182,13 +182,31 @@ namespace Dms.UdbBridge
                 if (props.Count > 0) j.Append(", \"props\": ").Append(props[0]);
                 j.Append("}\n");
                 File.AppendAllText(inbox, j.ToString(), new UTF8Encoding(false));
-                General.Interface.DisplayStatus(StatusType.Info, "dms: note #" + id + " sent to Claude.");
+                if (ClaudeListening(dir))
+                    General.Interface.DisplayStatus(StatusType.Info, "dms: note #" + id + " sent to Claude.");
+                else
+                    General.Interface.DisplayStatus(StatusType.Warning, "dms: note #" + id +
+                        " saved, but Claude isn't watching notes (no dms watch): tell Claude to check them.");
             }
             catch (Exception ex)
             {
                 General.ErrorLogger.Add(ErrorType.Error, "dms bridge: Send to Claude failed: " + ex.Message);
                 General.Interface.DisplayStatus(StatusType.Warning, "dms: the note couldn't be sent (see the error list).");
             }
+        }
+
+        // Whether a `dms watch` covering this map wrote build\claude-watch.json in the last 10 s
+        // (inbox.listening in src/dms/inbox.py: {"time": ..., "maps": "*" or ["name", ...]}).
+        private static bool ClaudeListening(string mapBuildDir)
+        {
+            try
+            {
+                string p = Path.Combine(Path.GetDirectoryName(mapBuildDir), "claude-watch.json");
+                if (!File.Exists(p) || (DateTime.UtcNow - File.GetLastWriteTimeUtc(p)).TotalSeconds > 10) return false;
+                string s = File.ReadAllText(p);
+                return s.Contains("\"maps\": \"*\"") || s.Contains("\"" + Path.GetFileName(mapBuildDir) + "\"");
+            }
+            catch (Exception) { return false; }
         }
 
         private static int NextNoteId(string inbox)

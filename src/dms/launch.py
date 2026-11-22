@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from dms.build import build, edit_wad_changed, editor_state, needs_build, pack_edit_wad
@@ -73,9 +74,13 @@ def open_editor(root: Path, wad: Path | None = None, map_slot: str | None = None
     return 0
 
 
-def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False) -> int:
+def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False,
+         spawn: list[float] | None = None, message: str | None = None) -> int:
     """Build the map if its sources changed, then start UZDoom on it. Returns immediately.
     The console output goes to build/<map>/log-play.txt; saves go to .tools/uzdoom/saves/<map>/.
+    The game's process id and options go to build/<map>/play.json (for a reload in place).
+    spawn [x, y, z, angle, pitch]: put the player there on arrival; message: shown on arrival
+    ("|" separates lines). Both are how the board reloads the map in place (resources/devtools).
 
     UZDoom 5 writes `+logfile NAME` to log-NAME.txt in its working directory (a path is mangled,
     not honoured), so it runs with build/<map>/ as its working directory. Portable mode isn't
@@ -83,8 +88,15 @@ def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False) ->
     if needs_build(info, root):
         build(info, root)
     uzdoom = tool_path(root, "uzdoom")
-    out_wad = info.wad(root)
     build_dir = info.build_dir(root)
+    # The game runs a live copy (build/<map>/play.wad, see live.py) that builds and replies are written
+    # into while it runs: key H reloads the map in place, replies show in the game.
+    from dms import history, live, wad as wadfile
+
+    _, lumps = wadfile.read(info.wad(root))
+    by_name = {l.name: l.data for l in lumps}
+    latest = history.latest(info, root)
+    out_wad = live.pack(info, root, by_name.get("MAPINFO", b""), by_name["TEXTMAP"], latest["seq"] if latest else 0)
     log = build_dir / "log-play.txt"
     saves = uzdoom.parent / "saves" / info.name
     saves.mkdir(parents=True, exist_ok=True)
@@ -109,10 +121,35 @@ def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False) ->
     args += play_args(project_settings(root))
     if nomonsters:
         args.append("-nomonsters")
+    if spawn:
+        args += ["+set", "dms_spawn", " ".join(f"{v:g}" for v in spawn)]
+    if message:
+        # One command-line argument: no quotes or line breaks (UZDoom re-quotes it as a whole).
+        args += ["+set", "dms_message", message.replace('"', "'").replace("\n", " ").replace("\r", "")]
     print(f"dms play: {info.name} (skill {skill}{', no monsters' if nomonsters else ''})")
     print(f"    log: {log}")
-    subprocess.Popen(args, cwd=build_dir, env=repo_env(root), close_fds=True)
+    proc = subprocess.Popen(args, cwd=build_dir, env=repo_env(root), close_fds=True)
+    (build_dir / "play.json").write_text(json.dumps({
+        "pid": proc.pid, "started": time.time(), "skill": skill, "nomonsters": nomonsters,
+    }) + "\n", encoding="utf-8")
     return 0
+
+
+def stop_game(info: MapInfo, root: Path, timeout: float = 5.0) -> bool:
+    """Close the UZDoom that `play` started for this map, if it's still running. True if it was."""
+    try:
+        pid = json.loads((info.build_dir(root) / "play.json").read_text(encoding="utf-8"))["pid"]
+    except (FileNotFoundError, KeyError, ValueError):
+        return False
+    if not pid_alive(pid):
+        return False
+    import signal
+
+    os.kill(pid, signal.SIGTERM)  # on Windows: TerminateProcess
+    end = time.time() + timeout
+    while pid_alive(pid) and time.time() < end:
+        time.sleep(0.1)
+    return True
 
 
 def pid_alive(pid: int) -> bool:

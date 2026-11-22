@@ -1,0 +1,27 @@
+// dms devtools: skull locks drawn on the automap in their own colours, lighter than the card locks
+// (the engine's own definitions draw a red card door and a red skull door the same red).
+// Each lock is redefined whole: the same key and messages as the engine's, a different map colour.
+
+Lock 4 Doom
+{
+	RedSkull
+	Message "$PD_REDS"
+	RemoteMessage "$PD_REDSO"
+	Mapcolor 255 150 150
+}
+
+Lock 5 Doom
+{
+	BlueSkull
+	Message "$PD_BLUES"
+	RemoteMessage "$PD_BLUESO"
+	Mapcolor 150 190 255
+}
+
+Lock 6 Doom
+{
+	YellowSkull
+	Message "$PD_YELLOWS"
+	RemoteMessage "$PD_YELLOWSO"
+	Mapcolor 255 255 170
+}

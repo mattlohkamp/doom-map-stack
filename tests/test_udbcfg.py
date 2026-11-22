@@ -111,9 +111,19 @@ def test_configure_uzdoom_portable_marker(tmp_path: Path):
 
 
 def test_music_setting(tmp_path: Path):
-    assert configure.play_args(configure.project_settings(tmp_path)) == ["-nomusic"]  # default: off
+    args = configure.play_args(configure.project_settings(tmp_path))
+    assert args[0] == "-nomusic"  # default: off
     (tmp_path / "dms.toml").write_text("[play]\nmusic = true\n")
-    assert configure.play_args(configure.project_settings(tmp_path)) == []
+    assert "-nomusic" not in configure.play_args(configure.project_settings(tmp_path))
+
+
+def test_test_automap_setting(tmp_path: Path):
+    args = configure.play_args(configure.project_settings(tmp_path))  # default: on
+    assert args[1:] == ["+am_cheat", "2", "+am_showthingsprites", "1", "+am_showkeys_always", "1",
+                        "+am_showtriggerlines", "2"]
+    (tmp_path / "dms.toml").write_text("[play]\ntest_automap = false\n")  # off: set back explicitly
+    assert configure.play_args(configure.project_settings(tmp_path))[1:] == [
+        "+am_cheat", "0", "+am_showthingsprites", "0", "+am_showkeys_always", "0", "+am_showtriggerlines", "0"]
 
 
 def test_f9_args_and_open_folder(tmp_path: Path):

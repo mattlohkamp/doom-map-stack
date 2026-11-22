@@ -26,7 +26,7 @@ UDB_GAMEKEY = "uzdoom_doomudmf"  # lowercased config filename without extension
 UDB_SCRIPT_CONFIG = "zdoom_acs.cfg"
 UZDOOM_PORTABLE_INI = "uzdoom_portable.ini"
 
-DEFAULT_SETTINGS = {"play": {"music": False}, "board": {"port": 8765, "auto_pull": True}}
+DEFAULT_SETTINGS = {"play": {"music": False, "test_automap": True},"board": {"port": 8765, "auto_pull": True}}
 
 
 def project_settings(root: Path) -> dict:
@@ -40,11 +40,24 @@ def project_settings(root: Path) -> dict:
     return settings
 
 
+# The testing automap ([play] test_automap): every thing shown (the IDDT cheat, level 2), drawn as
+# its own sprite (so a red skull looks like one), keys shown even without the cheat, and every
+# trigger line in its own colour (2 = including doors). am_cheat isn't saved in UZDoom's ini; the
+# others are, so they're set on every launch, on or off, and whatever the ini holds doesn't matter.
+# Skull locks get their own colours in the devtools mod's LOCKDEFS (cards and skulls share one).
+TEST_AUTOMAP = {"am_cheat": (2, 0), "am_showthingsprites": (1, 0), "am_showkeys_always": (1, 0),
+                "am_showtriggerlines": (2, 0)}
+
+
 def play_args(settings: dict) -> list[str]:
-    """Extra UZDoom arguments for test-play, from the [play] settings. Per launch; nothing persists."""
+    """Extra UZDoom arguments for test-play, from the [play] settings. Per launch: -nomusic isn't
+    saved, and the automap settings are set explicitly every time (see TEST_AUTOMAP)."""
     args = []
     if not settings["play"].get("music", False):
         args.append("-nomusic")
+    on = settings["play"].get("test_automap", True)
+    for cvar, (yes, no) in TEST_AUTOMAP.items():
+        args += [f"+{cvar}", str(yes if on else no)]  # not "+set": an unknown name shows in the log
     return args
 
 

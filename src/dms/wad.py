@@ -38,6 +38,17 @@ def read(path: Path) -> tuple[str, list[Lump]]:
     return kind, lumps
 
 
+def read_directory(path: Path) -> tuple[str, list[tuple[str, int, int]]]:
+    """The WAD's kind and its directory: (name, offset, size) for each lump, in order."""
+    raw = Path(path).read_bytes()
+    kind, count, diroffs = HEADER.unpack_from(raw, 0)
+    entries = []
+    for i in range(count):
+        offs, size, name = ENTRY.unpack_from(raw, diroffs + i * ENTRY.size)
+        entries.append((name.rstrip(b"\0").decode("ascii", "replace"), offs, size))
+    return kind.decode("ascii", "replace"), entries
+
+
 def write(path: Path, lumps: list[Lump], kind: str = "PWAD") -> None:
     data = bytearray(HEADER.size)
     directory = bytearray()

@@ -79,6 +79,10 @@ It sets the environment and runs `uv run dms <command>`. Any other `.ps1` script
   editor rewrites `UDBuilder.cfg` on exit.
 - **`dms.toml`**: committed project settings, applied at the next editor launch. `[play] music = false` makes
   test-play run UZDoom with `-nomusic` (per launch; nothing is saved in UZDoom's settings).
+  `[play] test_automap = true` (default) gives test-play (F9 and `dms play`) a testing automap: all things shown
+  (`am_cheat 2`, not saved) as their sprites, keys always, every trigger line coloured; set explicitly on every
+  launch, on or off, since UZDoom saves the other three in its ini (`configure.TEST_AUTOMAP`). The devtools mod's
+  `LOCKDEFS` gives skull locks lighter map colours than card locks (`dms play` only).
 - Tests: `. .\scripts\dms-env.ps1; Invoke-DmsScope -Root $PWD -Body { & .tools\uv\uv.exe run --locked pytest -q }`
 
 Map commands take a map name (`maps/<name>`) or a path to a map folder:
@@ -132,6 +136,13 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   - `dms watch [<map>]` prints open notes, then each new one as it arrives (`[DMS-NOTE] ...`). **While the mapper is
     working, Claude keeps it running with the Monitor tool** (re-arm it when it expires), acts on each note, and
     closes it with a reply. Notes from a play session can be batched until the mapper says "go".
+  - **Is Claude listening?** `dms watch` rewrites `build/claude-watch.json` every second (`inbox.listening`: fresh
+    within 10 s and covering the map). Without it, notes still land in the inbox, but the mapper is told: the board
+    shows "Claude isn't watching notes" (and says so in its console when a note arrives), the game's "Got note #N"
+    and status line say so, and the editor's "sent to Claude" becomes a warning. Two backstops on Claude's side:
+    a `UserPromptSubmit` hook (`.claude/settings.json`, `dms notes --hook`) shows Claude every open note no watch
+    delivered with each message the mapper sends (silent when none are open), and `start-claude.bat` starts
+    each session by asking Claude to arm the watch.
   - Sources: the board (click a spot on a build's picture; each build records how its pictures map to the level,
     and the server works out the thing within 24 units or the sector there); the editor (**Send to Claude**,
     Ctrl+Shift+N, or Ctrl+right click for a "Message Claude about this..." menu, or Tools > Send to Claude; actions
@@ -145,6 +156,24 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
     and line numbers map straight to `TEXTMAP`, things by position).
   - The board's `POST /api/note` only accepts its own page's requests (JSON + an `X-DMS-Board` header, same origin):
     notes are instructions Claude acts on, so other web pages must not be able to add them.
+- **The live link with the running game** (`src/dms/live.py`, the mod's `DmsLive`): `dms play` runs a live copy,
+  `build/<map>/play.wad`, whose lumps sit in fixed, space-padded slots so dms can rewrite them in place while the
+  game runs (tried: UZDoom allows writing its open WADs and reads lumps from disk each time; it reads the
+  directory only at startup, so the layout must never change). Whether a game is running: the pid in
+  `build/<map>/play.json`.
+  - **Every build** writes the new `TEXTMAP` into it. **Key H** in the game (`dms_reload`) reloads the map
+    (`Level.ChangeLevel`) and puts the player back where they were, in about a second, with no restart.
+    Monsters and pickups reset; inventory and health carry over.
+  - **Notes from the game are acknowledged in the game** as soon as dms picks them up ("Got note #N"), and a
+    status line at the bottom shows "Claude: working on note #N" with moving dots. **While working on a note,
+    update it with `dms status <map> "what you're doing"`** (e.g. "cutting the hallway"); closing the note
+    moves it on to the next open note, or clears it.
+  - **Closing a note** (`dms notes --close`) writes the reply into the `DMSLIVE` lump; the mod polls it every
+    second and shows it in a box at the top of the screen for 12 s. **So: build, then close the note with a reply
+    saying what changed and "press H"**; the mapper sees it in the game and reloads.
+  - If the map outgrows its slot (1 MB or 4x the map, whichever is bigger), `DMSLIVE` says "restart" and H instead
+    logs `[DMS-RELOAD]`: the board's watcher closes the game (`launch.stop_game`) and starts it again with
+    `+set dms_spawn` / `+set dms_message` (CVARINFO). That path needs the board running.
 - `dms board [--port N] [--no-browser]` (**`Open Board.cmd`**): serves the board on 127.0.0.1 (port from `dms.toml`
   `[board]`, default 8765) and opens the browser; the console window keeps it running and prints a timestamped
   line for each new build (with the note's first line), editor change (opened, unsaved, saved edits waiting,
@@ -195,7 +224,10 @@ Code: `src/dms/udmf.py` (TEXTMAP read/write, keeps every field), `wad.py`, `cata
 `map.py` files use; every element gets a `user_gid`), `maps.py`, `build.py`, `launch.py`, `history.py`, `board.py`,
 `pull.py`, `overrides.py`, `movement.py`, `inbox.py`.
 
-*Planned, not built yet* (see `PLAN.md` §6): notes from the editor (hotkey) and the game (key), `tour`.
+- **`start-claude.bat`**: the mapper's way in: `git pull`, `claude update`, then starts Claude Code with a first
+  message asking it to arm the note watch and say where things were left off.
+
+*Planned, not built yet* (see `PLAN.md` §6, §8): `tour`, the test map overlay, per-map ZScript.
 
 **Running uv directly** (e.g. `uv add`, `uv lock`): never call a bare `uv`. Run it inside the repo environment:
 

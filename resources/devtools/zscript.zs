@@ -17,10 +17,34 @@ class DmsNotes : EventHandler
 
 	override void NetworkProcess(ConsoleEvent e)
 	{
-		if (e.Name != "dms_mark" || e.Player != consoleplayer) return;
+		if (e.Player != consoleplayer) return;
 		let p = players[e.Player];
 		let mo = p.mo;
 		if (!mo) return;
+		if (e.Name == "dms_reload")
+		{
+			let live = DmsLive(StaticEventHandler.Find("DmsLive"));
+			if (live && live.hasLive && !live.restart)
+			{
+				// dms has already written the latest build into play.wad: reload the map from it and put
+				// the player back here (DmsLive.PlayerEntered).
+				live.pending = true;
+				live.spawn = mo.pos;
+				live.spawnAngle = mo.angle;
+				live.spawnPitch = mo.pitch;
+				Console.Printf("[DMS-RELOAD-INPLACE] %.1f %.1f %.1f build=%d", mo.pos.x, mo.pos.y, mo.pos.z, live.build);
+				level.ChangeLevel(level.MapName, 0, CHANGELEVEL_NOINTERMISSION);
+			}
+			else
+			{
+				// The map outgrew play.wad (or it isn't a live one): the board (Open Board.cmd) sees this
+				// line, rebuilds, and restarts the game here.
+				Console.Printf("[DMS-RELOAD] %.1f %.1f %.1f %.1f %.1f", mo.pos.x, mo.pos.y, mo.pos.z, mo.angle, mo.pitch);
+				Console.MidPrint(NewSmallFont, "Restarting the game here...\n(this needs the board running: Open Board.cmd)");
+			}
+			return;
+		}
+		if (e.Name != "dms_mark") return;
 		marks++;
 
 		FLineTraceData t;
@@ -135,5 +159,155 @@ class DmsNoteMenu : GenericMenu
 		Screen.DrawText(f, Font.CR_DARKGRAY, x, y, "Enter sends  -  Backspace corrects  -  Esc cancels",
 			DTA_ScaleX, scale, DTA_ScaleY, scale);
 		Super.Drawer();
+	}
+}
+
+// The live link with dms (src/dms/live.py). `dms play` runs a play.wad whose lumps dms rewrites in place
+// while the game runs; UZDoom reads a lump from disk each time, so:
+//  - DMSLIVE (polled every second): Claude's replies, shown here as they come; the build in play.wad;
+//    whether the map outgrew play.wad ("restart": then key H asks the board to restart the game).
+//  - TEXTMAP: the latest build, which key H loads by reloading the map; the player is put back where
+//    they were (PlayerEntered).
+// Also, after a restart by the board: dms_spawn / dms_message (CVARINFO) from the command line.
+// A static handler, so it survives map reloads; its messages time out on level.totaltime.
+class DmsLive : StaticEventHandler
+{
+	bool hasLive;       // play.wad has a DMSLIVE lump (it's a live play.wad)
+	int build;          // the build dms last wrote into play.wad
+	bool restart;       // the map outgrew play.wad: H restarts the game instead
+	int lastSeq;        // the last message shown
+	String status;      // what Claude is doing ("" = nothing): a line near the bottom, with moving dots
+
+	bool pending;       // H was pressed: put the player back at spawn on arrival
+	vector3 spawn;
+	double spawnAngle, spawnPitch;
+	bool started;       // the command-line spawn/message were applied (once per game start)
+
+	Array<String> shown;    // messages on screen, and when each appeared (level.totaltime)
+	Array<int> shownAt;
+
+	const SHOW_TICS = 12 * TICRATE;
+
+	void Say(String text)
+	{
+		shown.Push(text);
+		shownAt.Push(level.totaltime);
+		Console.Printf("%s", text);
+	}
+
+	override void WorldTick()
+	{
+		if (level.totaltime % TICRATE == 0) Poll();
+	}
+
+	void Poll()
+	{
+		int lump = Wads.FindLump("DMSLIVE");
+		if (lump < 0) return;
+		hasLive = true;
+		Array<String> lines;
+		Wads.ReadLump(lump).Split(lines, "\n");
+		for (int i = 0; i < lines.Size(); i++)
+		{
+			String l = lines[i];
+			if (l.Left(7) == "status ") { status = l.Mid(7); status.StripRight(); }
+			else if (l.Left(6) == "build ") build = l.Mid(6).ToInt();
+			else if (l.Left(8) == "restart ") restart = l.Mid(8).ToInt() != 0;
+			else if (l.Left(4) == "msg ")
+			{
+				String rest = l.Mid(4);
+				int sp = rest.IndexOf(" ");
+				if (sp < 0) continue;
+				int seq = rest.Left(sp).ToInt();
+				if (seq > lastSeq)
+				{
+					lastSeq = seq;
+					Say(rest.Mid(sp + 1));
+				}
+			}
+		}
+	}
+
+	override void PlayerEntered(PlayerEvent e)
+	{
+		if (e.PlayerNumber != consoleplayer) return;
+		let mo = players[e.PlayerNumber].mo;
+		if (!mo) return;
+		if (pending)
+		{
+			pending = false;
+			Place(mo, spawn, spawnAngle, spawnPitch);
+			Say(String.Format("Reloaded in place (build #%d)", build));
+			return;
+		}
+		if (started) return;
+		started = true;
+		Poll();  // don't repeat messages that were already there when the game started
+		let sp = CVar.GetCVar("dms_spawn", players[e.PlayerNumber]);
+		if (sp && sp.GetString().Length() > 0)
+		{
+			Array<String> v;
+			sp.GetString().Split(v, " ", TOK_SKIPEMPTY);
+			if (v.Size() == 5)
+				Place(mo, (v[0].ToDouble(), v[1].ToDouble(), v[2].ToDouble()), v[3].ToDouble(), v[4].ToDouble());
+		}
+		let msg = CVar.GetCVar("dms_message", players[e.PlayerNumber]);
+		if (msg && msg.GetString().Length() > 0)
+		{
+			Array<String> lines;
+			msg.GetString().Split(lines, "|");
+			for (int i = 0; i < lines.Size(); i++) Say(lines[i]);
+		}
+	}
+
+	ui void DrawStatus()
+	{
+		if (status.Length() == 0) return;
+		Font f = NewSmallFont;
+		int sw = Screen.GetWidth(), sh = Screen.GetHeight();
+		int scale = max(1, sh / 400);
+		// Dots that keep moving, so it's clear Claude (and the link) is alive: ".", "..", "...", "".
+		String dots = "";
+		for (int i = 0; i < (level.totaltime / 12) % 4; i++) dots = dots .. ".";
+		String line = "Claude: " .. status .. " " .. dots;
+		int w = f.StringWidth("Claude: " .. status .. " ...") * scale;  // without the dots: no jitter
+		int x = (sw - w) / 2, y = sh * 3 / 4;
+		Screen.Dim(Color(255, 16, 16, 24), 0.7, x - 10, y - 6, w + 20, f.GetHeight() * scale + 12);
+		Screen.DrawText(f, Font.CR_SAPPHIRE, x, y, line, DTA_ScaleX, scale, DTA_ScaleY, scale);
+	}
+
+	void Place(Actor mo, vector3 pos, double angle, double pitch)
+	{
+		mo.SetOrigin(pos, false);
+		mo.angle = angle;
+		mo.pitch = pitch;
+		mo.vel = (0, 0, 0);
+	}
+
+	// Recent messages in a box at the top of the screen; Claude's status on a line near the bottom.
+	override void RenderOverlay(RenderEvent e)
+	{
+		DrawStatus();
+		Array<String> lines;
+		for (int i = 0; i < shown.Size(); i++)
+			if (level.totaltime - shownAt[i] <= SHOW_TICS) lines.Push(shown[i]);
+		if (lines.Size() == 0) return;
+		Font f = NewSmallFont;
+		int sw = Screen.GetWidth(), sh = Screen.GetHeight();
+		int scale = max(1, sh / 400);
+		int lh = f.GetHeight() * scale;
+		int boxw = min(sw - 40, 760 * scale);
+		int x = (sw - boxw) / 2, y = 20 * scale;
+		Array<String> wrapped;
+		Array<int> first;  // 1 where a message starts (drawn in gold)
+		for (int i = 0; i < lines.Size(); i++)
+		{
+			let b = f.BreakLines(lines[i], boxw / scale);
+			for (int j = 0; j < b.Count(); j++) { wrapped.Push(b.StringAt(j)); first.Push(j == 0 ? 1 : 0); }
+		}
+		Screen.Dim(Color(255, 16, 16, 24), 0.85, x - 12, y - 10, boxw + 24, wrapped.Size() * lh + 20);
+		for (int i = 0; i < wrapped.Size(); i++)
+			Screen.DrawText(f, first[i] ? Font.CR_GOLD : Font.CR_WHITE, x, y + i * lh, wrapped[i],
+				DTA_ScaleX, scale, DTA_ScaleY, scale);
 	}
 }

@@ -239,7 +239,24 @@ def build(info: MapInfo, root: Path, force: bool = False, note: str | None = Non
                       views=views):
         print("    added to the board's history" + (" (with a note)" if note else ""))
     _refresh_edit_wad(info, root, force)
+    _refresh_play_wad(info, root, data)
     return BuildResult(out, issues)
+
+
+def _refresh_play_wad(info: MapInfo, root: Path, textmap: bytes) -> None:
+    """While the game runs, write the new build into its live play.wad (live.py): key H in the game
+    then reloads the map in place with it."""
+    from dms import history, live
+
+    if not live.game_running(info, root):
+        return
+    latest = history.latest(info, root)
+    seq = latest["seq"] if latest else 0
+    result = live.update_map(info, root, mapinfo(info).encode("utf-8"), textmap, seq)
+    if result == "updated":
+        print(f"    updated the running game's play.wad (build #{seq}): press H in the game to reload in place")
+    elif result == "restart":
+        print("    the map outgrew the running game's play.wad: H in the game will restart it (needs the board)")
 
 
 def _refresh_edit_wad(info: MapInfo, root: Path, force: bool = False) -> None:

@@ -33,6 +33,8 @@ NAME = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 LOG_PROBLEM = re.compile(r"\b(errors?|warnings?|unknown|not found|can't|cannot|could not|couldn't|missing|failed|bad)\b",
                          re.IGNORECASE)
 LOG_COLOR = re.compile(r"\x1c(\[[^\]]*\]|.)")  # UZDoom's text colour escapes
+# Key H in the game (resources/devtools): "reload the map in place here" (x y z angle pitch).
+RELOAD_RE = re.compile(r"\[DMS-RELOAD\] (-?[\d.]+) (-?[\d.]+) (-?[\d.]+) (-?[\d.]+) (-?[\d.]+)")
 MAX_LOG_LINES = 50
 
 
@@ -136,6 +138,7 @@ def map_detail(info: MapInfo, root: Path) -> dict:
         "editor": editor,
         "pending": pending_save(info, root, editor),
         "notes": list(reversed(inbox.notes(info, root)))[:50],
+        "claude_listening": inbox.listening(root, info.name),  # a `dms watch` covers this map
         "play_log": play_log(info, root),
         "entries": history.entries(info, root),
     }
@@ -167,6 +170,7 @@ class Watcher:
         self.prev: dict | None = None
         self.pending_logs: dict[str, int] = {}
         self.handled_saves: dict[str, tuple] = {}  # map -> edit.wad (mtime, size) already auto-pulled
+        self.reloads_seen: dict[str, tuple] = {}   # map -> (play session, reload requests acted on)
         self.just_pulled: set[str] = set()
 
     @staticmethod
@@ -192,6 +196,8 @@ class Watcher:
         cur = self.snapshot()
         if self.prev is None:
             self.prev = cur
+            for name, c in cur.items():
+                self._check_reloads(name, c["info"], first=True)
             return [self._summary(name, c) for name, c in cur.items()] or ["no maps yet"]
         msgs: list[str] = []
         for name, c in cur.items():
@@ -209,6 +215,8 @@ class Watcher:
                     if old is None:
                         src = inbox.SOURCES.get(n.get("source"), n.get("source"))
                         msgs.append(f"{name}: note #{nid} from {src}: {_first_line(n['text'], 90)}")
+                        if not inbox.listening(self.root, name):
+                            msgs.append(f"{name}: Claude isn't watching notes (no dms watch): tell Claude to check them")
                     elif old["status"] == "open" and n["status"] == "closed":
                         msgs.append(f"{name}: note #{nid} done" + (f": {_first_line(n['reply'], 90)}" if n.get("reply") else ""))
             # Auto-pull a save once edit.wad has stopped changing (one look), and only once per save.
@@ -220,6 +228,7 @@ class Watcher:
             # Play log: report once it has stopped changing, so a session gives one line.
             if c["log"] != (p["log"] if p else None):
                 self.pending_logs[name] = 0
+                msgs += self._check_reloads(name, c["info"])  # key H in the game: reload in place
             elif name in self.pending_logs:
                 self.pending_logs[name] += 1
                 if self.pending_logs[name] >= self.SETTLE:
@@ -255,6 +264,71 @@ class Watcher:
                 out.append("saved editor edits cleared")
         if p["open"] and not c["open"]:
             out.append("editor closed")
+        return out
+
+    # ------------------------------------------------------------ reload in place (key H in the game)
+
+    def _reload_requests(self, info: MapInfo) -> tuple[str, list[list[float]]]:
+        """(this play session's id, positions of every reload request in its log so far)."""
+        log = info.build_dir(self.root) / "log-play.txt"
+        try:
+            text = log.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return "", []
+        m = re.search(r"^Log started: (.*)$", text, re.MULTILINE)
+        found = [[float(v) for v in r.groups()] for r in RELOAD_RE.finditer(text)]
+        return (m.group(1) if m else ""), found
+
+    def _check_reloads(self, name: str, info: MapInfo, first: bool = False) -> list[str]:
+        """Reload the game if its log has a reload request we haven't acted on. Requests already in the
+        log when the board started don't count; a new play session starts its own count."""
+        session, requests = self._reload_requests(info)
+        prev = self.reloads_seen.get(name)
+        self.reloads_seen[name] = (session, len(requests))
+        if first or prev is None:
+            return []
+        prev_session, prev_count = prev
+        new = len(requests) - (prev_count if session == prev_session else 0)
+        return self._reload(name, info, requests[-1]) if new > 0 else []
+
+    def _reload(self, name: str, info: MapInfo, spawn: list[float]) -> list[str]:
+        from dms import build as b
+        from dms import launch
+
+        try:
+            started = json.loads((info.build_dir(self.root) / "play.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            started = {}
+        since = started.get("started", 0)
+        out: list[str] = []
+        buf = io.StringIO()
+        rebuilt = None
+        try:
+            with _say_lock, contextlib.redirect_stdout(buf):
+                if b.needs_build(info, self.root) and not b.edit_wad_changed(info, self.root):
+                    b.build(info, self.root, note="Rebuilt for a reload in place from the game.")
+                    rebuilt = history.latest(info, self.root)
+        except Exception as e:  # noqa: BLE001 - reload anyway, with the WAD as it is
+            out.append(f"{name}: the rebuild failed ({e}); reloading the game with the map as it was")
+
+        # What to tell the mapper on arrival: replies since this game started, and notes still open.
+        lines = [f"Reloaded in place" + (f" (build #{rebuilt['seq']})" if rebuilt else "")]
+        for n in inbox.notes(info, self.root):
+            closed = n.get("closed")
+            if n["status"] == "closed" and closed and datetime.fromisoformat(closed).timestamp() >= since:
+                lines.append(f"Claude, note #{n['id']}: {n.get('reply') or 'done'}")
+            elif n["status"] == "open" and n.get("source") == "game":
+                lines.append(f"Note #{n['id']} ({_first_line(n['text'], 40)}): Claude is still on it")
+        if len(lines) == 1:
+            lines.append("No replies from Claude since the last start.")
+
+        launch.stop_game(info, self.root)
+        with _say_lock, contextlib.redirect_stdout(io.StringIO()):
+            launch.play(self.root, info, skill=started.get("skill", 3), nomonsters=started.get("nomonsters", False),
+                        spawn=spawn, message="|".join(lines))
+        out.append(f"{name}: reloaded the game in place at ({spawn[0]:g}, {spawn[1]:g})"
+                   + (f" with build #{rebuilt['seq']}" if rebuilt else "")
+                   + f"; {len(lines) - 1} message line(s) shown on arrival")
         return out
 
     def _pull(self, name: str, info: MapInfo) -> list[str]:
