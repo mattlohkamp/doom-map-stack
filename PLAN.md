@@ -359,7 +359,12 @@ Still to build later:
 - **Parked:** hello-room's lost-soul yards (alarm doesn't wake them; side souls can't find their way out; see
   `maps/hello-room/notes.md`), waiting on per-map ZScript (M2 list, §8).
 
-**Next, in order:** a short side trip on launching the tooling (mapper's request), then the **screenshot tour**
+- **Start Session** (`Start Session.cmd`, `dms session`; mapper's request): one window to pick or create a map and
+  tick what to open (board, browser, editor, game windowed, agent); a Claude already running in the repo is handed
+  the map instead of a second one starting (hooks record sessions, `src/dms/agents.py`). Mapper, first run:
+  "this is so perfect".
+
+**Next, in order:** the **screenshot tour**
 (§6 item 7), then the rest of M2 (§8): the test map overlay, per-map ZScript (then revisit the yards, starting
 with logging what wakes each monster). Then M3.
 

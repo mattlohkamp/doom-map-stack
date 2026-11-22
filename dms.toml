@@ -5,10 +5,34 @@
 # Music when test-playing (F9 in the editor, and later `dms play`). false = UZDoom runs with
 # -nomusic for that launch only; sound effects stay on and nothing is saved in UZDoom's settings.
 music = false
+# Test-play in a window (true) or full screen (false); set on every launch. In a window, UZDoom
+# remembers where it was, so it reopens on the same monitor.
+windowed = true
 # A testing automap (F9 in the editor and `dms play`): every monster, item and key shown as its own
 # picture, and every trigger line in its own colour. Skull-locked doors get lighter colours than
 # card-locked ones (`dms play` only: that's the devtools mod). Set on every launch, on or off.
 test_automap = true
+
+[session]
+# What Start Session.cmd opens for the chosen map, ticked by default in its window (each can be
+# unticked there). The board runs in a console window of its own; the browser shows its page.
+board = true
+browser = true
+editor = true
+game = true
+# The coding agent started in a window of its own, from [agents] below ("" = none). It isn't
+# started if one is already watching notes for the map (`dms watch`).
+agent = "claude"
+
+# Coding agents Start Session can start. Each: a name for the window, and a launcher, a .bat or .cmd
+# in the repo root, run as `<launcher> --session <map>` with the mapper's own environment. Only
+# Claude Code is supported (AGENTS.md); another agent needs its own launcher, e.g.:
+#   [agents.other]
+#   name = "Other Agent"
+#   launcher = "start-other.bat"
+[agents.claude]
+name = "Claude Code"
+launcher = "start-claude.bat"
 
 [board]
 # Port for the board (`Open Board.cmd`), served on this computer only (127.0.0.1).

@@ -39,6 +39,8 @@ works too.
 
 | Launcher | What it does |
 |---|---|
+| `Start Session.cmd` | **The usual way in.** A window to pick a map or start a new one, with what to open ticked (defaults in `dms.toml`): the board (in the browser), the editor and the game open on the map, windowed, and Claude starts in a window of its own, ready to take notes from all three. Anything already open is brought to the front instead. |
+| `start-claude.bat` | Starts Claude on its own (after updating the repo and Claude Code). |
 | `Open Board.cmd` | A local web page with each map's builds: the top-down render with the changes marked (or before and after), Claude's note on what changed and what to check, validation results, the editor's state and problems from the last play session. Updates by itself; its console window lists everything as it happens. |
 | `Edit Map.cmd` | Opens a map in Ultimate Doom Builder. When Claude rebuilds the map, the open editor reloads it in place (view and zoom kept). |
 | `Play Map.cmd` | Builds the map if needed and plays it in UZDoom. |

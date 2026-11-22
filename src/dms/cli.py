@@ -148,6 +148,37 @@ def cmd_edit(args: argparse.Namespace) -> int:
     return launch.edit(root, info)
 
 
+def cmd_session(args: argparse.Namespace) -> int:
+    from dms import maps, picker, session
+
+    from dms.configure import project_settings
+
+    root = repo_root()
+    session.clear(root)
+    settings = project_settings(root)
+    choices = session.defaults(settings)
+    if args.map:  # dropped onto the launcher, or from a terminal: no window, the defaults
+        info = maps.resolve(root, args.map)
+        for part in session.PARTS:
+            if getattr(args, f"no_{part}"):
+                choices[part] = False
+        if args.no_agent:
+            choices["agent"] = ""
+    else:
+        from dms import agents
+
+        names = {k: a["name"] for k, a in session.agents(settings).items()}
+        already = agents.running(root)
+        note = (f"already running here (process {already[-1]['pid']}): it'll be told the map, not started again"
+                if already else "its own window; not started twice")
+        picked = picker.pick_session(root, choices, names, agent_note=note)
+        if picked is None:
+            print("dms session: cancelled")
+            return 2
+        info, choices = picked
+    return session.start(root, info, choices)
+
+
 def cmd_pull(args: argparse.Namespace) -> int:
     from dms import pull
 
@@ -183,6 +214,36 @@ def cmd_notes(args: argparse.Namespace) -> int:
                 shown += 1
     if not shown:
         print("no open notes" if not args.all else "no notes")
+    return 0
+
+
+def cmd_agent_hook(args: argparse.Namespace) -> int:
+    """Claude Code's hooks (.claude/settings.json): `start` (SessionStart), `prompt` (UserPromptSubmit),
+    `end` (SessionEnd). Records the running session (agents.py); on start and prompt, prints what the
+    agent should know (a Start Session request, open notes no watch delivered), which Claude Code adds
+    to its context. Never fails: a broken hook must not get in the mapper's way."""
+    import json as _json
+
+    from dms import agents, maps
+
+    root = repo_root()
+    try:
+        data = _json.loads(sys.stdin.read() or "{}")
+    except (ValueError, OSError):
+        data = {}
+    session_id = str(data.get("session_id") or "") if isinstance(data, dict) else ""
+    try:
+        if args.event == "end":
+            agents.unregister(root, session_id)
+            return 0
+        agents.register(root, "claude", session_id)
+        req = agents.take_request(root)
+        if req:
+            print(agents.request_text(req))
+        if args.event == "prompt":
+            return _notes_hook(root, maps.all_maps(root))
+    except Exception as e:  # noqa: BLE001
+        print(f"dms: the agent hook failed ({e})")
     return 0
 
 
@@ -232,7 +293,7 @@ def cmd_status(args: argparse.Namespace) -> int:
 def cmd_watch(args: argparse.Namespace) -> int:
     import time
 
-    from dms import inbox, maps
+    from dms import agents, inbox, maps
 
     root = repo_root()
     seen: dict[str, set[int]] = {}
@@ -246,6 +307,9 @@ def cmd_watch(args: argparse.Namespace) -> int:
         while True:
             # Tell the board, the game and the editor that Claude is listening (inbox.listening).
             inbox.mark_listening(root, [maps.resolve(root, args.map).name] if args.map else None)
+            req = agents.take_request(root)  # Start Session found this agent running (agents.py)
+            if req:
+                print(agents.request_text(req), flush=True)
             for info in targets():
                 inbox.ingest_game_log(info, root)  # notes typed in the game
                 notes = inbox.notes(info, root)
@@ -320,6 +384,16 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("edit", help="open the map in Ultimate Doom Builder (as build/<map>/edit.wad)")
     p.add_argument("map", nargs="?", help=MAP_HELP + "; none: choose from a list")
     p.set_defaults(func=cmd_edit)
+
+    p = sub.add_parser("session", help="pick or create a map, then open the board, browser, editor and game for it")
+    p.add_argument("map", nargs="?", help=MAP_HELP + "; none: the session window (choose, or start a new map)")
+    for part in ("board", "browser", "editor", "game", "agent"):
+        p.add_argument(f"--no-{part}", action="store_true", help=f"with a map: don't open the {part}")
+    p.set_defaults(func=cmd_session)
+
+    p = sub.add_parser("agent-hook", help="(run by Claude Code's hooks, .claude/settings.json)")
+    p.add_argument("event", choices=("start", "prompt", "end"))
+    p.set_defaults(func=cmd_agent_hook)
 
     p = sub.add_parser("notes", help="list the mapper's notes (open ones by default), or close one")
     p.add_argument("map", nargs="?", help=MAP_HELP + "; none: every map")

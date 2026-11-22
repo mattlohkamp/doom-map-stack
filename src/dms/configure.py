@@ -26,7 +26,10 @@ UDB_GAMEKEY = "uzdoom_doomudmf"  # lowercased config filename without extension
 UDB_SCRIPT_CONFIG = "zdoom_acs.cfg"
 UZDOOM_PORTABLE_INI = "uzdoom_portable.ini"
 
-DEFAULT_SETTINGS = {"play": {"music": False, "test_automap": True},"board": {"port": 8765, "auto_pull": True}}
+DEFAULT_SETTINGS = {"play": {"music": False, "windowed": True, "test_automap": True},
+                    "board": {"port": 8765, "auto_pull": True},
+                    "session": {"board": True, "browser": True, "editor": True, "game": True, "agent": "claude"},
+                    "agents": {"claude": {"name": "Claude Code", "launcher": "start-claude.bat"}}}
 
 
 def project_settings(root: Path) -> dict:
@@ -55,6 +58,9 @@ def play_args(settings: dict) -> list[str]:
     args = []
     if not settings["play"].get("music", False):
         args.append("-nomusic")
+    # Windowed or full screen, set every launch (UZDoom saves it). Windowed, it remembers where its
+    # window was, so it reopens on the same monitor.
+    args += ["+vid_fullscreen", "0" if settings["play"].get("windowed", True) else "1"]
     on = settings["play"].get("test_automap", True)
     for cvar, (yes, no) in TEST_AUTOMAP.items():
         args += [f"+{cvar}", str(yes if on else no)]  # not "+set": an unknown name shows in the log

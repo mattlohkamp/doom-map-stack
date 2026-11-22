@@ -140,9 +140,15 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
     within 10 s and covering the map). Without it, notes still land in the inbox, but the mapper is told: the board
     shows "Claude isn't watching notes" (and says so in its console when a note arrives), the game's "Got note #N"
     and status line say so, and the editor's "sent to Claude" becomes a warning. Two backstops on Claude's side:
-    a `UserPromptSubmit` hook (`.claude/settings.json`, `dms notes --hook`) shows Claude every open note no watch
-    delivered with each message the mapper sends (silent when none are open), and `start-claude.bat` starts
+    a `UserPromptSubmit` hook (`.claude/settings.json`, `dms agent-hook prompt`) shows Claude every open note no
+    watch delivered with each message the mapper sends (silent when none are open), and `start-claude.bat` starts
     each session by asking Claude to arm the watch.
+  - **Which Claude sessions are running** (`src/dms/agents.py`): the `SessionStart` and `UserPromptSubmit` hooks
+    record the `claude.exe` process they run under (nearest ancestor) in `build/agents/<session id>.json`;
+    `SessionEnd` removes it. A record counts while that process is alive with that name. Start Session uses it
+    to hand the map to a running session (`build/session-request.json`, passed on once, as a `[DMS-SESSION]`
+    line, by `dms watch` or the prompt hook) instead of starting a second Claude. **On a `[DMS-SESSION]`
+    line, Claude arms the watch for that map, reads its notes and tells the mapper it's on it.**
   - Sources: the board (click a spot on a build's picture; each build records how its pictures map to the level,
     and the server works out the thing within 24 units or the sector there); the editor (**Send to Claude**,
     Ctrl+Shift+N, or Ctrl+right click for a "Message Claude about this..." menu, or Tools > Send to Claude; actions
@@ -224,8 +230,24 @@ Code: `src/dms/udmf.py` (TEXTMAP read/write, keeps every field), `wad.py`, `cata
 `map.py` files use; every element gets a `user_gid`), `maps.py`, `build.py`, `launch.py`, `history.py`, `board.py`,
 `pull.py`, `overrides.py`, `movement.py`, `inbox.py`.
 
-- **`start-claude.bat`**: the mapper's way in: `git pull`, `claude update`, then starts Claude Code with a first
-  message asking it to arm the note watch and say where things were left off.
+- `dms session [<map>] [--no-board|--no-browser|--no-editor|--no-game|--no-agent]` (**`Start Session.cmd`**, the
+  mapper's usual way in; `src/dms/session.py`): `git pull`, then the session window (`picker.pick_session`): the map
+  list (focused, last map selected), **New map...**, and toggles for the board, browser, editor, game and agent
+  (defaults: `[session]` in `dms.toml`, not remembered). Choosing a map (Start, Enter, double-click) or creating one
+  starts it: builds if needed, then opens what was ticked and isn't open: the board in its own console window, the
+  browser on the map's page (`/#<map>`; skipped if no board runs), the editor (`launch.edit`) and the game
+  (`launch.play`), or brings them to the front. A dropped map skips the window and uses the defaults.
+  It writes `build/session.txt` (`map=`, and `launcher=`/`title=` when an agent is to start); the `.cmd` then runs
+  the agent's launcher in its own window (`<launcher> --session <map>`). No agent is started if a Claude session
+  is already running in the repo (`agents.running`; it's handed the map instead, and the window says so) or a
+  `dms watch` covering the map already runs. Agents are listed under `[agents.<key>]` in `dms.toml` (`name`, `launcher`: a
+  `.bat`/`.cmd` in the repo root, no spaces); only Claude Code is defined (scaffolding for others). The agent is
+  started by the `.cmd`, not by Python, so it gets the mapper's environment rather than `dms.ps1`'s.
+  Exit code 2 = the window was cancelled. `[play] windowed = true` (default) runs UZDoom with `+vid_fullscreen 0`
+  on every launch; windowed, UZDoom remembers its position, so it reopens on the same monitor.
+- **`start-claude.bat`**: Claude on its own: `git pull`, `claude update`, then starts Claude Code with a first
+  message asking it to arm the note watch and say where things were left off. With `--session <map>` (from
+  `Start Session.cmd`) it skips the pull and names the map in that message.
 
 *Planned, not built yet* (see `PLAN.md` §6, §8): `tour`, the test map overlay, per-map ZScript.
 
