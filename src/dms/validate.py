@@ -224,11 +224,10 @@ def validate(tm: Textmap, catalog: Catalog | None = None) -> list[Issue]:
         if catalog:
             for key in ("texturefloor", "textureceiling"):
                 flat = s.get(key, "-")
-                if not catalog.has_flat(flat):
-                    if catalog.has_texture(flat):
-                        warn(f"{key} {flat!r} is a wall texture, not a flat", n, here)
-                    else:
-                        err(f"{key} {flat!r} isn't in the flat catalog", n, here)
+                # UZDoom draws wall textures on floors and ceilings too (tiled at their own size), so a
+                # wall texture name is fine here (cacobelisk's marble slot ceilings, 2026-11-22).
+                if not catalog.has_flat(flat) and not catalog.has_texture(flat):
+                    err(f"{key} {flat!r} isn't in the flat or texture catalog", n, here)
 
     # -- things -----------------------------------------------------------
     starts = [t for t in things if t.get("type") == PLAYER1_START]

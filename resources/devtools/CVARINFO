@@ -1,4 +1,6 @@
 // dms devtools: set by `dms play` on the command line when the board reloads the map in place (key H).
-// Not saved: they only apply to the launch that set them.
-user noarchive string dms_spawn = "";     // "x y z angle pitch": where to put the player on arrival
-user noarchive string dms_message = "";   // Claude's replies, shown on arrival ("|" separates lines)
+// Not saved: they only apply to the launch that set them. Plain local cvars (`nosave`), not `user`
+// ones: a user cvar goes into the player's userinfo, which has a size limit, and a long arrival
+// message once stopped UZDoom at startup ("User info descriptor too big").
+nosave string dms_spawn = "";     // "x y z angle pitch": where to put the player on arrival
+nosave string dms_message = "";   // Claude's replies, shown on arrival ("|" separates lines)

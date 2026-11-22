@@ -12,8 +12,9 @@
 //    status bar, so the mapper's work is never thrown away.
 //  - Status: writes build\<map>\editor-state.json (open, unsaved changes, file), so dms and
 //    the board know whether it's safe to update edit.wad.
-//  - Focus: the first time a dms map opens, brings the editor to the front (Windows would
-//    otherwise leave it behind the window the mapper launched it from). Not on reloads.
+//  - Focus: when dms asks (build\<map>\edit-front.request, written by Edit Map, not by Start
+//    Session), brings the editor to the front once the map opens (Windows would otherwise leave
+//    it behind the window the mapper launched it from). Not on reloads.
 //  - Send to Claude (Ctrl+Shift+N, Ctrl+right click menu, Tools menu; Actions.cfg): a note about the selected sectors,
 //    lines or things, or what's under the mouse, appended to build\<map>\inbox.jsonl in the
 //    same format as dms's own notes (src/dms/inbox.py).
@@ -53,8 +54,9 @@ namespace Dms.UdbBridge
         private bool savedSinceLoad;     // the mapper saved since the map was (re)loaded
         private bool reloading;
         private string lastState;
-        private bool broughtToFront;     // once per editor run
-        private bool pendingFront;
+        private bool pendingFront;       // asked for by dms (build\<map>\edit-front.request)
+        private bool remindedOnce;       // the Send to Claude reminder, once per editor run
+        private bool pendingReminder;
 
         [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
         [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr processId);
@@ -287,12 +289,16 @@ namespace Dms.UdbBridge
         {
             savedSinceLoad = false;
             Track();
-            // The first dms map this editor opens: come to the front. Windows keeps a program that
-            // starts slowly behind the window the mapper is in (the launcher has finished by then).
-            // Never on live reloads, so a rebuild doesn't pull the editor over what the mapper's doing.
-            if (watched != null && !reloading && !broughtToFront)
+            if (watched == null || reloading) return;
+            // A dms map opened (not a live reload): the reminder below, once per editor run.
+            if (!remindedOnce) { remindedOnce = true; pendingReminder = true; }
+            // Come to the front when dms asked for it (Edit Map; Start Session opens several windows and
+            // doesn't): Windows keeps a program that starts slowly behind the window the mapper is in.
+            // A one-shot file, used up here, so a later reload never pulls the editor forward.
+            string request = Path.Combine(Path.GetDirectoryName(watched), "edit-front.request");
+            if (File.Exists(request))
             {
-                broughtToFront = true;
+                try { File.Delete(request); } catch (Exception) { }
                 pendingFront = true;   // done on the next tick, once the window has finished showing
             }
         }
@@ -372,6 +378,10 @@ namespace Dms.UdbBridge
                 pendingFront = false;
                 try { BringToFront(); }
                 catch (Exception ex) { General.ErrorLogger.Add(ErrorType.Warning, "dms bridge: " + ex.Message); }
+            }
+            if (pendingReminder)
+            {
+                pendingReminder = false;
                 // A reminder, after the editor's own "ready" status (the mapper asked for one).
                 General.Interface.DisplayStatus(StatusType.Info,
                     "dms: to send Claude a note, select something (or point at it) and press Ctrl+Shift+N, or Ctrl+right click.");

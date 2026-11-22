@@ -21,7 +21,7 @@ from datetime import datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 
 from dms import history, inbox
 from dms.build import edit_wad_changed, editor_state
@@ -502,13 +502,21 @@ def _running_here(port: int, root: Path) -> bool | None:
         return None
 
 
+def _page_url(root: Path, url: str) -> str:
+    """The board's page, on the map last chosen (Start Session and the map pickers remember it)."""
+    from dms import picker
+
+    last = picker._last(root)
+    return url + (f"#{quote(last)}" if last else "")
+
+
 def serve(root: Path, port: int, open_browser: bool = True, auto_pull: bool = True) -> int:
     url = f"http://127.0.0.1:{port}/"
     running = _running_here(port, root)
     if running:
         print(f"dms board: already running at {url}")
         if open_browser:
-            webbrowser.open(url)
+            webbrowser.open(_page_url(root, url))
         return 0
     try:
         server = ThreadingHTTPServer(("127.0.0.1", port), make_handler(root, announce=True))
@@ -527,7 +535,7 @@ def serve(root: Path, port: int, open_browser: bool = True, auto_pull: bool = Tr
     print()
     threading.Thread(target=_watch, args=(Watcher(root, auto_pull=auto_pull),), daemon=True).start()
     if open_browser:
-        webbrowser.open(url)
+        webbrowser.open(_page_url(root, url))
     try:
         server.serve_forever()
     except KeyboardInterrupt:

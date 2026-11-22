@@ -146,3 +146,27 @@ def test_edit_does_not_open_a_second_editor(repo, monkeypatch, capsys):
     state.write_text(json.dumps({"open": True, "pid": 999999999}))  # a crashed editor: open again
     launch.edit(repo, info)
     assert len(opened) == 1
+
+
+def test_edit_asks_the_editor_to_the_front_only_when_focus(repo, monkeypatch):
+    from dms import launch
+
+    info = maps.new(repo, "a")
+    build.build(info, repo)
+    monkeypatch.setattr(launch, "open_editor", lambda *a, **k: 0)
+    focused = []
+    monkeypatch.setattr(launch, "focus_process_window", lambda pid: focused.append(pid) or True)
+    request = info.build_dir(repo) / launch.EDIT_FRONT_FILE
+    launch.edit(repo, info)  # Edit Map
+    assert request.exists()
+    launch.edit(repo, info, focus=False)  # Start Session: a stale request is cleared too
+    assert not request.exists()
+
+    import json
+    import os
+
+    (info.build_dir(repo) / "editor-state.json").write_text(json.dumps({"open": True, "pid": os.getpid()}))
+    launch.edit(repo, info, focus=False)  # already open: left where it is
+    assert focused == []
+    launch.edit(repo, info)
+    assert focused == [os.getpid()]

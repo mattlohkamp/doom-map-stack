@@ -76,7 +76,7 @@ def test_missing_player_start_and_bad_texture():
     m.room("room", 0, 0, 512, 512, floor_tex="NOPE")
     errs = errors(m.textmap(), cat())
     assert any("no player 1 start" in e for e in errs)
-    assert any("'NOPE' isn't in the flat catalog" in e for e in errs)
+    assert any("'NOPE' isn't in the flat or texture catalog" in e for e in errs)
 
 
 def test_open_sector_and_thing_outside():
@@ -166,3 +166,29 @@ def test_diff_marks_added_green_and_removed_red(tmp_path):
     assert render.REMOVED in _pixel_colors(tmp_path / "rm.png")       # the ghost of the box
     assert render.REMOVED in _pixel_colors(tmp_path / "rm-before.png")
     assert render.REMOVED not in _pixel_colors(tmp_path / "rm-after.png")
+
+
+def test_labels_on_the_same_spot_are_spread_apart():
+    from PIL import Image, ImageDraw
+
+    from dms import render
+
+    img = Image.new("RGB", (400, 300))
+    draw = ImageDraw.Draw(img)
+    font = render._font(12)
+    placed = []
+    real_text = draw.text
+
+    def spy(xy, text, **kw):
+        placed.append((text, font.getbbox(text, anchor="mm"), xy))
+        return real_text(xy, text, **kw)
+
+    draw.text = spy
+    labels = [render.Label(f"{i} monolith_w{i}", (200, 150), (255, 255, 255)) for i in range(4)]
+    render.place_labels(draw, labels, font, img.size)
+    boxes = [(x + b[0], y + b[1], x + b[2], y + b[3]) for _, b, (x, y) in placed]
+    assert len(boxes) == 4
+    for i in range(4):
+        for j in range(i + 1, 4):
+            a, b = boxes[i], boxes[j]
+            assert not (a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]), (placed[i][0], placed[j][0])

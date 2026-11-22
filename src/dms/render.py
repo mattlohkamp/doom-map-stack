@@ -174,14 +174,17 @@ def _draw_map(img: Image.Image, view: View, tm: Textmap, *, dim: bool = False, l
             color = tuple(int(c * 0.45) for c in color)
         draw.line([view.px(*pts[0]), view.px(*pts[1])], fill=color, width=width)
 
+    pending: list[Label] = []
     if labels and not dim:
         for sec, polys in loops.items():
             if polys and 0 <= sec < len(sectors):
                 biggest = max(polys, key=polygon_area)
                 cx, cy = view.px(*centroid(biggest))
                 gid = sectors[sec].get("user_gid")
-                draw.text((cx, cy), f"{sec}" + (f" {gid}" if gid else ""), fill=LABEL, font=font, anchor="mm")
+                pending.append(Label(f"{sec}" + (f" {gid}" if gid else ""), (cx, cy), LABEL,
+                                     priority=polygon_area(biggest)))
 
+    markers: list[tuple[float, float, float, float]] = []
     for t in tm.things:
         if "x" not in t.fields:
             continue
@@ -194,8 +197,69 @@ def _draw_map(img: Image.Image, view: View, tm: Textmap, *, dim: bool = False, l
         draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=color, width=2)
         ang = math.radians(t.get("angle", 0))
         draw.line([(cx, cy), (cx + math.cos(ang) * r * 1.8, cy - math.sin(ang) * r * 1.8)], fill=color, width=2)
+        markers.append((cx - r, cy - r, cx + r, cy + r))
         if not is_player and not dim:
-            draw.text((cx + r + 2, cy), str(t.get("type")), fill=color, font=font, anchor="lm")
+            pending.append(Label(str(t.get("type")), (cx, cy), color, priority=-1, gap=r + 2))
+    place_labels(draw, pending, font, (img.width, img.height), obstacles=markers)
+
+
+@dataclass
+class Label:
+    text: str
+    anchor: tuple[float, float]   # the point it labels, in pixels
+    color: tuple
+    priority: float = 0           # placed in increasing order: things (-1), then sectors small to large
+    gap: float = 0                # > 0: its natural spot is beside the anchor (things), not on it
+
+
+# Where a label may go, tried in order: rings of growing radius round its natural spot, 16 directions
+# each, starting to the right and alternating above and below. Pixels.
+_RINGS = (0, 10, 18, 28, 40, 54, 70, 90, 115, 145, 180)
+_DIRS = sorted(range(16), key=lambda k: (min(k, 16 - k), k))
+
+
+def place_labels(draw: ImageDraw.ImageDraw, labels: list[Label], font, size: tuple[int, int],
+                 obstacles=()) -> None:
+    """Draw labels so they don't cover each other (or the obstacles: things' markers). Each goes at
+    its natural spot if it's free, else at the nearest free spot on rings around it, joined to what it
+    labels by a 1px leader line and a dot. If nowhere is free it goes at its natural spot anyway."""
+    taken = [tuple(o) for o in obstacles]
+    w_img, h_img = size
+
+    def free(box) -> bool:
+        x0, y0, x1, y1 = box
+        if x0 < 0 or y0 < 0 or x1 > w_img or y1 > h_img:
+            return False
+        return not any(x0 < b[2] and b[0] < x1 and y0 < b[3] and b[1] < y1 for b in taken)
+
+    for lab in sorted(labels, key=lambda l: l.priority):
+        bx0, by0, bx1, by1 = font.getbbox(lab.text)
+        w, h = bx1 - bx0 + 4, by1 - by0 + 4
+        ax, ay = lab.anchor
+        home = (ax + lab.gap + w / 2, ay) if lab.gap else (ax, ay)   # the label's centre, undisturbed
+        best = None
+        for radius in _RINGS:
+            for k in (_DIRS if radius else (0,)):
+                a = 2 * math.pi * k / 16
+                cx, cy = home[0] + radius * math.cos(a), home[1] - radius * math.sin(a)
+                box = (cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)
+                if free(box):
+                    best = box
+                    break
+            if best:
+                break
+        moved = best is not None and ((best[0] + best[2]) / 2, (best[1] + best[3]) / 2) != home
+        if best is None:
+            best = (home[0] - w / 2, home[1] - h / 2, home[0] + w / 2, home[1] + h / 2)
+        taken.append(best)
+        if moved:
+            # The leader: from the anchor to the nearest point of the label's box.
+            nx = min(max(ax, best[0]), best[2])
+            ny = min(max(ay, best[1]), best[3])
+            lead = tuple(int(c * 0.7) for c in lab.color[:3])
+            draw.line([(ax, ay), (nx, ny)], fill=lead, width=1)
+            draw.ellipse([ax - 1.5, ay - 1.5, ax + 1.5, ay + 1.5], fill=lead)
+        draw.text(((best[0] + best[2]) / 2, (best[1] + best[3]) / 2), lab.text, fill=lab.color, font=font, anchor="mm")
 
 
 SOFTLOCK = (255, 150, 40)

@@ -13,8 +13,13 @@ Claude edits the map ──► build ──► check + top-down render ──►
         └──── feedback: notes, editor saves and comments, play logs ◄── the mapper edits and plays
 ```
 
-**Status:** work in progress. The tooling (milestone M2) is mostly done; the first real map (M3) comes next.
+**Status:** work in progress. The tooling (milestone M2) is done; the first real map (M3) comes next.
 See [`PLAN.md`](PLAN.md) for the roadmap.
+
+**Example:** [`maps/cacobelisk`](maps/cacobelisk) was made in one evening this way, entirely from notes sent
+from inside the game, editor saves and chat: a broken elevator ride down from a dark closet into a fogged hall of
+obelisks that sink into the floor as you pass, one of them hiding a cacodemon. Its
+[`notes.md`](maps/cacobelisk/notes.md) shows every request and what was done about it.
 
 ## Requirements
 

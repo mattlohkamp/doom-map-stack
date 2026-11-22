@@ -112,8 +112,16 @@
     <p><b>Here:</b> click a spot on a build's picture.</p>
     <p><b>In the editor:</b> select something (or point at it), then <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd>,
        or <kbd>Ctrl</kbd>+right click, or Tools &gt; Send to Claude.</p>
+    <p><b>In the game:</b> <kbd>N</kbd>, then type the note.</p>
     <p><b>Board keys:</b> <kbd>&larr;</kbd> <kbd>&rarr;</kbd> flip builds, <kbd>End</kbd> latest,
        <kbd>Space</kbd> replay.</p>
+  </div>
+  <div class="howto">
+    <h2>In the game</h2>
+    <p><b><kbd>H</kbd></b> loads Claude's latest build and puts you back where you stood.</p>
+    <p><b>Stuck in a wall or outside the map</b> after <kbd>H</kbd> (the layout moved under you)?
+       Open the console (<kbd>~</kbd>) and type <kbd>map *</kbd>: the map starts over from the player
+       start, with a pistol start.</p>
   </div>
 </aside>
 <main id="main"><p class="empty">Loading...</p></main>
@@ -121,6 +129,8 @@
 "use strict";
 const POLL_MS = 2000;
 let current = decodeURIComponent(location.hash.slice(1)) || localStorage.getItem("dms-board-map") || "";
+// Opened on a map (Start Session, Open Board): remember it, so a later visit without one opens it too.
+if (location.hash.length > 1) localStorage.setItem("dms-board-map", current);
 let shownFor = null, firstLoad = true, lastDetail = null, logOpen = false, notesOpen = false, lastPending = "";
 let pinned = null, shownDir = null, shownKey = "", lastLatest = null;
 let viewMode = localStorage.getItem("dms-board-view") === "beforeafter" ? "beforeafter" : "changes";

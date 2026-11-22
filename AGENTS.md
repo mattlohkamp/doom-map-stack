@@ -108,7 +108,9 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   - With unsaved changes the plugin warns (sound once per new version, the text again every 10 s). Undoing every
     edit counts as clean (the editor's own "changed" flag doesn't clear on undo), so the reload then happens.
   - `dms build --force` discards the mapper's saved edits in `edit.wad` too, and the open editor reloads.
-  - The first map opened through `dms edit` brings the editor to the front (Windows would leave it behind).
+  - `dms edit` (Edit Map) brings the editor to the front once the map opens (Windows would leave it behind):
+    it writes `build/<map>/edit-front.request`, which the plugin uses up. Start Session doesn't (it opens
+    several windows at once), not even for an editor that's already open.
   - Reload = the editor's internal `CloseMap()` then `OpenMapFileWithOptions()` (both by reflection). Without the
     close, the old map's handle on `edit.wad` leaked and the next save failed with "target file is locked by Builder".
 
@@ -188,19 +190,27 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   running one to the front).
   - **Every build** writes the new `TEXTMAP` into it. **Key H** in the game (`dms_reload`) reloads the map
     (`Level.ChangeLevel`) and puts the player back where they were, in about a second, with no restart.
-    Monsters and pickups reset; inventory and health carry over.
+    Monsters and pickups reset; inventory and health carry over. When the layout moved under the player
+    (H puts them in a wall or outside the map), `map *` in the console restarts from the player start (a
+    pistol start); the board's sidebar says so.
   - **Notes from the game are acknowledged in the game** as soon as dms picks them up ("Got note #N"), and a
     status line at the bottom shows "Claude: working on note #N" with moving dots. **While working on a note,
     update it with `dms status <map> "what you're doing"`** (e.g. "cutting the hallway"); closing the note
     moves it on to the next open note, or clears it.
   - **Closing a note** (`dms notes --close`) writes the reply into the `DMSLIVE` lump; the mod polls it every
-    second and shows it in a box at the top of the screen for 12 s. **So: build, then close the note with a reply
+    second and shows it in a box at the top of the screen for 12 s. Arriving in the map (H, a restart,
+    `map *`) cuts whatever is still showing to 4 s, and the arrival messages themselves last 4 s. **So: build, then close the note with a reply
     saying what changed and "press H"**; the mapper sees it in the game and reloads.
   - If the map outgrows its slot (1 MB or 4x the map, whichever is bigger), `DMSLIVE` says "restart" and H instead
     logs `[DMS-RELOAD]`: the board's watcher closes the game (`launch.stop_game`) and starts it again with
     `+set dms_spawn` / `+set dms_message` (CVARINFO). That path needs the board running.
+    `dms_spawn` and `dms_message` are plain local cvars (`nosave`): as `user` cvars they counted against
+    UZDoom's userinfo size limit, and a long message stopped it at startup ("User info descriptor too
+    big"). `launch.fit_message` still cuts the message to 400 characters (newest replies first, the rest
+    "on the board"), so the box stays readable.
 - `dms board [--port N] [--no-browser]` (**`Open Board.cmd`**): serves the board on 127.0.0.1 (port from `dms.toml`
-  `[board]`, default 8765) and opens the browser; the console window keeps it running and prints a timestamped
+  `[board]`, default 8765) and opens the browser (if the board is already running, it only opens the browser: the way back after
+  closing the browser); the console window keeps it running and prints a timestamped
   line for each new build (with the note's first line), editor change (opened, unsaved, saved edits waiting,
   closed) and finished play session. **Auto-pull** (`dms.toml` `[board] auto_pull`, on by default): while the board
   runs, a save in the editor is pulled about a second after it settles (once per save). Tweak/comment-only saves
@@ -233,13 +243,18 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   (`validate-edit.txt`). `dms build` runs the same checks and exits non-zero on errors, but still packs the WAD so the
   map can be opened to look at the problem. Checks: references, zero-length and crossing lines, missing front sides,
   one-sided walls without a middle texture, unclosed/orphan sectors, light 0-255, ceiling below floor, textures and
-  flats against the catalog, player 1 start, things outside every sector or on no skill level, tagged specials.
+  flats against the catalog (a wall texture is accepted as a flat: UZDoom draws it), player 1 start, things outside every sector or on no skill level, tagged specials.
 - **Movement check** (`src/dms/movement.py`): every build (and `dms render`) works out which sectors the player can
   reach from the player 1 start and writes `build/<map>/movement.txt`. Rules: step up at most 24, any drop (one-way
   drops listed), 56 headroom, gaps at least 32 wide (collinear lines end to end count as one gap); blocking lines are
   walls. Doors (11-13; tag 0 = the sector behind) open to the lowest neighbouring ceiling - 4, locked doors (13,
-  lock in arg3) need a reachable key, lifts/floor/ceiling movers span their neighbours' heights; a special counts
-  once its line is reachable (front side for use/shoot, either side for walk-over). Its problems are warnings:
+  lock in arg3) need a reachable key, lifts/floor/ceiling movers span their neighbours' heights
+  (Floor_LowerByValue/RaiseByValue, 20/23, also their own arg2, e.g. a platform down a shaft); a special counts
+  once its line is reachable (front side for use/shoot, either side for walk-over; a switch at the back of a
+  niche too small to enter counts from the sector in front of the niche). Scenery (no height at all, or
+  under 56 high and raised more than a step above every neighbour, like a monolith's top; untagged, not
+  behind a special's line; or marked `user_scenery = true` by the map, e.g. a recess too narrow to
+  enter) is walls, never reported unreachable. Its problems are warnings:
   unreachable sectors, keys, weapons and notable items, exits, secrets; locked doors that never open; soft-locks
   (reachable, but no way on to an exit; only checked when the map has a reachable exit). Optimistic on purpose:
   "unreachable" is reliable, "reachable" means "probably". Not yet: teleporters, crushers, scripts.
@@ -247,7 +262,8 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
 
 - **Renders** (`src/dms/render.py`): every build writes `build/<map>/render.png` + `render.txt` (sectors shaded by
   floor height, walls, specials, things, grid, validation and movement issues ringed in red, unreachable sectors
-  hatched red, soft-lock sectors tinted orange) and, when the map changed,
+  hatched red, soft-lock sectors tinted orange; labels kept clear of each other, a moved one joined to what
+  it labels by a thin leader line: `render.place_labels`) and, when the map changed,
   `diff.png` + `diff.txt` against the previous build: the current map with the changes marked (green added,
   yellow changed, red see-through ghosts of what was removed), plus `diff-before.png` / `diff-after.png` (previous
   and current map, same view, each with its side of the changes) for the board's before/after view.

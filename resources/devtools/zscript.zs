@@ -169,7 +169,7 @@ class DmsNoteMenu : GenericMenu
 //  - TEXTMAP: the latest build, which key H loads by reloading the map; the player is put back where
 //    they were (PlayerEntered).
 // Also, after a restart by the board: dms_spawn / dms_message (CVARINFO) from the command line.
-// A static handler, so it survives map reloads; its messages time out on level.totaltime.
+// A static handler, so it survives map reloads; its messages count down their own tics.
 class DmsLive : StaticEventHandler
 {
 	bool hasLive;       // play.wad has a DMSLIVE lump (it's a live play.wad)
@@ -183,20 +183,36 @@ class DmsLive : StaticEventHandler
 	double spawnAngle, spawnPitch;
 	bool started;       // the command-line spawn/message were applied (once per game start)
 
-	Array<String> shown;    // messages on screen, and when each appeared (level.totaltime)
-	Array<int> shownAt;
+	// Messages on screen, each with the tics it has left. A countdown, not a time stamp: level.totaltime
+	// starts over on `map *` (a new game), which kept old messages up long past their time.
+	Array<String> shown;
+	Array<int> shownLeft;
 
-	const SHOW_TICS = 12 * TICRATE;
+	const SHOW_TICS = 12 * TICRATE;     // Claude's replies, arriving while playing
+	const ARRIVAL_TICS = 4 * TICRATE;   // on arriving in the map (H, a restart, `map *`): out of the way fast
 
-	void Say(String text)
+	void Say(String text, int tics = SHOW_TICS)
 	{
 		shown.Push(text);
-		shownAt.Push(level.totaltime);
+		shownLeft.Push(tics);
 		Console.Printf("%s", text);
+	}
+
+	// Arriving in the map again: whatever is still on screen goes soon too.
+	void Shorten()
+	{
+		for (int i = 0; i < shownLeft.Size(); i++)
+			shownLeft[i] = min(shownLeft[i], ARRIVAL_TICS);
 	}
 
 	override void WorldTick()
 	{
+		for (int i = shown.Size() - 1; i >= 0; i--)
+		{
+			if (--shownLeft[i] > 0) continue;
+			shown.Delete(i);
+			shownLeft.Delete(i);
+		}
 		if (level.totaltime % TICRATE == 0) Poll();
 	}
 
@@ -233,17 +249,18 @@ class DmsLive : StaticEventHandler
 		if (e.PlayerNumber != consoleplayer) return;
 		let mo = players[e.PlayerNumber].mo;
 		if (!mo) return;
+		Shorten();
 		if (pending)
 		{
 			pending = false;
 			Place(mo, spawn, spawnAngle, spawnPitch);
-			Say(String.Format("Reloaded in place (build #%d)", build));
+			Say(String.Format("Reloaded in place (build #%d)", build), ARRIVAL_TICS);
 			return;
 		}
 		if (started) return;
 		started = true;
 		Poll();  // don't repeat messages that were already there when the game started
-		let sp = CVar.GetCVar("dms_spawn", players[e.PlayerNumber]);
+		let sp = CVar.FindCVar("dms_spawn");
 		if (sp && sp.GetString().Length() > 0)
 		{
 			Array<String> v;
@@ -251,12 +268,13 @@ class DmsLive : StaticEventHandler
 			if (v.Size() == 5)
 				Place(mo, (v[0].ToDouble(), v[1].ToDouble(), v[2].ToDouble()), v[3].ToDouble(), v[4].ToDouble());
 		}
-		let msg = CVar.GetCVar("dms_message", players[e.PlayerNumber]);
+		let msg = CVar.FindCVar("dms_message");
 		if (msg && msg.GetString().Length() > 0)
 		{
 			Array<String> lines;
 			msg.GetString().Split(lines, "|");
-			for (int i = 0; i < lines.Size(); i++) Say(lines[i]);
+			// The arrival summary after a restart (board.py): replies the mapper mostly saw already.
+			for (int i = 0; i < lines.Size(); i++) Say(lines[i], ARRIVAL_TICS);
 		}
 	}
 
@@ -288,10 +306,9 @@ class DmsLive : StaticEventHandler
 	override void RenderOverlay(RenderEvent e)
 	{
 		DrawStatus();
+		if (shown.Size() == 0) return;
 		Array<String> lines;
-		for (int i = 0; i < shown.Size(); i++)
-			if (level.totaltime - shownAt[i] <= SHOW_TICS) lines.Push(shown[i]);
-		if (lines.Size() == 0) return;
+		lines.Copy(shown);
 		Font f = NewSmallFont;
 		int sw = Screen.GetWidth(), sh = Screen.GetHeight();
 		int scale = max(1, sh / 400);

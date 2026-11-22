@@ -18,7 +18,7 @@ def calls(monkeypatch):
     monkeypatch.setattr(session, "_start_board", lambda root, port: got.append(("board", port)) or True)
     monkeypatch.setattr(board, "_running_here", lambda port, root: None)
     monkeypatch.setattr(session.webbrowser, "open", lambda url: got.append(("browser", url)))
-    monkeypatch.setattr(launch, "edit", lambda root, info: got.append(("edit", info.name)) or 0)
+    monkeypatch.setattr(launch, "edit", lambda root, info, focus=True: got.append(("edit", info.name, focus)) or 0)
     monkeypatch.setattr(launch, "play", lambda root, info: got.append(("play", info.name)) or 0)
     monkeypatch.setattr(launch, "focus_process_window", lambda pid: got.append(("focus", pid)) or True)
     monkeypatch.setattr(launch, "needs_build", lambda info, root: False)
@@ -32,7 +32,7 @@ def _session(repo):
 def test_dropped_map_opens_everything_by_default(repo, calls):
     maps.new(repo, "a")
     assert cli.main(["session", "a"]) == 0
-    assert calls == [("board", 8765), ("browser", "http://127.0.0.1:8765/#a"), ("edit", "a"), ("play", "a")]
+    assert calls == [("board", 8765), ("browser", "http://127.0.0.1:8765/#a"), ("edit", "a", False), ("play", "a")]
     assert _session(repo) == {"map": "a", "launcher": "start-claude.bat", "title": "Claude Code - a"}
     assert (repo / "build" / "last-map.txt").read_text().strip() == "a"  # the window's next default
 

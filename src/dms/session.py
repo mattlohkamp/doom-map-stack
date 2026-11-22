@@ -2,8 +2,9 @@
 
 The session window (picker.pick_session) picks the map, or creates one, and what to open: the board in
 its own console window, the browser on that map's page, the editor and the game (windowed, `[play]
-windowed`), and a coding agent. Defaults: `[session]` in dms.toml. Anything already running is brought
-to the front instead of being started twice.
+windowed`), and a coding agent. Defaults: `[session]` in dms.toml. Nothing is started twice: an
+already-running game or agent is brought to the front. The editor never is, new or already open: it's
+one of several windows opening (Edit Map does bring it forward).
 
 The agent is started by Start Session.cmd, outside dms's environment, from what this writes to
 build/session.txt: the map, and the agent's launcher (none if no agent was chosen or one is already
@@ -95,7 +96,7 @@ def start(root: Path, info: maps.MapInfo, choices: dict) -> int:
             print("    browser: skipped, the board isn't running")
 
     if choices.get("editor"):
-        launch.edit(root, info)  # brings an editor that already has the map to the front
+        launch.edit(root, info, focus=False)  # one of several windows: no need to pull it to the front
 
     if choices.get("game"):
         if live.game_running(info, root):

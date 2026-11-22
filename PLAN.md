@@ -336,6 +336,19 @@ Still to build later:
     colours lines only): interactive sectors shaded by kind (doors, lifts, crushers, secrets, damaging floors),
     locked doors in key colours with a card or skull icon, monsters and items; ideally the board render's colours.
     The engine-settings part is done (`[play] test_automap`).
+- **Specced, not built (mapper, 2026-11-22): the texture browser** (`docs/texture-browser.md`): a page next to the
+  board showing the configured IWAD's textures and flats in a grid, grouped by the editor's texture categories
+  plus tags worked out from the pictures, filterable and sortable; audition views (a tiled wall with
+  light and fog, a turning cube, a floor, a room); a shortlist to compare side by side and send to Claude as a note.
+- **Specced, not built (mapper, 2026-11-22): the ambient sound tester** (`docs/sound-tester.md`), with the
+  texture browser: a page listing the game's sounds, playing them with the controls the engine really has
+  (volume, pitch tied to speed, loop, fades, start point, falloff, random gaps), layering several, and
+  sending the chosen settings to Claude as a note.
+- **Earmarked (mapper, 2026-11-22): a pan/zoom map on the board, drawn as SVG.** The renderer writes an SVG
+  besides the PNG (it already draws polygons, lines, circles and text); the board shows it with mouse-wheel
+  zoom and drag to pan (the viewBox), sharp at any zoom, labels a constant size on screen so crowded spots
+  spread out as you zoom in, and a click still maps to map coordinates for notes. Chosen over zooming the PNG
+  (blurs) and real tiles (overkill for maps this size).
 - **M3, First real map:** a small layout (3–5 rooms, a key door, a lift, a secret), iterated on the mapper's feedback.
   Claude reads `docs/map-design-notes.md` first, and turns any guidelines that can be checked into validator rules where practical.
 - **M4, Generator library grows** from whatever M3 needed repeatedly.
@@ -345,9 +358,40 @@ Still to build later:
 
 ## 9. Where we left off
 
-*Updated late M2 (2026-11-21, evening). A new session starts here.*
+*Updated 2026-11-22 (night). A new session starts here.*
 
-**Latest (91 tests):**
+**Latest, 2026-11-22: Cacobelisk (`maps/cacobelisk`, kind `example`; was `test2`), 129 tests.** One evening's
+map built entirely from 28 in-game notes, five editor saves and chat, every round played live with H. A broken
+one-way elevator start (dark closet with emergency light channels, switch in a pulsing niche, track revealed
+on the ride, a call switch at the bottom, both switches locking each other), then a fogged hall of six pairs
+of obelisks that sink into the floor as the player passes, uncovering carvings, with altars of small pickups;
+one, the switch obelisk (violet blood, purple glow, a rumble from inside), brings a dark cacodemon. Its
+`notes.md` has the whole history. **Open:** what using the switch obelisk does (it's inert; maybe the
+obelisks' "third state", note #8); whether the call switch's niche should get the track metal too.
+
+Tooling done along the way (all in `AGENTS.md`):
+- Editor focus: only Edit Map brings the editor forward (Start Session opens several windows).
+- Restart crash "User info descriptor too big": `dms_spawn`/`dms_message` are plain local cvars now
+  (`nosave`), checked with a 1,657-character message (the old `user` cvars crash). Arrival messages last 4 s
+  and old ones are cut short on arrival (a countdown, since `map *` resets `level.totaltime`).
+- Board: the sidebar's "In the game" box (H, and `map *` when H leaves you out of bounds); Open Board opens
+  the last-picked map and the page remembers a map it was opened on.
+- Renders: labels kept apart, with leader lines (`render.place_labels`).
+- Movement check: niche switches, Floor_Lower/RaiseByValue past neighbours, scenery (solid blocks,
+  monolith tops, `user_scenery`) not reported. Validator: wall textures accepted as flats.
+- Script check: re-runs when the devtools mod changes; reads UZDoom's one-line error form too.
+- Specced, not built: the texture browser (`docs/texture-browser.md`) and the ambient sound tester
+  (`docs/sound-tester.md`); earmarked: the SVG pan/zoom map (§8).
+
+**Lessons from Cacobelisk** (worth keeping in mind for M3):
+- UDMF `silent` on a sector silences the *things in it*, not its movement: use `soundsequence = "Silence"`.
+  hello-room's yard lifts use `silent` and probably still sound (ask the mapper before changing).
+- Check textures in the game: A-GRATE rendered grey with solid black holes, unlike its composited preview.
+- ZScript names are case-insensitive (a method `Rumbles` clashed with an array `rumbles`); dynamic arrays
+  can't hold `Vector2`.
+- Sounds were tuned by ear in steps; the sound tester (spec) would shorten that loop.
+
+**Earlier (late M2, 2026-11-21, 91 tests):**
 - **Notes for Claude** from the board, the editor (Ctrl+Shift+N) and the game (key N), `dms watch`/`dms notes`.
 - **The live link with the running game** (`src/dms/live.py`): every build rewrites `play.wad` in place; key H
   reloads the map where the player stands; notes are acknowledged in the game, Claude's status shows there

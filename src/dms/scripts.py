@@ -26,6 +26,7 @@ from dms.maps import MapInfo
 
 HANDLER_RE = re.compile(r"^\s*class\s+(\w+)\s*:\s*EventHandler\b", re.MULTILINE | re.IGNORECASE)
 ERROR_RE = re.compile(r'Script error, "[^"]*:ZSCRIPT" line (\d+):')
+INLINE_ERROR_RE = re.compile(r':ZSCRIPT, line (\d+): (.+)$')
 CHECK_TIMEOUT = 30  # seconds
 
 
@@ -59,7 +60,11 @@ def check(info: MapInfo, root: Path, map_wad: Path, code: bytes) -> list[str] | 
 
     bdir = info.build_dir(root)
     cache = bdir / "zscript-check.json"
-    h = _hash(code)
+    # The devtools mod is loaded alongside (and can have errors of its own): a change to it re-checks.
+    devtools = root / "resources" / "devtools"
+    mod = b"".join(p.relative_to(devtools).as_posix().encode() + p.read_bytes()
+                   for p in sorted(devtools.rglob("*")) if p.is_file()) if devtools.is_dir() else b""
+    h = _hash(code + mod)
     try:
         old = json.loads(cache.read_text(encoding="utf-8"))
         if old.get("sha256") == h:
@@ -116,9 +121,15 @@ def _run(root: Path, uzdoom: Path, iwad: Path, files: list[Path], workdir: Path)
 
 
 def _errors(log_text: str) -> list[str]:
-    """'line N: message' for each script error in UZDoom's log (each error's text runs to a blank line)."""
+    """'line N: message' for each script error in UZDoom's log. Two forms: `Script error, "...:ZSCRIPT"
+    line N:` with its text on the following lines (to a blank line), and `...:ZSCRIPT, line N: text` on
+    one line (e.g. "Attempt to redefine 'x'", with an indented "Original definition is here" after it)."""
     out, lines = [], log_text.splitlines()
     for i, line in enumerate(lines):
+        m1 = INLINE_ERROR_RE.search(line)
+        if m1:
+            out.append(f"zscript.zs line {m1.group(1)}: {m1.group(2).strip()}")
+            continue
         m = ERROR_RE.search(line)
         if not m:
             continue

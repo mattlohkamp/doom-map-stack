@@ -142,7 +142,8 @@ def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False,
         args += ["+set", "dms_spawn", " ".join(f"{v:g}" for v in spawn)]
     if message:
         # One command-line argument: no quotes or line breaks (UZDoom re-quotes it as a whole).
-        args += ["+set", "dms_message", message.replace('"', "'").replace("\n", " ").replace("\r", "")]
+        message = message.replace('"', "'").replace("\n", " ").replace("\r", "")
+        args += ["+set", "dms_message", fit_message(message)]
     print(f"dms play: {info.name} (skill {skill}{', no monsters' if nomonsters else ''})")
     print(f"    log: {log}")
     proc = subprocess.Popen(args, cwd=build_dir, env=repo_env(root), close_fds=True)
@@ -150,6 +151,32 @@ def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False,
         "pid": proc.pid, "started": time.time(), "skill": skill, "nomonsters": nomonsters,
     }) + "\n", encoding="utf-8")
     return 0
+
+
+# The arrival message is kept short so the box at the top of the screen stays readable (it used to be
+# a `user` cvar too, whose size limit stopped UZDoom at startup: "User info descriptor too big"; it is a
+# plain local cvar now, resources/devtools/CVARINFO).
+MESSAGE_MAX = 400
+MESSAGE_LINE_MAX = 120
+
+
+def fit_message(message: str, limit: int = MESSAGE_MAX, line_max: int = MESSAGE_LINE_MAX) -> str:
+    """The arrival message ("|"-separated lines), cut to fit `limit` characters: the first line (what
+    happened) is kept, each line is shortened to `line_max`, and the newest lines that fit are kept,
+    with a line saying how many earlier ones are only on the board."""
+    lines = [ln if len(ln) <= line_max else ln[:line_max - 3].rstrip() + "..." for ln in message.split("|")]
+    head, rest = lines[0], lines[1:]
+
+    def joined(kept: list[str]) -> str:
+        dropped = len(rest) - len(kept)
+        return "|".join([head] + ([f"(+{dropped} earlier on the board)"] if dropped else []) + kept)
+
+    kept: list[str] = []
+    for ln in reversed(rest):
+        if len(joined([ln] + kept)) > limit:
+            break
+        kept = [ln] + kept
+    return joined(kept)[:limit]
 
 
 def stop_game(info: MapInfo, root: Path, timeout: float = 5.0) -> bool:
@@ -213,17 +240,33 @@ def focus_process_window(pid: int) -> bool:
     return bool(user32.SetForegroundWindow(found[0]))
 
 
-def edit(root: Path, info: MapInfo) -> int:
+# A one-shot request to the editor plugin (src/udb-plugin/DmsBridge.cs): come to the front once the
+# map has opened. Windows leaves a slow-starting program behind the window it was launched from;
+# fine when Start Session opens several windows at once, not when the mapper asked for the editor.
+EDIT_FRONT_FILE = "edit-front.request"
+
+
+def edit(root: Path, info: MapInfo, focus: bool = True) -> int:
     """Open the map in the editor as build/<map>/edit.wad. Packs a fresh edit.wad from TEXTMAP,
-    unless the mapper has saved changes in the current one, which is then reopened as it is."""
+    unless the mapper has saved changes in the current one, which is then reopened as it is.
+    focus: bring the editor to the front (Edit Map); Start Session, which opens several windows,
+    passes False."""
     state = editor_state(info, root)
     pid = state.get("pid")
     if state.get("open") and isinstance(pid, int) and pid_alive(pid):
         # A second editor on the same edit.wad: the two lock each other's saves, and the plugin
         # can't be rebuilt while one has it loaded. Show the open one instead.
-        print(f"dms edit: {info.name} is already open in the editor (process {pid}); bringing it to the front")
-        focus_process_window(pid)
+        print(f"dms edit: {info.name} is already open in the editor (process {pid})"
+              + ("; bringing it to the front" if focus else ""))
+        if focus:
+            focus_process_window(pid)
         return 0
+    front = info.build_dir(root) / EDIT_FRONT_FILE
+    if focus:
+        front.parent.mkdir(parents=True, exist_ok=True)
+        front.write_text("bring the editor to the front once this map opens (dms edit)\n", encoding="utf-8")
+    else:
+        front.unlink(missing_ok=True)
     if not info.textmap.exists():
         build(info, root)
     ew = info.edit_wad(root)

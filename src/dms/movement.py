@@ -33,6 +33,7 @@ DOORS = {11, 12, 13}                     # Door_Open, Door_Raise, Door_LockedRai
 LOCKED_DOOR = 13                          # its lock number is arg3
 LIFTS = {60, 61, 62, 63, 64, 65, 206, 207}  # Plat_*
 FLOORS = set(range(20, 39))              # Floor_* and stairs (raise/lower/move)
+FLOOR_LOWER_BY_VALUE, FLOOR_RAISE_BY_VALUE = 20, 23   # move by arg2, not to a neighbour's height
 CEILINGS = {40, 41, 42, 43, 44, 45, 69, 97, 104, 168, 169}
 EXITS = {74: "exit (to a map)", 75: "exit (to a map)", 243: "exit", 244: "secret exit"}
 BLOCKING_FLAGS = ("blocking", "blockplayers", "blockeverything")
@@ -209,7 +210,10 @@ def check(tm: Textmap) -> Result:
     def usable(ld: Block, front: int | None, back: int | None, reach: set[int]) -> bool:
         if ld.get("playercross") and not (ld.get("playeruse") or ld.get("impact") or ld.get("playerpush")):
             return (front in reach) or (back in reach)
-        return front in reach
+        # A switch at the back of a niche the player can't step into (too low, too shallow) is used
+        # from the sector in front of the niche: count it when the front sector, or a neighbour, is
+        # reachable (optimistic: the neighbour may be out of use range).
+        return front in reach or (front is not None and bool(neighbours[front] & reach))
 
     def opens(lock: int, have: set[int]) -> bool:
         if lock in ALL_KEYS:
@@ -240,14 +244,38 @@ def check(tm: Textmap) -> Result:
                     top = min(ceil[n].hi for n in nb) - 4
                     changed |= ceil[s].widen(ceil[s].lo, max(top, ceil[s].hi))
                 elif sp in LIFTS or sp in FLOORS:
-                    changed |= floor[s].widen(min(floor[n].lo for n in nb), max(floor[n].hi for n in nb))
+                    lo, hi = min(floor[n].lo for n in nb), max(floor[n].hi for n in nb)
+                    # Floor_LowerByValue / Floor_RaiseByValue move by their own amount (arg2), which
+                    # may go past every neighbour (a platform down a shaft).
+                    if sp == FLOOR_LOWER_BY_VALUE:
+                        lo = min(lo, floor[s].lo - ld.get("arg2", 0))
+                    elif sp == FLOOR_RAISE_BY_VALUE:
+                        hi = max(hi, floor[s].hi + ld.get("arg2", 0))
+                    changed |= floor[s].widen(lo, hi)
                 elif sp in CEILINGS:
                     changed |= ceil[s].widen(min(ceil[n].lo for n in nb), max(ceil[n].hi for n in nb))
         if not changed:
             break
         reach = flood()
     res.reachable = reach
-    res.unreachable = set(range(len(sectors))) - reach
+    # Scenery, never moved (untagged, not behind a special's line, unlike a closed door): solid blocks
+    # (no height at all), and sectors too low to stand in raised above every neighbour by more than a
+    # step (the top of a monolith). They are walls, not places to reach. A too-low corridor at its
+    # neighbours' level is still reported.
+    moved = {b for ld in lines if ld.get("special", 0) for b in (_side_sector(tm, ld, "sideback"),)}
+
+    def scenery(i: int) -> bool:
+        if sectors[i].get("user_scenery") is True:  # marked by the map: a recess, a light channel...
+            return True
+        if _tags(sectors[i]) or i in moved:
+            return False
+        if ceil[i].hi <= floor[i].lo:
+            return True
+        raised = all(floor[i].lo - floor[n].hi > STEP for n in neighbours[i]) and bool(neighbours[i])
+        return ceil[i].hi - floor[i].lo < HEIGHT and raised
+
+    solid = {i for i in range(len(sectors)) if scenery(i)}
+    res.unreachable = set(range(len(sectors))) - reach - solid
 
     # Directed moves in the final state, for one-way drops and soft-locks.
     moves: dict[int, set[int]] = {i: set() for i in range(len(sectors))}

@@ -93,3 +93,18 @@ def test_play_refuses_a_script_that_does_not_compile(repo, monkeypatch, capsys):
     monkeypatch.setattr(scripts, "check", lambda i, r, w, code: ["zscript.zs line 3: Unexpected '}'"])
     assert launch.play(repo, info) == 1
     assert "doesn't compile" in capsys.readouterr().err
+
+
+def test_one_line_errors_are_read_from_the_log():
+    # UZDoom's other form: the message on the same line (seen 2026-11-22, a method named like an array).
+    log = "\n".join([
+        "LoadActors: Load actor definitions.",
+        "Gtest2.wad:ZSCRIPT, line 250: Attempt to redefine 'rumbles'",
+        "Gtest2.wad:ZSCRIPT, line 189:  Original definition is here",
+        "",
+        "Execution could not continue.",
+    ])
+    assert scripts._errors(log) == [
+        "zscript.zs line 250: Attempt to redefine 'rumbles'",
+        "zscript.zs line 189: Original definition is here",
+    ]
