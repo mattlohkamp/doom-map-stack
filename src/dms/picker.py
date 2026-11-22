@@ -149,7 +149,6 @@ def pick_map(root: Path, action: str) -> maps.MapInfo | None:
 
 # What a session can open, in the order shown: key -> (label, hint).
 SESSION_PARTS = {
-    "board": ("Board", "the board server, in a console window of its own"),
     "browser": ("Browser", "the board's page for this map"),
     "editor": ("Editor", "Ultimate Doom Builder, on this map"),
     "game": ("Game", "UZDoom, playing this map"),
@@ -158,7 +157,7 @@ SESSION_PARTS = {
 
 def pick_session(root: Path, defaults: dict, agents: dict[str, str],
                  agent_note: str = "its own window; not started twice") -> tuple[maps.MapInfo, dict] | None:
-    """Start Session's window. defaults: {"board": bool, ..., "agent": key or ""}; agents: key -> name;
+    """Start Session's window. defaults: {"browser": bool, ..., "agent": key or ""}; agents: key -> name;
     agent_note: shown under the agent choice (e.g. that one is already running).
     Returns (map, choices) once a map is chosen or created, None if cancelled."""
     import tkinter as tk

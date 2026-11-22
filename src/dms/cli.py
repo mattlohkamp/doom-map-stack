@@ -176,7 +176,7 @@ def cmd_session(args: argparse.Namespace) -> int:
             print("dms session: cancelled")
             return 2
         info, choices = picked
-    return session.start(root, info, choices)
+    return session.start(root, info, choices, board_here=args.board_here)
 
 
 def cmd_pull(args: argparse.Namespace) -> int:
@@ -393,10 +393,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("map", nargs="?", help=MAP_HELP + "; none: choose from a list")
     p.set_defaults(func=cmd_edit)
 
-    p = sub.add_parser("session", help="pick or create a map, then open the board, browser, editor and game for it")
+    p = sub.add_parser("session", help="pick or create a map, then start the board and open the browser, editor and game for it")
     p.add_argument("map", nargs="?", help=MAP_HELP + "; none: the session window (choose, or start a new map)")
-    for part in ("board", "browser", "editor", "game", "agent"):
+    for part in ("browser", "editor", "game", "agent"):
         p.add_argument(f"--no-{part}", action="store_true", help=f"with a map: don't open the {part}")
+    p.add_argument("--board-here", action="store_true",
+                   help="(Start Session.cmd) leave starting the board to the caller's window, via build/session.txt")
     p.set_defaults(func=cmd_session)
 
     p = sub.add_parser("agent-hook", help="(run by Claude Code's hooks, .claude/settings.json)")

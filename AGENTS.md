@@ -275,15 +275,20 @@ Code: `src/dms/udmf.py` (TEXTMAP read/write, keeps every field), `wad.py`, `cata
 `map.py` files use; every element gets a `user_gid`), `maps.py`, `build.py`, `launch.py`, `history.py`, `board.py`,
 `pull.py`, `overrides.py`, `movement.py`, `inbox.py`.
 
-- `dms session [<map>] [--no-board|--no-browser|--no-editor|--no-game|--no-agent]` (**`Start Session.cmd`**, the
+- `dms session [<map>] [--no-browser|--no-editor|--no-game|--no-agent]` (**`Start Session.cmd`**, the
   mapper's usual way in; `src/dms/session.py`): `git pull`, then the session window (`picker.pick_session`): the map
-  list (focused, last map selected), **New map...**, and toggles for the board, browser, editor, game and agent
+  list (focused, last map selected), **New map...**, and toggles for the browser, editor, game and agent
   (defaults: `[session]` in `dms.toml`, not remembered). Choosing a map (Start, Enter, double-click) or creating one
-  starts it: builds if needed, then opens what was ticked and isn't open: the board in its own console window, the
-  browser on the map's page (`/#<map>`; skipped if no board runs), the editor (`launch.edit`) and the game
-  (`launch.play`), or brings them to the front. A dropped map skips the window and uses the defaults.
-  It writes `build/session.txt` (`map=`, and `launcher=`/`title=` when an agent is to start); the `.cmd` then runs
-  the agent's launcher in its own window (`<launcher> --session <map>`). No agent is started if a Claude session
+  starts it: builds if needed, then opens what was ticked and isn't open: the browser on the map's page (`/#<map>`),
+  the editor (`launch.edit`) and the game (`launch.play`), or brings them to the front. A dropped map skips the
+  window and uses the defaults. **The board isn't a choice: a session always has one** (auto-pull and the game's
+  restart need it). A board already running is used as it is; a port taken by something else stops the session
+  before anything opens. Otherwise, from `Start Session.cmd` (`--board-here`), **the .cmd's own window becomes the
+  board** once everything else is open (and opens the browser itself, once it's listening); from a terminal
+  without `--board-here`, the board gets a console window of its own.
+  It writes `build/session.txt` (`map=`; `launcher=`/`title=` when an agent is to start; `board=1`, `browser=1`
+  when the .cmd is to run the board); the `.cmd` then runs the agent's launcher in its own window
+  (`<launcher> --session <map>`), then the board. No agent is started if a Claude session
   is already running in the repo (`agents.running`; it's handed the map instead, and the window says so) or a
   `dms watch` covering the map already runs. Agents are listed under `[agents.<key>]` in `dms.toml` (`name`, `launcher`: a
   `.bat`/`.cmd` in the repo root, no spaces); only Claude Code is defined (scaffolding for others). The agent is

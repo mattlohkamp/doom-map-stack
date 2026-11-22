@@ -1,14 +1,18 @@
 """`dms session` (Start Session.cmd): get everything ready to work on one map live.
 
-The session window (picker.pick_session) picks the map, or creates one, and what to open: the board in
-its own console window, the browser on that map's page, the editor and the game (windowed, `[play]
-windowed`), and a coding agent. Defaults: `[session]` in dms.toml. Nothing is started twice: an
-already-running game or agent is brought to the front. The editor never is, new or already open: it's
-one of several windows opening (Edit Map does bring it forward).
+The session window (picker.pick_session) picks the map, or creates one, and what to open: the browser
+on the board's page for that map, the editor and the game (windowed, `[play] windowed`), and a coding
+agent. Defaults: `[session]` in dms.toml. The board isn't a choice: it always runs (auto-pull and the
+game's restart need it). From Start Session.cmd (`--board-here`), the .cmd's own window becomes the
+board once everything else is open; from a terminal, it gets a console window of its own. Nothing is
+started twice: an already-running board is used as it is, and a running game or agent is brought to
+the front. The editor never is, new or already open: it's one of several windows opening (Edit Map
+does bring it forward).
 
 The agent is started by Start Session.cmd, outside dms's environment, from what this writes to
-build/session.txt: the map, and the agent's launcher (none if no agent was chosen or one is already
-watching notes for the map). Agents are listed under `[agents]` in dms.toml.
+build/session.txt: the map, the agent's launcher (none if no agent was chosen or one is already
+watching notes for the map), and whether the .cmd should run the board (`board=1`, `browser=1` when the
+board should open the page once it's up). Agents are listed under `[agents]` in dms.toml.
 """
 
 from __future__ import annotations
@@ -22,7 +26,7 @@ from pathlib import Path
 from dms import maps
 
 SESSION_FILE = Path("build") / "session.txt"
-PARTS = ("board", "browser", "editor", "game")
+PARTS = ("browser", "editor", "game")
 
 
 def agents(settings: dict) -> dict[str, dict]:
@@ -49,13 +53,6 @@ def _start_board(root: Path, port: int) -> bool:
     """The board in a console window of its own (it lists what reaches it). True once it answers."""
     from dms import board
 
-    here = board._running_here(port, root)
-    if here:
-        print(f"    board: already running on port {port}")
-        return True
-    if here is False:
-        print(f"    board: port {port} is used by something else; set another under [board] in dms.toml")
-        return False
     flags = getattr(subprocess, "CREATE_NEW_CONSOLE", 0)
     subprocess.Popen(
         ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(root / "dms.ps1"),
@@ -70,8 +67,10 @@ def _start_board(root: Path, port: int) -> bool:
     return False
 
 
-def start(root: Path, info: maps.MapInfo, choices: dict) -> int:
-    """Open what `choices` asks for ({"board": bool, ..., "agent": key or ""}) on the map."""
+def start(root: Path, info: maps.MapInfo, choices: dict, board_here: bool = False) -> int:
+    """Open what `choices` asks for ({"browser": bool, ..., "agent": key or ""}) on the map, and make
+    sure the board runs. board_here: the caller (Start Session.cmd) runs the board in its own window
+    afterwards, if build/session.txt says so; otherwise a board that isn't running gets a window of its own."""
     from dms import agents as agents_mod
     from dms import board, inbox, launch, live, picker
     from dms.configure import project_settings
@@ -81,17 +80,31 @@ def start(root: Path, info: maps.MapInfo, choices: dict) -> int:
     agent_key = choices.get("agent") or ""
     if agent_key and agent_key not in known:
         raise maps.MapError(f"no agent {agent_key!r} under [agents] in dms.toml")
-    picker.remember(root, info.name)
+    port = int(settings["board"]["port"])
+    board_status = board._running_here(port, root)
+    if board_status is False:  # checked before anything opens: the session needs the board
+        raise maps.MapError(f"the board's port {port} is used by something else; set another under [board] in dms.toml")
+    picker.remember(root, info.name)  # also the map the board's page opens on
     print(f"dms session: {info.name} ({info.title})")
     if (choices.get("editor") or choices.get("game")) and launch.needs_build(info, root):
         launch.build(info, root)
 
-    port = int(settings["board"]["port"])
-    board_up = _start_board(root, port) if choices.get("board") else bool(board._running_here(port, root))
+    lines = [f"map={info.name}"]
+    if board_status:
+        print(f"    board: already running on port {port} (in another window)")
+        board_up = True
+    elif board_here:
+        lines.append("board=1")
+        board_up = False  # not yet: it starts in this window once everything else is open
+        print("    board: starts in this window once everything else is open")
+    else:
+        board_up = _start_board(root, port)
     if choices.get("browser"):
         if board_up:
             webbrowser.open(f"http://127.0.0.1:{port}/#{info.name}")
             print("    browser: the board, on this map")
+        elif board_here:
+            lines.append("browser=1")  # the board opens it once it's listening
         else:
             print("    browser: skipped, the board isn't running")
 
@@ -107,7 +120,6 @@ def start(root: Path, info: maps.MapInfo, choices: dict) -> int:
         else:
             launch.play(root, info)
 
-    lines = [f"map={info.name}"]
     if agent_key:
         agent = known[agent_key]
         already = agents_mod.running(root)

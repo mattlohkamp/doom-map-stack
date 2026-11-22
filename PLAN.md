@@ -383,6 +383,11 @@ Tooling done along the way (all in `AGENTS.md`):
 - Specced, not built: the texture browser (`docs/texture-browser.md`) and the ambient sound tester
   (`docs/sound-tester.md`); earmarked: the SVG pan/zoom map (§8).
 
+**The board is no longer optional in a session** (2026-11-22, mapper's call): auto-pull and the game's restart
+only work while it runs, so Start Session's window offers just the browser, editor, game and agent, and its own
+console window becomes the board once everything is open (`--board-here`, `board=1` in `build/session.txt`).
+**Not yet tried by the mapper.**
+
 **No `dms rename` yet** (worth adding): renaming test2 to cacobelisk was by hand: move `maps/<old>` (rename
 the script's classes after the map), then copy `build/<old>/history/` (renumbering the new map's builds after
 it), `inbox.jsonl`, `shots/` and `pulled/` into `build/<new>/`, so the board keeps the whole run and the notes;

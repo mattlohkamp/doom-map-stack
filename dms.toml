@@ -15,8 +15,8 @@ test_automap = true
 
 [session]
 # What Start Session.cmd opens for the chosen map, ticked by default in its window (each can be
-# unticked there). The board runs in a console window of its own; the browser shows its page.
-board = true
+# unticked there). The board always runs (Start Session's own window becomes it); the browser shows
+# its page.
 browser = true
 editor = true
 game = true

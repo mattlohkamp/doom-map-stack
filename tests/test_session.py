@@ -43,15 +43,34 @@ def test_window_choices_are_followed(repo, calls, monkeypatch):
 
     def fake_window(root, defaults, agents, agent_note=""):
         seen.update(defaults=defaults, agents=agents)
-        return info, {"board": False, "browser": True, "editor": False, "game": True, "agent": ""}
+        return info, {"browser": True, "editor": False, "game": True, "agent": ""}
 
     monkeypatch.setattr(picker, "pick_session", fake_window)
     assert cli.main(["session"]) == 0
-    assert seen["defaults"] == {"board": True, "browser": True, "editor": True, "game": True, "agent": "claude"}
+    assert seen["defaults"] == {"browser": True, "editor": True, "game": True, "agent": "claude"}
     assert seen["agents"] == {"claude": "Claude Code"}
-    # No board running and none asked for: the browser is skipped too.
-    assert calls == [("play", "a")]
+    # The board isn't a choice: it's started either way.
+    assert calls == [("board", 8765), ("browser", "http://127.0.0.1:8765/#a"), ("play", "a")]
     assert _session(repo) == {"map": "a"}  # no agent
+
+
+def test_start_session_cmd_runs_the_board_itself(repo, calls):
+    maps.new(repo, "a")
+    assert cli.main(["session", "a", "--board-here"]) == 0
+    # No board window and no browser yet: the .cmd's own window becomes the board, which opens the page.
+    assert calls == [("edit", "a", False), ("play", "a")]
+    assert _session(repo) == {"map": "a", "board": "1", "browser": "1",
+                              "launcher": "start-claude.bat", "title": "Claude Code - a"}
+    assert cli.main(["session", "a", "--board-here", "--no-browser", "--no-agent"]) == 0
+    assert _session(repo) == {"map": "a", "board": "1"}
+
+
+def test_a_running_board_is_used_as_it_is(repo, calls, monkeypatch):
+    maps.new(repo, "a")
+    monkeypatch.setattr(board, "_running_here", lambda port, root: True)
+    assert cli.main(["session", "a", "--board-here", "--no-agent"]) == 0
+    assert calls[0] == ("browser", "http://127.0.0.1:8765/#a")  # straight away; no second board
+    assert _session(repo) == {"map": "a"}  # nothing for the .cmd to run
 
 
 def test_session_defaults_and_flags_from_dms_toml(repo, calls):
@@ -99,7 +118,9 @@ def test_agent_launchers_are_checked(repo, name):
         session.launcher(repo, {"name": "X", "launcher": name})
 
 
-def test_board_on_a_foreign_port_is_reported(repo, monkeypatch, capsys):
+def test_board_on_a_foreign_port_stops_the_session(repo, calls, monkeypatch):
+    maps.new(repo, "a")
     monkeypatch.setattr(board, "_running_here", lambda port, root: False)
-    assert session._start_board(repo, 8765) is False
-    assert "used by something else" in capsys.readouterr().out
+    with pytest.raises(maps.MapError, match="used by something else"):
+        session.start(repo, maps.resolve(repo, "a"), session.defaults({}), board_here=True)
+    assert calls == []  # checked before anything opens
