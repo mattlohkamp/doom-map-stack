@@ -85,8 +85,24 @@ def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False,
     UZDoom 5 writes `+logfile NAME` to log-NAME.txt in its working directory (a path is mangled,
     not honoured), so it runs with build/<map>/ as its working directory. Portable mode isn't
     affected: UZDoom finds its own files relative to the exe."""
+    from dms import live as live_mod
+
+    if live_mod.game_running(info, root):  # one game per map: the live link follows only one
+        pid = json.loads((info.build_dir(root) / "play.json").read_text(encoding="utf-8"))["pid"]
+        print(f"dms play: {info.name} is already being played (process {pid}); bringing it to the front")
+        focus_process_window(pid)
+        return 0
     if needs_build(info, root):
         build(info, root)
+    from dms import scripts
+
+    code = scripts.read(info)
+    errors = scripts.check(info, root, info.wad(root), code) if code else None
+    if errors:  # UZDoom would stop on its error window
+        print(f"dms play: {info.name}'s zscript.zs doesn't compile, so the game isn't started:", file=sys.stderr)
+        for e in errors:
+            print(f"    {e}", file=sys.stderr)
+        return 1
     uzdoom = tool_path(root, "uzdoom")
     build_dir = info.build_dir(root)
     # The game runs a live copy (build/<map>/play.wad, see live.py) that builds and replies are written
@@ -96,7 +112,8 @@ def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False,
     _, lumps = wadfile.read(info.wad(root))
     by_name = {l.name: l.data for l in lumps}
     latest = history.latest(info, root)
-    out_wad = live.pack(info, root, by_name.get("MAPINFO", b""), by_name["TEXTMAP"], latest["seq"] if latest else 0)
+    out_wad = live.pack(info, root, by_name.get("MAPINFO", b""), by_name["TEXTMAP"], latest["seq"] if latest else 0,
+                        zscript=by_name.get("ZSCRIPT", b""))
     log = build_dir / "log-play.txt"
     saves = uzdoom.parent / "saves" / info.name
     saves.mkdir(parents=True, exist_ok=True)

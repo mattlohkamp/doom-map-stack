@@ -133,9 +133,25 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
     screenshot ~1,800, a 1024 render ~1,400, a note's text ~100. Read the note's text (position, facing, what
     it's about, with gids) first; open the image only when the words aren't enough, and then the note's
     `preview` (960-wide JPEG, ~700), not the full-size `screenshot`.
-  - `dms watch [<map>]` prints open notes, then each new one as it arrives (`[DMS-NOTE] ...`). **While the mapper is
+  - `dms watch [<map>]` prints open notes, then each new one as it arrives (`[DMS-NOTE] ...`), and an editor save
+    with structural changes waiting to be ported (`[DMS-EDIT] ...`, once per save; builds refuse until it's ported). **While the mapper is
     working, Claude keeps it running with the Monitor tool** (re-arm it when it expires), acts on each note, and
     closes it with a reply. Notes from a play session can be batched until the mapper says "go".
+  - **Order of work when requests come from several places** (editor saves, game notes, board notes, chat; agreed
+    with the mapper 2026-11-21):
+    1. **Editor saves first**, whenever they arrived: they're work the mapper already did, not requests, and
+       everything else builds on them (builds refuse while a save waits anyway). Tweaks are pulled automatically;
+       structural changes (`[DMS-EDIT]`) are ported into `map.py` before anything else is touched.
+    2. **Then notes and chat messages in the order they arrived**, each merged on top of the last. One build per
+       note by default (each shows on the board with its own `--note`, and gets its own reply); small related notes
+       may share a build (say so in the build note and each reply). Notes from a play session can wait for "go".
+       A chat message about the queue itself ("stop", "do X first", "skip that") overrides the order.
+    3. **Conflicts:** a later request that refines an earlier one on the same element is the newer decision:
+       apply it. Two requests that pull the same element different ways with no clear newer intent, or a request
+       that would undo the mapper's own editor work: **ask, don't guess** (`dms status <map> "note #N needs a
+       decision from you: see Claude's terminal"`), and leave the rest of the queue going. Notes name what
+       they're about (kind, index, gid) and board notes the build they were made on: when the map has moved on,
+       resolve a note by its element's gid, not its old coordinates.
   - **Is Claude listening?** `dms watch` rewrites `build/claude-watch.json` every second (`inbox.listening`: fresh
     within 10 s and covering the map). Without it, notes still land in the inbox, but the mapper is told: the board
     shows "Claude isn't watching notes" (and says so in its console when a note arrives), the game's "Got note #N"
@@ -163,10 +179,13 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   - The board's `POST /api/note` only accepts its own page's requests (JSON + an `X-DMS-Board` header, same origin):
     notes are instructions Claude acts on, so other web pages must not be able to add them.
 - **The live link with the running game** (`src/dms/live.py`, the mod's `DmsLive`): `dms play` runs a live copy,
-  `build/<map>/play.wad`, whose lumps sit in fixed, space-padded slots so dms can rewrite them in place while the
+  `build/<map>/play-<n>.wad` (a new file for every start, named in `play-live.json`; older ones are deleted once
+  no game has them open), whose lumps sit in fixed, space-padded slots so dms can rewrite them in place while the
   game runs (tried: UZDoom allows writing its open WADs and reads lumps from disk each time; it reads the
-  directory only at startup, so the layout must never change). Whether a game is running: the pid in
-  `build/<map>/play.json`.
+  directory only at startup, so the layout must never change, and a file must never be repacked under a game
+  that still has it open: an old game once read the new copy's script where its map had been). Whether a game is
+  running: the pid in `build/<map>/play.json`; `dms play` won't start a second game on a map (it brings the
+  running one to the front).
   - **Every build** writes the new `TEXTMAP` into it. **Key H** in the game (`dms_reload`) reloads the map
     (`Level.ChangeLevel`) and puts the player back where they were, in about a second, with no restart.
     Monsters and pickups reset; inventory and health carry over.
@@ -198,6 +217,16 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   (`src/dms/history.py`, newest 100). **When building something for the mapper to look at, pass
   `dms build <map> --note "what changed; what to check"`**: the note is shown with that build on the board.
 
+- **Per-map ZScript** (`src/dms/scripts.py`): an optional `maps/<map>/zscript.zs` (start it with `version "4.10"`;
+  name classes after the map, never `Dms...`). Builds pack it as the map's `ZSCRIPT` lump and register every
+  `EventHandler` class in it in the map's own MAPINFO block (`EventHandlers`), so it runs on that map only;
+  `edit.wad` goes without. Every build with a script compile-checks it: UZDoom loads the WAD with the devtools mod
+  in `-norun` mode, **hidden** (UZDoom shows script errors in a window and waits; the check stops it once the
+  error is in its log), and errors become build errors with line numbers (`build/<map>/zscript.txt`; cached by
+  content). A broken script isn't sent to the running game, and `dms play` refuses to start it. UZDoom compiles
+  scripts only at startup, so a build that changes the script marks the running game for a restart (H restarts
+  it, with the board running). Find things by thing id (UDMF `id` on things) and react to lines in
+  `WorldLineActivated`; log with `Console.Printf("[DMS] ...")` so `log-play.txt` shows the script ran.
 - `dms catalog`: lists the IWAD's wall textures (with sizes) and flats into `catalog/` (committed; names only).
   Re-run after changing the Freedoom pin.
 - `dms validate <map> [--edit]`: checks `TEXTMAP` (or the mapper's `edit.wad`) and writes `build/<map>/validate.txt`
@@ -249,7 +278,7 @@ Code: `src/dms/udmf.py` (TEXTMAP read/write, keeps every field), `wad.py`, `cata
   message asking it to arm the note watch and say where things were left off. With `--session <map>` (from
   `Start Session.cmd`) it skips the pull and names the map in that message.
 
-*Planned, not built yet* (see `PLAN.md` §6, §8): `tour`, the test map overlay, per-map ZScript.
+*Parked* (see `PLAN.md` §8): the screenshot tour (`tour`), `dms shot`, the test map overlay.
 
 **Running uv directly** (e.g. `uv add`, `uv lock`): never call a bare `uv`. Run it inside the repo environment:
 

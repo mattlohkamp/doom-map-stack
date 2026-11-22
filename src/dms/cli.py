@@ -293,10 +293,11 @@ def cmd_status(args: argparse.Namespace) -> int:
 def cmd_watch(args: argparse.Namespace) -> int:
     import time
 
-    from dms import agents, inbox, maps
+    from dms import agents, board, inbox, maps
 
     root = repo_root()
     seen: dict[str, set[int]] = {}
+    saves_seen: set[str] = set()
 
     def targets():
         return [maps.resolve(root, args.map)] if args.map else maps.all_maps(root)
@@ -311,6 +312,13 @@ def cmd_watch(args: argparse.Namespace) -> int:
             if req:
                 print(agents.request_text(req), flush=True)
             for info in targets():
+                # An editor save with structural changes waits for Claude to port it (pull.txt): say so once.
+                pending = board.pending_save(info, root, board.editor_summary(info, root))
+                if pending and pending.get("structural") and pending["time"] not in saves_seen:
+                    saves_seen.add(pending["time"])
+                    print(f"[DMS-EDIT] {info.name}: an editor save ({pending['time']}) has {pending['structural']} "
+                          f"structural change(s) waiting: port them into map.py (build/{info.name}/pull.txt), "
+                          f"then `dms pull {info.name} --ported`", flush=True)
                 inbox.ingest_game_log(info, root)  # notes typed in the game
                 notes = inbox.notes(info, root)
                 known = seen.setdefault(info.name, set())

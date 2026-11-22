@@ -326,14 +326,16 @@ Still to build later:
   including configuring Ultimate Doom Builder in portable mode; check that nothing was written outside the repo; `.gitignore` updated; AGENTS.md written (confirm with `/memory` that Claude Code loaded it).
 - **M1, Hello room:** one square room with a player start, packed and playable. Proves the whole loop.
   Also check that Ultimate Doom Builder keeps `user_gid` fields when saving, including on lines it splits or copies.
-- **M2, Tooling:** catalog, validator, renderer, movement check, screenshot tour,
-  in-game notes, editor notes (comment field), `dms watch` live delivery,
-  **test map overlay** (mapper's request, 2026-11-21): a map drawn by the devtools mod on a key, beyond what the
-  engine's automap can do (it colours lines only): interactive sectors shaded by kind (doors, lifts, crushers,
-  secrets, damaging floors), locked doors in key colours with a card or skull icon, monsters and items; ideally the
-  board render's colours. The engine-settings part is done (`[play] test_automap`).
-  Parked from in-game note #19 (2026-11-21): **per-map scripts** (ZScript event handlers packed into the map's WAD),
-  e.g. monsters hunting the player from level start; the mapper chose ZScript over ACS.
+- **M2, Tooling:** catalog, validator, renderer, movement check, in-game notes, editor notes (comment field),
+  `dms watch` live delivery, **per-map ZScript** (mapper chose ZScript over ACS; built 2026-11-21).
+- **Parked (mapper, 2026-11-21: not worth it while the mapper plays live and sends screenshot notes):**
+  - **Screenshot tour** (§6 item 7): Claude would see its own work in the engine before the mapper plays.
+    Worth it if Claude works on maps unattended. A smaller first step: `dms shot <map> <x> <y> <angle>`, one
+    screenshot on demand, if "I haven't seen it in the game" caveats keep costing round trips.
+  - **Test map overlay:** a map drawn by the devtools mod on a key, beyond what the engine's automap can do (it
+    colours lines only): interactive sectors shaded by kind (doors, lifts, crushers, secrets, damaging floors),
+    locked doors in key colours with a card or skull icon, monsters and items; ideally the board render's colours.
+    The engine-settings part is done (`[play] test_automap`).
 - **M3, First real map:** a small layout (3–5 rooms, a key door, a lift, a secret), iterated on the mapper's feedback.
   Claude reads `docs/map-design-notes.md` first, and turns any guidelines that can be checked into validator rules where practical.
 - **M4, Generator library grows** from whatever M3 needed repeatedly.
@@ -352,7 +354,7 @@ Still to build later:
   (`dms status`), and replies pop up. Used all evening for in-game notes #12-#19 on hello-room.
 - **"Is Claude listening?"** (mapper's catch: a note sat unseen because no `dms watch` ran): `dms watch` writes a
   heartbeat (`build/claude-watch.json`); the board, the game and the editor say when nobody is watching; a
-  `UserPromptSubmit` hook (`.claude/settings.json`, `dms notes --hook`) shows Claude unseen open notes with each
+  `UserPromptSubmit` hook (`.claude/settings.json`, `dms agent-hook prompt`) shows Claude unseen open notes with each
   message (confirmed working); `start-claude.bat` opens each session by asking Claude to arm the watch.
 - **Testing automap** (`[play] test_automap`): things as sprites, keys, trigger lines, lighter skull-lock colours.
   **Mapper confirmed it in the game: "worked perfectly".**
@@ -364,9 +366,20 @@ Still to build later:
   the map instead of a second one starting (hooks record sessions, `src/dms/agents.py`). Mapper, first run:
   "this is so perfect".
 
-**Next, in order:** the **screenshot tour**
-(§6 item 7), then the rest of M2 (§8): the test map overlay, per-map ZScript (then revisit the yards, starting
-with logging what wakes each monster). Then M3.
+- **Per-map ZScript** (`maps/<map>/zscript.zs`, `src/dms/scripts.py`): packed into the map's WAD, its event
+  handlers registered for that map only, compile-checked on every build by a hidden UZDoom load (errors with line
+  numbers; a broken script never reaches the game). First use: hello-room's `HelloRoomYards` wakes the yard souls
+  when the lift trigger fires (replacing the NoiseAlert line that never worked). **Works in the game** (mapper:
+  "seems good"; log: `[DMS] HelloRoomYards: the yards rise; woke 5 lost soul(s)`).
+  Also: the mapper's 20:12 editor save (room, hallway, hex corners, ledges) ported into `map.py`; `dms watch` now
+  reports saves waiting to be ported (`[DMS-EDIT]`), which is how that one went unnoticed.
+- **One live copy per game start** (`play-<n>.wad`): an old game that outlived a restart read the new copy's
+  script where its map had been ("Map does not define a namespace"); `dms play` won't start a second game.
+- **Request order** across editor, game, board and chat agreed with the mapper and written into `AGENTS.md`.
+- **Parked by the mapper:** the screenshot tour and the test map overlay (§8).
+
+**M2 is done (2026-11-21).** **Next: M3**, the first real map: read `docs/map-design-notes.md` first; Fable is
+suggested for the layout work.
 
 **Earlier in M2** (69 tests at the time): `dms catalog` (`catalog/`), the validator (runs in every build;
 `dms validate [--edit]`), the renderer (`render.png/.txt` and `diff.png/.txt` per build; `dms render --edit`), and the

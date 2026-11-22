@@ -21,6 +21,7 @@ each lump sits in a fixed-size slot, padded with spaces (UDMF and our text forma
 
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import datetime
 from pathlib import Path
@@ -35,7 +36,22 @@ KEEP_MESSAGES = 8
 
 
 def play_wad(info: MapInfo, root: Path) -> Path:
-    return info.build_dir(root) / "play.wad"
+    """The running game's live copy. Each start gets its own (play-<n>.wad, named in play-live.json):
+    a game that is somehow still running keeps reading its own, unchanged file. Rewriting one file for
+    every start broke that game: it still had the old layout in memory, so after the script was added it
+    read the script where the map used to be (2026-11-21)."""
+    name = _state(info, root).get("file", "play.wad")
+    return info.build_dir(root) / name
+
+
+def _clean_old_copies(info: MapInfo, root: Path, keep: str) -> None:
+    """Delete earlier live copies; one a game still has open can't be deleted, and stays until next time."""
+    for p in info.build_dir(root).glob("play*.wad"):
+        if p.name != keep:
+            try:
+                p.unlink()
+            except OSError:
+                pass
 
 
 def game_running(info: MapInfo, root: Path) -> bool:
@@ -77,24 +93,34 @@ def _live_text(state: dict) -> bytes:
     return ("\n".join(lines) + "\n").encode("utf-8")
 
 
-def pack(info: MapInfo, root: Path, mapinfo: bytes, textmap: bytes, build_seq: int = 0) -> Path:
-    """Write play.wad from scratch (the game isn't running). Returns its path."""
+def pack(info: MapInfo, root: Path, mapinfo: bytes, textmap: bytes, build_seq: int = 0,
+         zscript: bytes = b"") -> Path:
+    """Write a new live copy for a game about to start (play-<n>.wad, see play_wad). Returns its path.
+    zscript: the map's script (scripts.py); UZDoom compiles it only at startup, so it isn't rewritten
+    in place."""
+    import time
+
     slot = max(MIN_SLOT, 4 * len(textmap))
-    state = {"slot": slot, "build": build_seq, "restart": False, "messages": [], "next": 1,
+    name = f"play-{time.time_ns() // 1_000_000}.wad"
+    state = {"file": name, "slot": slot, "build": build_seq, "restart": False, "messages": [], "next": 1,
+             "zscript": hashlib.sha256(zscript).hexdigest(),
              "packed": datetime.now().astimezone().isoformat(timespec="seconds")}
-    lumps = [
-        wad.Lump("MAPINFO", _pad(mapinfo, max(MAPINFO_SLOT, len(mapinfo)))),
+    lumps = [wad.Lump("MAPINFO", _pad(mapinfo, max(MAPINFO_SLOT, len(mapinfo))))]
+    if zscript:
+        lumps.append(wad.Lump("ZSCRIPT", zscript))
+    lumps += [
         wad.Lump("MAP01", b""),
         wad.Lump("TEXTMAP", _pad(textmap, slot)),
         wad.Lump("ENDMAP", b""),
         wad.Lump("DMSLIVE", _pad(_live_text(state), LIVE_SLOT)),
     ]
-    p = play_wad(info, root)
+    p = info.build_dir(root) / name
     wad.write(p, lumps)
     # Where each lump's bytes are, for rewriting them in place.
     _, entries = wad.read_directory(p)
-    state["offsets"] = {name: [offset, size] for name, offset, size in entries}
+    state["offsets"] = {lump: [offset, size] for lump, offset, size in entries}
     _save_state(info, root, state)
+    _clean_old_copies(info, root, keep=name)
     return p
 
 
@@ -110,13 +136,16 @@ def _rewrite(info: MapInfo, root: Path, name: str, data: bytes) -> bool:
     return True
 
 
-def update_map(info: MapInfo, root: Path, mapinfo: bytes, textmap: bytes, build_seq: int) -> str:
+def update_map(info: MapInfo, root: Path, mapinfo: bytes, textmap: bytes, build_seq: int,
+               zscript: bytes = b"") -> str:
     """Put a new build into the running game's play.wad. Returns "updated", or "restart" when the
-    map outgrew its slot (the game then needs a restart to see it), or "none" (no play.wad)."""
+    game can't take it in place: the map outgrew its slot, or the script changed (UZDoom compiles
+    ZScript only at startup); or "none" (no play.wad)."""
     state = _state(info, root)
     if not state or not play_wad(info, root).exists():
         return "none"
-    fits = _rewrite(info, root, "TEXTMAP", textmap) and _rewrite(info, root, "MAPINFO", mapinfo)
+    same_script = state.get("zscript", hashlib.sha256(b"").hexdigest()) == hashlib.sha256(zscript).hexdigest()
+    fits = _rewrite(info, root, "TEXTMAP", textmap) and _rewrite(info, root, "MAPINFO", mapinfo) and same_script
     state = _state(info, root)
     state["build"] = build_seq
     state["restart"] = state.get("restart", False) or not fits

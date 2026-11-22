@@ -89,3 +89,30 @@ def test_game_notes_are_acknowledged_and_shown_as_status(repo, monkeypatch):
     assert "status working on note #2\n" in _lump(live.play_wad(info, repo), "DMSLIVE").decode()
     inbox.close(info, repo, 2, "door added")
     assert "status \n" in _lump(live.play_wad(info, repo), "DMSLIVE").decode()   # all done: cleared
+
+
+def test_each_start_gets_its_own_live_copy(repo):
+    """A game still running from an earlier start keeps reading its own file, never a rewritten one
+    (2026-11-21: an old game read the new copy's script where its map used to be)."""
+    import time
+
+    info = maps.new(repo, "a")
+    info.build_dir(repo).mkdir(parents=True)
+    first = live.pack(info, repo, b"mapinfo", b'namespace = "zdoom";', 1)
+    time.sleep(0.01)
+    second = live.pack(info, repo, b"mapinfo", b'namespace = "zdoom";', 2, zscript=b'version "4.10"\n')
+    assert first != second and live.play_wad(info, repo) == second
+    assert not first.exists()  # nothing had it open: cleaned up
+
+
+def test_play_does_not_start_a_second_game(repo, monkeypatch, capsys):
+    from dms import launch
+
+    info = maps.new(repo, "a")
+    info.build_dir(repo).mkdir(parents=True)
+    (info.build_dir(repo) / "play.json").write_text('{"pid": 4242}')
+    monkeypatch.setattr(live, "game_running", lambda i, r: True)
+    focused = []
+    monkeypatch.setattr(launch, "focus_process_window", lambda pid: focused.append(pid) or True)
+    assert launch.play(repo, info) == 0
+    assert focused == [4242] and "already being played" in capsys.readouterr().out

@@ -69,7 +69,8 @@ def hand_edited_since_generated(text: str) -> bool:
     return sha256(text[m.end():].encode("utf-8")) != m.group(1)
 
 
-def mapinfo(info: MapInfo) -> str:
+def mapinfo(info: MapInfo, handlers: list[str] | tuple = ()) -> str:
+    """handlers: the map's own ZScript event handlers (scripts.py), registered for this map only."""
     lines = [
         "// Written by dms build.",
         "defaultmap",
@@ -84,17 +85,21 @@ def mapinfo(info: MapInfo) -> str:
     ]
     if info.music:
         lines.append(f'\tmusic = "{info.music}"')
+    if handlers:
+        lines.append("\tEventHandlers = " + ", ".join(f'"{h}"' for h in handlers))
     lines += ["}", ""]
     return "\n".join(lines)
 
 
-def map_lumps(info: MapInfo, textmap: bytes) -> list[wad.Lump]:
-    return [
-        wad.Lump("MAPINFO", mapinfo(info).encode("utf-8")),
-        wad.Lump("MAP01"),
-        wad.Lump("TEXTMAP", textmap),
-        wad.Lump("ENDMAP"),
-    ]
+def map_lumps(info: MapInfo, textmap: bytes, zscript: bytes | None = None) -> list[wad.Lump]:
+    """The map's WAD. zscript: its per-map script (scripts.py), for the game's WAD; edit.wad goes
+    without (the editor doesn't run it)."""
+    from dms import scripts
+
+    lumps = [wad.Lump("MAPINFO", mapinfo(info, scripts.handlers(zscript)).encode("utf-8"))]
+    if zscript:
+        lumps.append(wad.Lump("ZSCRIPT", zscript))
+    return lumps + [wad.Lump("MAP01"), wad.Lump("TEXTMAP", textmap), wad.Lump("ENDMAP")]
 
 
 # ---------------------------------------------------------------- edit.wad bookkeeping
@@ -221,10 +226,25 @@ def build(info: MapInfo, root: Path, force: bool = False, note: str | None = Non
     moves = check_movement(tm, info.build_dir(root) / "movement.txt")
     issues = issues + moves.issues
 
+    from dms import scripts
+
     out = info.wad(root)
     previous = _packed_textmap(out)
-    wad.write(out, map_lumps(info, data))
+    code = scripts.read(info)
+    wad.write(out, map_lumps(info, data, code))
     print(f"    wrote {out}")
+    if code:
+        names = scripts.handlers(code)
+        errors = scripts.check(info, root, out, code)
+        if errors is None:
+            print(f"    zscript.zs ({', '.join(names) or 'no event handlers'}): not checked (UZDoom isn't set up)")
+        else:
+            print(f"    zscript.zs ({', '.join(names) or 'no event handlers'}): "
+                  + (f"{len(errors)} error(s)" if errors else "compiles"))
+            for e in errors:
+                print(f"      error: {e}")
+            issues = issues + [Issue("error", e, "zscript.zs") for e in errors]
+    script_broken = bool(code) and any(i.where == "zscript.zs" for i in issues)
     changed = draw(info, root, tm, issues, previous, moves=moves)
     from dms import history, render
 
@@ -239,7 +259,10 @@ def build(info: MapInfo, root: Path, force: bool = False, note: str | None = Non
                       views=views):
         print("    added to the board's history" + (" (with a note)" if note else ""))
     _refresh_edit_wad(info, root, force)
-    _refresh_play_wad(info, root, data)
+    if script_broken:  # a restart would stop on UZDoom's error window: the running game keeps its build
+        print("    the running game keeps its current build until zscript.zs compiles")
+    else:
+        _refresh_play_wad(info, root, data)
     return BuildResult(out, issues)
 
 
@@ -250,13 +273,18 @@ def _refresh_play_wad(info: MapInfo, root: Path, textmap: bytes) -> None:
 
     if not live.game_running(info, root):
         return
+    from dms import scripts
+
     latest = history.latest(info, root)
     seq = latest["seq"] if latest else 0
-    result = live.update_map(info, root, mapinfo(info).encode("utf-8"), textmap, seq)
+    code = scripts.read(info)
+    result = live.update_map(info, root, mapinfo(info, scripts.handlers(code)).encode("utf-8"), textmap, seq,
+                             zscript=code or b"")
     if result == "updated":
         print(f"    updated the running game's play.wad (build #{seq}): press H in the game to reload in place")
     elif result == "restart":
-        print("    the map outgrew the running game's play.wad: H in the game will restart it (needs the board)")
+        print("    the running game can't take this build in place (the map outgrew its slot, or zscript.zs"
+              " changed): H in the game will restart it (needs the board)")
 
 
 def _refresh_edit_wad(info: MapInfo, root: Path, force: bool = False) -> None:
@@ -313,7 +341,8 @@ def needs_build(info: MapInfo, root: Path) -> bool:
     out = info.wad(root)
     if not out.exists():
         return True
-    sources = [info.folder / "map.toml", info.textmap, info.generator, info.folder / "overrides.toml"]
+    sources = [info.folder / "map.toml", info.textmap, info.generator, info.folder / "overrides.toml",
+               info.folder / "zscript.zs"]
     newest = max((p.stat().st_mtime for p in sources if p.exists()), default=0)
     return newest > out.stat().st_mtime
 

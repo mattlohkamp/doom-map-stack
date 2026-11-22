@@ -15,4 +15,6 @@ offsety_mid = 5.0
 offsety_top = 7.0
 
 [sector."platform_nw"]
+ceilingglowcolor = -1
+floorglowcolor = -1
 lightlevel = 64
