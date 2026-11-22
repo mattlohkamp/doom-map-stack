@@ -383,6 +383,11 @@ Tooling done along the way (all in `AGENTS.md`):
 - Specced, not built: the texture browser (`docs/texture-browser.md`) and the ambient sound tester
   (`docs/sound-tester.md`); earmarked: the SVG pan/zoom map (§8).
 
+**No `dms rename` yet** (worth adding): renaming test2 to cacobelisk was by hand: move `maps/<old>` (rename
+the script's classes after the map), then copy `build/<old>/history/` (renumbering the new map's builds after
+it), `inbox.jsonl`, `shots/` and `pulled/` into `build/<new>/`, so the board keeps the whole run and the notes;
+point `build/last-map.txt` at the new name. `build/test2/` is left as it was (git-ignored).
+
 **Lessons from Cacobelisk** (worth keeping in mind for M3):
 - UDMF `silent` on a sector silences the *things in it*, not its movement: use `soundsequence = "Silence"`.
   hello-room's yard lifts use `silent` and probably still sound (ask the mapper before changing).
