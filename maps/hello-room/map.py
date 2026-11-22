@@ -11,6 +11,11 @@ YARD_PIT = -256
 YARD_SILL = 32
 SOULS_TID = 10  # the lost souls' thing id, for the map's script (zscript.zs)
 
+# The gate in the main room's north wall (note #20), opened by a switch beside it.
+GATE_TAG = 2
+GATE_TEXTURE = "BIGDOOR2"
+SWITCH_TEXTURE = "SW1GRAY"
+
 
 def build(m: MapBuilder) -> None:
     # One 512 x 512 room, 128 high, with the player start near the south wall facing north.
@@ -25,8 +30,9 @@ def build(m: MapBuilder) -> None:
     # mapper was looking) to a hexagonal room of the same size. The south wall slants (y = x / 15),
     # so the opening's ends are where that comes out whole: (180, 12) and (300, 20).
     mouth_w, mouth_e = (180, 12), (300, 20)
-    for name, a, b in (("w", sw, nw), ("n", nw, ne), ("e", ne, se), ("s", se, mouth_e), ("s2", mouth_w, sw)):
+    for name, a, b in (("w", sw, nw), ("e", ne, se), ("s", se, mouth_e), ("s2", mouth_w, sw)):
         m.wall(a, b, room, f"room.wall_{name}")
+    north_wall_with_gate(m, room, nw, ne)
     hallway_and_hex(m, room, mouth_w, mouth_e)
     m.player_start(256, 128, angle=90)
     # In-game note #17: start with a super shotgun, the chaingun and a backpack, picked up on the
@@ -54,6 +60,47 @@ def build(m: MapBuilder) -> None:
     # (A south-east copy, from note #1, held a berserk after that save; removed with its ledge at the
     # mapper's request, 2026-11-21: the berserk is on the hex room's altar now.)
     ledge_with_step(m, room, "ledge_sw", 48, 48, south=((48, 64), (176, 64)))
+
+
+def north_wall_with_gate(m: MapBuilder, room, nw, ne) -> None:
+    """In-game note #20: the main room's north wall (nw -> ne, room on its right), with a gate in the
+    middle, across from the hex hallway, into an empty hallway (for now). The wall slants
+    (y = 544 - x / 16), so points on it are worked out from x.
+
+    The gate is a door sector, closed (ceiling on the floor), tag GATE_TAG, opened from the hex room
+    (gate_switch, note #21). Each sector is on the right (front) of its lines, going round it
+    clockwise."""
+    (x0, y0), (x1, y1) = nw, ne
+
+    def on_wall(x: float) -> tuple[float, float]:
+        return (x, round(y0 + (y1 - y0) * (x - x0) / (x1 - x0)))
+
+    p0, p1 = on_wall(208), on_wall(304)          # the gate's opening, 96 wide, middle at x = 256
+    q0, q1 = (p0[0], p0[1] + 16), (p1[0], p1[1] + 16)   # the gate is 16 deep
+    # The hallway's far end and east wall, as the mapper reshaped them in the editor (save 2026-11-21
+    # 20:39): north to a slanted end (224, 832)-(320, 768), the east wall bending at (336, 560).
+    end_w, end_e, bend = (224, 832), (320, 768), (336, 560)
+    gate = m.sector("gate", floor=0, ceiling=0, light=160)
+    m.sectors[gate.index]["id"] = GATE_TAG
+    hall = m.sector("north_hall", floor=0, ceiling=104, light=160)
+
+    m.wall(nw, p0, room, "room.wall_n")
+    m.two_sided(p1, p0, gate, room, "gate.front", texture=GATE_TEXTURE)
+    m.wall(p1, ne, room, "room.wall_n2")
+    m.wall(p0, q0, gate, "gate.track_w", texture="DOORTRAK")
+    m.two_sided(q0, q1, gate, hall, "gate.back", texture=GATE_TEXTURE)
+    m.wall(q1, p1, gate, "gate.track_e", texture="DOORTRAK")
+    for name, a, b in (("w", q0, end_w), ("n", end_w, end_e), ("e", end_e, bend)):
+        m.wall(a, b, hall, f"north_hall.wall_{name}")
+    # In-game note #23: a squad of four zombiemen just inside, in a 2 x 2, facing the gate (south),
+    # waiting for it to open. The closed gate blocks sound (no opening), so they wake when it opens.
+    for i, (x, y) in enumerate(((236, 590), (284, 590), (236, 638), (284, 638))):
+        m.thing(3004, x, y, f"north_hall.zombie_{i + 1}", angle=270)
+    # In-game note #22: the short wall from the bend back to the gate is a second switch, inside the
+    # hallway, for the way back: the same Door_Raise on the gate, usable again (see gate_switch).
+    back = m.wall(bend, q1, hall, "north_hall.gate_switch", texture=SWITCH_TEXTURE)
+    m.linedefs[back].fields.update(special=12, arg0=GATE_TAG, arg1=16, arg2=150, playeruse=True,
+                                   repeatspecial=True)
 
 
 def ledge_with_step(m: MapBuilder, room, gid: str, x: float, y: float, south=None) -> None:
@@ -120,7 +167,13 @@ def hallway_and_hex(m: MapBuilder, room, mouth_w, mouth_e) -> None:
     corner = {top_w: (112, -112), top_e: (384, -128), east: (480, -352),
               bot_e: (368, -560), bot_w: (128, -576), west: (-16, -336)}
     m.wall(corner[top_w], hall_sw, hex_, "hex.wall_n")
-    m.wall(hall_se, corner[top_e], hex_, "hex.wall_n2")
+    # In-game note #21: this short wall (64 wide, east of the hallway) is the gate's switch, so that
+    # from it the gate (north_wall_with_gate) is in view up the hallway. Door_Raise (12: tag, speed
+    # 16 = 2 units a tic, delay 150 tics = 4 s): the gate opens, waits, closes; the switch can be used
+    # again (repeatspecial). It faces the hex room (the movement check needs the player's side front).
+    switch = m.wall(hall_se, corner[top_e], hex_, "hex.wall_n2", texture=SWITCH_TEXTURE)
+    m.linedefs[switch].fields.update(special=12, arg0=GATE_TAG, arg1=16, arg2=150, playeruse=True,
+                                     repeatspecial=True)
     # In-game note #13 ("seems empty"): a lit niche in the middle of each full wall; note #14: windows
     # instead, bleeding into a blood pool on the floor. Mapper, 2026-11-21: the south one, across from
     # the hallway, is an altar with a berserk instead.
