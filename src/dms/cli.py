@@ -302,6 +302,24 @@ def cmd_watch(args: argparse.Namespace) -> int:
     def targets():
         return [maps.resolve(root, args.map)] if args.map else maps.all_maps(root)
 
+    def watch_map(info, first: bool) -> None:
+        # An editor save with structural changes waits for Claude to port it (pull.txt): say so once.
+        pending = board.pending_save(info, root, board.editor_summary(info, root))
+        if pending and pending.get("structural") and pending["time"] not in saves_seen:
+            saves_seen.add(pending["time"])
+            print(f"[DMS-EDIT] {info.name}: an editor save ({pending['time']}) has {pending['structural']} "
+                  f"structural change(s) waiting: port them into map.py (build/{info.name}/pull.txt), "
+                  f"then `dms pull {info.name} --ported`", flush=True)
+        inbox.ingest_game_log(info, root)  # notes typed in the game
+        notes = inbox.notes(info, root)
+        known = seen.setdefault(info.name, set())
+        for n in notes:
+            if n["id"] in known:
+                continue
+            known.add(n["id"])
+            if not first or n["status"] == "open":
+                print(inbox.describe(n), flush=True)
+
     first = True
     print(f"dms watch: notes for {args.map or 'every map'}; Ctrl+C stops", flush=True)
     try:
@@ -312,22 +330,13 @@ def cmd_watch(args: argparse.Namespace) -> int:
             if req:
                 print(agents.request_text(req), flush=True)
             for info in targets():
-                # An editor save with structural changes waits for Claude to port it (pull.txt): say so once.
-                pending = board.pending_save(info, root, board.editor_summary(info, root))
-                if pending and pending.get("structural") and pending["time"] not in saves_seen:
-                    saves_seen.add(pending["time"])
-                    print(f"[DMS-EDIT] {info.name}: an editor save ({pending['time']}) has {pending['structural']} "
-                          f"structural change(s) waiting: port them into map.py (build/{info.name}/pull.txt), "
-                          f"then `dms pull {info.name} --ported`", flush=True)
-                inbox.ingest_game_log(info, root)  # notes typed in the game
-                notes = inbox.notes(info, root)
-                known = seen.setdefault(info.name, set())
-                for n in notes:
-                    if n["id"] in known:
-                        continue
-                    known.add(n["id"])
-                    if not first or n["status"] == "open":
-                        print(inbox.describe(n), flush=True)
+                try:
+                    watch_map(info, first)
+                except OSError as e:
+                    # A file another program has open for a moment (the editor saving edit.wad, the board
+                    # writing the inbox): try again next round. Seen 2026-11-22: it ended the watch twice.
+                    print(f"dms watch: skipped a round ({e.__class__.__name__}: {e.filename})",
+                          file=sys.stderr, flush=True)
             first = False
             time.sleep(args.interval)
     except KeyboardInterrupt:

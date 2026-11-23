@@ -13,7 +13,7 @@
   html, body { margin: 0; height: 100%; }
   body { background: var(--bg); color: var(--text); font: 14px/1.45 "Segoe UI", system-ui, sans-serif;
          display: grid; grid-template-columns: 220px 1fr; }
-  aside { border-right: 1px solid var(--line); padding: 16px 12px; position: sticky; top: 0; height: 100vh;
+  aside { border-right: 1px solid var(--line); padding: 16px 12px; position: sticky; top: 25px; height: calc(100vh - 25px);
           overflow: auto; }
   aside h1 { font-size: 15px; margin: 0 0 12px; letter-spacing: .04em; color: var(--dim); text-transform: uppercase; }
   .map { display: block; width: 100%; text-align: left; background: none; border: 0; color: var(--text);
@@ -100,9 +100,16 @@
   details { margin-top: 10px; } summary { cursor: pointer; color: var(--dim); }
   .empty { color: var(--dim); }
   a { color: var(--accent); }
+  .dms-nav { grid-column: 1 / -1; }
+  .dms-nav { position: sticky; top: 0; z-index: 50; display: flex; gap: 14px; align-items: center; height: 24px;
+             padding: 0 12px; background: #101014; border-bottom: 1px solid #2c2c34; font: 12px/24px "Segoe UI", system-ui, sans-serif; }
+  .dms-nav b { color: #77778a; letter-spacing: .06em; }
+  .dms-nav a { color: #8fb4ff; text-decoration: none; } .dms-nav a:hover { text-decoration: underline; }
+  .dms-nav [aria-current] { color: #e4e4ea; font-weight: 600; text-decoration: none; pointer-events: none; }
 </style>
 </head>
 <body>
+<nav class="dms-nav"><b>DMS</b><a href="/" target="dms-board" aria-current="page">board</a><a href="/assets" target="dms-assets">asset browser</a></nav>
 <aside>
   <h1>dms board</h1>
   <nav id="maplist"></nav>
@@ -126,6 +133,7 @@
 </aside>
 <main id="main"><p class="empty">Loading...</p></main>
 <script>
+window.name = "dms-board";  // the asset browser's link comes back to this tab
 "use strict";
 const POLL_MS = 2000;
 let current = decodeURIComponent(location.hash.slice(1)) || localStorage.getItem("dms-board-map") || "";

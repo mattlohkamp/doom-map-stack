@@ -336,14 +336,12 @@ Still to build later:
     colours lines only): interactive sectors shaded by kind (doors, lifts, crushers, secrets, damaging floors),
     locked doors in key colours with a card or skull icon, monsters and items; ideally the board render's colours.
     The engine-settings part is done (`[play] test_automap`).
-- **Specced, not built (mapper, 2026-11-22): the texture browser** (`docs/texture-browser.md`): a page next to the
-  board showing the configured IWAD's textures and flats in a grid, grouped by the editor's texture categories
-  plus tags worked out from the pictures, filterable and sortable; audition views (a tiled wall with
-  light and fog, a turning cube, a floor, a room); a shortlist to compare side by side and send to Claude as a note.
-- **Specced, not built (mapper, 2026-11-22): the ambient sound tester** (`docs/sound-tester.md`), with the
-  texture browser: a page listing the game's sounds, playing them with the controls the engine really has
-  (volume, pitch tied to speed, loop, fades, start point, falloff, random gaps), layering several, and
-  sending the chosen settings to Claude as a note.
+- **Planned, being built (mapper, 2026-11-22): the asset browser** (`docs/asset-browser.md`; replaces the
+  texture browser and sound tester specs): `/assets` on the board's server, browsing everything the IWAD and
+  UZDoom provide (textures and flats, decals, items, monsters, decorations, sound effects, music) as a list or a
+  grid with search, filters and sort; textures auditioned side by side on a zoomable 2D plane and on 3D boxes
+  with per-texture offsets and scale; sounds with the engine's own controls; music rendered by UZDoom; picks
+  sent to Claude as a note.
 - **Earmarked (mapper, 2026-11-22): a pan/zoom map on the board, drawn as SVG.** The renderer writes an SVG
   besides the PNG (it already draws polygons, lines, circles and text); the board shows it with mouse-wheel
   zoom and drag to pan (the viewBox), sharp at any zoom, labels a constant size on screen so crowded spots
@@ -380,13 +378,33 @@ Tooling done along the way (all in `AGENTS.md`):
 - Movement check: niche switches, Floor_Lower/RaiseByValue past neighbours, scenery (solid blocks,
   monolith tops, `user_scenery`) not reported. Validator: wall textures accepted as flats.
 - Script check: re-runs when the devtools mod changes; reads UZDoom's one-line error form too.
-- Specced, not built: the texture browser (`docs/texture-browser.md`) and the ambient sound tester
-  (`docs/sound-tester.md`); earmarked: the SVG pan/zoom map (§8).
+- Planned: the asset browser (`docs/asset-browser.md`, six milestones; replaces the texture browser and
+  sound tester specs); earmarked: the SVG pan/zoom map (§8).
+
+**Cacobelisk, second session (2026-11-22 evening):** notes #29-#84 and two editor saves, all closed. The map
+now runs past the hall: entry secret, the obelisk reveal as a show, purple-obelisk hints, meandering gutters
+joined under a 3D-floor bridge and draining under the walls, a great door with a small door, a mossy passage,
+and a flooded cistern below the hall. `maps/cacobelisk/notes.md` has the details. **Open:** where the cistern
+leads, what the switch obelisk does, an exit.
+Lessons: monsters need about twice their width in winding corridors (Doom's 8-direction movement), and
+niches with less headroom than a monster block it: now checked on every build (`movement.py` monster fit;
+AGENTS.md). Thing numbers: 2048 is a box of bullets, 2049 a box of shells. Texture offsets on a line's parts
+(`offsetx_top` ...) are in texture pixels and add to the side's own offset. A middle texture on a two-sided
+line is drawn per side. `ambush` monsters are deaf.
+Tooling along the way: asset browser favourites (`build/asset-favorites.json`, needs the board restarted),
+the banner between the board and the asset browser, both opened as tabs; `dms watch` no longer dies on a
+file another program has open for a moment (`edit.wad` mid-save, `inbox.lock`). Offered, not built: a
+"read, retrying if locked" helper used wherever dms reads files other programs write.
 
 **The board is no longer optional in a session** (2026-11-22, mapper's call): auto-pull and the game's restart
 only work while it runs, so Start Session's window offers just the browser, editor, game and agent, and its own
 console window becomes the board once everything is open (`--board-here`, `board=1` in `build/session.txt`).
-**Not yet tried by the mapper.**
+Tried by the mapper: works.
+
+**The asset browser is up (2026-11-22; seen by the mapper, first fixes done):**
+`/assets` on the board (a banner links the two pages; dms opens both, each in its own tab). Rule: it offers only what the game can do (so no music tempo/pitch). Milestones 1-5 of `docs/asset-browser.md` are in a first form (textures and
+flats with the 2D/3D audition, things, decals, sounds, music through our own browser synth and the game's soundfont); milestone 6 (Send to Claude,
+"used in", `dms assets` in the terminal) is open. Next: M6, then M3.
 
 **No `dms rename` yet** (worth adding): renaming test2 to cacobelisk was by hand: move `maps/<old>` (rename
 the script's classes after the map), then copy `build/<old>/history/` (renumbering the new map's builds after
@@ -399,7 +417,7 @@ point `build/last-map.txt` at the new name. `build/test2/` is left as it was (gi
 - Check textures in the game: A-GRATE rendered grey with solid black holes, unlike its composited preview.
 - ZScript names are case-insensitive (a method `Rumbles` clashed with an array `rumbles`); dynamic arrays
   can't hold `Vector2`.
-- Sounds were tuned by ear in steps; the sound tester (spec) would shorten that loop.
+- Sounds were tuned by ear in steps; the asset browser's sound panel (`docs/asset-browser.md`) should shorten that loop.
 
 **Earlier (late M2, 2026-11-21, 91 tests):**
 - **Notes for Claude** from the board, the editor (Ctrl+Shift+N) and the game (key N), `dms watch`/`dms notes`.

@@ -211,6 +211,10 @@ class _Lock:
             try:
                 os.close(os.open(self.p, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
                 return self
+            except PermissionError:
+                # Windows: the other process's lock file is being deleted right now (it can't be
+                # created again until that finishes). Seen 2026-11-22: it stopped `dms watch`.
+                time.sleep(0.05)
             except FileExistsError:
                 try:
                     if time.time() - self.p.stat().st_mtime > 10:  # left behind by a crash

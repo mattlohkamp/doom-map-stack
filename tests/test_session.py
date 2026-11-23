@@ -17,7 +17,7 @@ def calls(monkeypatch):
     got = []
     monkeypatch.setattr(session, "_start_board", lambda root, port: got.append(("board", port)) or True)
     monkeypatch.setattr(board, "_running_here", lambda port, root: None)
-    monkeypatch.setattr(session.webbrowser, "open", lambda url: got.append(("browser", url)))
+    monkeypatch.setattr(board, "open_pages", lambda url: got.append(("browser", url)))
     monkeypatch.setattr(launch, "edit", lambda root, info, focus=True: got.append(("edit", info.name, focus)) or 0)
     monkeypatch.setattr(launch, "play", lambda root, info: got.append(("play", info.name)) or 0)
     monkeypatch.setattr(launch, "focus_process_window", lambda pid: got.append(("focus", pid)) or True)
@@ -124,3 +124,11 @@ def test_board_on_a_foreign_port_stops_the_session(repo, calls, monkeypatch):
     with pytest.raises(maps.MapError, match="used by something else"):
         session.start(repo, maps.resolve(repo, "a"), session.defaults({}), board_here=True)
     assert calls == []  # checked before anything opens
+
+
+def test_open_pages_opens_the_asset_browser_then_the_board(monkeypatch):
+    opened = []
+    monkeypatch.setattr(board.webbrowser, "open_new_tab", opened.append)
+    monkeypatch.setattr(board.time, "sleep", lambda s: None)
+    board.open_pages("http://127.0.0.1:8765/#a")
+    assert opened == ["http://127.0.0.1:8765/assets", "http://127.0.0.1:8765/#a"]  # the board in front

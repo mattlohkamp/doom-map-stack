@@ -237,6 +237,16 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   scripts only at startup, so a build that changes the script marks the running game for a restart (H restarts
   it, with the board running). Find things by thing id (UDMF `id` on things) and react to lines in
   `WorldLineActivated`; log with `Console.Printf("[DMS] ...")` so `log-play.txt` shows the script ran.
+- **Asset browser** (`/assets` on the board's server, each page links to the other in a thin banner at the top; opened in a tab of its own next to the board whenever dms opens the browser; `src/dms/resources.py`,
+  `src/dms/assets.html`; plan and status: `docs/asset-browser.md`): every texture, flat, decal, item, monster,
+  decoration, sound and song the IWAD and `uzdoom.pk3` provide, as a list or grid with search, filter
+  chips and sort; textures auditioned side by side on a 2D plane and on 3D boxes (offsets and scale as UDMF);
+  sounds with the engine's controls; songs played by our own browser synth (`src/dms/assets-synth.js`) through UZDoom's soundfont.
+  Favourites (starred by the mapper) are kept in `build/asset-favorites.json`: look there when asked to use
+  "one of my favourites". Rule: the browser offers only settings the game itself can apply (no tempo or pitch for music: UZDoom plays songs as they are).
+  The editor's thing and texture-set configs are read at run time from `.tools/udb/`. Everything converted is
+  cached in `build/assets/<key>/` (the key changes with the resource files or `resources.VERSION`); the first
+  load indexes for about 20 s. Changes to `resources.py` need the board restarted; `assets.html` is read per request.
 - `dms catalog`: lists the IWAD's wall textures (with sizes) and flats into `catalog/` (committed; names only).
   Re-run after changing the Freedoom pin.
 - `dms validate <map> [--edit]`: checks `TEXTMAP` (or the mapper's `edit.wad`) and writes `build/<map>/validate.txt`
@@ -259,6 +269,13 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   (reachable, but no way on to an exit; only checked when the map has a reachable exit). Optimistic on purpose:
   "unreachable" is reliable, "reachable" means "probably". Not yet: teleporters, crushers, scripts.
   Door and lift use lines must have the player's side as their **front** side.
+  **Monster fit** (same file, `_monster_fit`): every monster in the player's reach is flooded with its own
+  size (`MONSTERS`: a gap of twice its radius, headroom its height), a step of 24 and, unless it flies, no
+  drop over 24; movers that stay put once used (floors, ceilings, Door_Open) count, doors and lifts that
+  close or return only with a monster activation flag (`monsteruse`...). Where the player goes back and
+  forth between a place a monster reaches and one it can't (not a dead end too small for it), a warning
+  names the line, the monsters and why. It can't see bends: give winding corridors about twice the
+  monster's width (Doom's monsters move in 8 directions; Cacobelisk's passage, notes #66-#70).
 
 - **Renders** (`src/dms/render.py`): every build writes `build/<map>/render.png` + `render.txt` (sectors shaded by
   floor height, walls, specials, things, grid, validation and movement issues ringed in red, unreachable sectors
@@ -279,7 +296,7 @@ Code: `src/dms/udmf.py` (TEXTMAP read/write, keeps every field), `wad.py`, `cata
   mapper's usual way in; `src/dms/session.py`): `git pull`, then the session window (`picker.pick_session`): the map
   list (focused, last map selected), **New map...**, and toggles for the browser, editor, game and agent
   (defaults: `[session]` in `dms.toml`, not remembered). Choosing a map (Start, Enter, double-click) or creating one
-  starts it: builds if needed, then opens what was ticked and isn't open: the browser on the map's page (`/#<map>`),
+  starts it: builds if needed, then opens what was ticked and isn't open: the browser on the map's page (`/#<map>`, plus the asset browser in a second tab),
   the editor (`launch.edit`) and the game (`launch.play`), or brings them to the front. A dropped map skips the
   window and uses the defaults. **The board isn't a choice: a session always has one** (auto-pull and the game's
   restart need it). A board already running is used as it is; a port taken by something else stops the session

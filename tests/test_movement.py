@@ -266,3 +266,58 @@ def test_a_sector_marked_scenery_is_not_reported():
     assert movement.check(m.textmap()).unreachable == set()
     del m.sectors[slot.index].fields["user_scenery"]
     assert movement.check(m.textmap()).unreachable == {slot.index}
+
+
+def _two_rooms(opening):
+    """Room a (south) and room b (north), 256 square, joined by an opening `opening` wide."""
+    m = MapBuilder()
+    a, b = m.sector("a"), m.sector("b")
+    m.player_start(128, 64)
+    x0, x1 = 128 - opening / 2, 128 + opening / 2
+    m.wall((0, 0), (0, 256), a, "a.w")
+    m.wall((256, 256), (256, 0), a, "a.e")
+    m.wall((256, 0), (0, 0), a, "a.s")
+    m.wall((0, 256), (x0, 256), a, "a.n1")
+    m.wall((x1, 256), (256, 256), a, "a.n2")
+    m.two_sided((x0, 256), (x1, 256), a, b, "gap")
+    m.wall((0, 256), (0, 512), b, "b.w")
+    m.wall((0, 512), (256, 512), b, "b.n")
+    m.wall((256, 512), (256, 256), b, "b.e")
+    return m
+
+
+def test_monster_fit_names_the_monster_too_big_for_a_gap():
+    m = _two_rooms(48)                        # an imp (40) fits, a pinky (60) doesn't
+    m.thing(3001, 64, 64, "imp")
+    m.thing(3002, 192, 64, "pinky")
+    res = movement.check(m.textmap())
+    w = [x for x in warnings(res) if "can't follow" in x]
+    assert len(w) == 1 and "pinky (pinky)" in w[0] and "imp" not in w[0] and "gap 48 wide, it needs 60" in w[0]
+    assert "monsters: 2 checked" in res.report
+
+    m = _two_rooms(64)
+    m.thing(3002, 192, 64, "pinky")
+    res = movement.check(m.textmap())
+    assert not [x for x in warnings(res) if "can't follow" in x]
+    assert "all can follow the player" in res.report
+
+
+def _monster_door_map(*flags, special=12):
+    """A room with an imp, and a closed 64 x 64 door space in it (a door to a closet, say)."""
+    m = MapBuilder()
+    room = m.room("room", 0, 0, 512, 512)
+    m.player_start(64, 64)
+    door, lines = box(m, "door", 64, 256, 64, 64, room, facing_out=True, ceiling=0)
+    ld = m.linedefs[lines[3]]
+    ld.fields.update(special=special, playeruse=True, **{f: True for f in flags})
+    m.thing(3001, 256, 64, "imp")
+    return m.textmap()
+
+
+def test_monster_fit_doors_only_open_for_monsters_with_a_monster_flag():
+    following = lambda res: [x for x in warnings(res) if "can't follow" in x]  # noqa: E731
+    res = movement.check(_monster_door_map())                       # Door_Raise, player only
+    assert any("imp (imp) can't follow the player here: less than 56 of headroom" in x for x in following(res))
+    assert not following(movement.check(_monster_door_map("monsteruse")))
+    # Door_Open stays open once the player has opened it: the monster can follow then.
+    assert not following(movement.check(_monster_door_map(special=11)))

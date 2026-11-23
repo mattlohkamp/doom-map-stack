@@ -12,9 +12,20 @@ height between their own floor and their neighbours'; ceiling movers likewise. A
 the player can reach its line (switches and shootables from the front side, walk-over lines from
 either side). Repeats until nothing new opens up.
 
-It is optimistic on purpose (movers are assumed to reach any height in their range, monsters don't
-exist): "unreachable" is reliable, "reachable" means "probably". Not handled yet: teleporters,
-crushers, scripts, jumping/crouching (off in this project anyway).
+It is optimistic on purpose (movers are assumed to reach any height in their range): "unreachable" is
+reliable, "reachable" means "probably". Not handled yet: teleporters, crushers, scripts,
+jumping/crouching (off in this project anyway).
+
+Monster fit (docs/map-design-notes.md: monsters need pathing): each monster is flooded the same way with
+its own size (MONSTERS: a gap at least twice its radius, headroom its height), a step of 24 up and, unless
+it flies, no drop of more than 24 (Doom monsters won't walk off a higher ledge). Movers that stay
+where they're moved (floors, ceilings, Door_Open: once the player has used them) count as for the player;
+doors and lifts that close or come back, only if a line that works them has a monster activation flag.
+Wherever the player can go back and forth between a place the monster can reach and one it can't, the
+monster can't follow there: a warning names the line and why. Not reported: a dead end too small for the
+monster to stand in (an altar's top, a niche). Also optimistic: a corridor wide enough at every line can
+still be too tight at a bend
+(Doom's monsters move in 8 directions); give winding corridors about twice the monster's width.
 """
 
 from __future__ import annotations
@@ -31,6 +42,7 @@ WIDTH = 32
 
 DOORS = {11, 12, 13}                     # Door_Open, Door_Raise, Door_LockedRaise
 LOCKED_DOOR = 13                          # its lock number is arg3
+DOOR_OPEN = 11                            # opens and stays open
 LIFTS = {60, 61, 62, 63, 64, 65, 206, 207}  # Plat_*
 FLOORS = set(range(20, 39))              # Floor_* and stairs (raise/lower/move)
 FLOOR_LOWER_BY_VALUE, FLOOR_RAISE_BY_VALUE = 20, 23   # move by arg2, not to a neighbour's height
@@ -47,6 +59,17 @@ ALL_KEYS = {100, 101, 229}                # "all keys" locks: one of each colour
 WEAPONS = {2001: "shotgun", 82: "super shotgun", 2002: "chaingun", 2003: "rocket launcher",
            2004: "plasma rifle", 2005: "chainsaw", 2006: "BFG9000"}
 # Other pickups worth reporting when they can't be reached (not every health bonus or clip).
+# Monster type -> (name, radius, height, flies): Doom's, as UZDoom defines them.
+MONSTERS = {
+    3004: ("zombieman", 20, 56, False), 9: ("shotgun guy", 20, 56, False), 65: ("chaingunner", 20, 56, False),
+    84: ("wolfenstein SS", 20, 56, False), 3001: ("imp", 20, 56, False), 3002: ("pinky", 30, 56, False),
+    58: ("spectre", 30, 56, False), 3006: ("lost soul", 16, 56, True), 3005: ("cacodemon", 31, 56, True),
+    71: ("pain elemental", 31, 56, True), 66: ("revenant", 20, 56, False), 69: ("hell knight", 24, 64, False),
+    3003: ("baron of hell", 24, 64, False), 67: ("mancubus", 48, 64, False), 68: ("arachnotron", 64, 64, False),
+    64: ("arch-vile", 20, 56, False), 16: ("cyberdemon", 40, 110, False), 7: ("spider mastermind", 128, 100, False),
+}
+MONSTER_DROP = 24
+MONSTER_FLAGS = ("monsteruse", "monstercross", "monsterpush", "monstershoot")
 ITEMS = {2013: "soulsphere", 83: "megasphere", 2022: "invulnerability", 2023: "berserk",
          2024: "partial invisibility", 2025: "radiation suit", 2026: "computer map", 2045: "light amp goggles",
          2018: "green armor", 2019: "blue armor", 8: "backpack"}
@@ -303,7 +326,105 @@ def check(tm: Textmap) -> Result:
         res.softlocks = reach - escape
 
     res.issues, res.report = _findings(tm, res, exits, exit_secs, one_way, never_opened, things_in)
+    m_issues, m_report = _monster_fit(tm, res, portals, width, floor, ceil, moves, targets)
+    res.issues += m_issues
+    res.report += m_report
     return res
+
+
+def _monster_fit(tm, res, portals, width, floor, ceil, moves, targets):
+    """The monster fit check (see the module's docstring): warnings and report lines."""
+    sectors, lines = tm.sectors, tm.linedefs
+    # Sectors as the player can move them, for a monster: movers that stay put once used, and doors and
+    # lifts worked by a line with a monster activation flag.
+    movable = set()
+    for ld in lines:
+        sp = ld.get("special", 0)
+        if not sp or not (sp in DOORS or sp in LIFTS or sp in FLOORS or sp in CEILINGS):
+            continue
+        stays = sp in FLOORS or sp in CEILINGS or sp == DOOR_OPEN     # Door_Open doesn't close again
+        if stays or any(ld.get(f) for f in MONSTER_FLAGS):
+            movable.update(targets(ld, _side_sector(tm, ld, "sidefront"), _side_sector(tm, ld, "sideback")))
+    # Each sector's size (its lines' bounding box), for the dead ends too small to matter.
+    box: dict[int, list[float]] = {}
+    for ld in lines:
+        for key in ("sidefront", "sideback"):
+            s = _side_sector(tm, ld, key)
+            if s is None:
+                continue
+            for v in (tm.vertices[ld["v1"]], tm.vertices[ld["v2"]]):
+                b = box.setdefault(s, [v["x"], v["y"], v["x"], v["y"]])
+                b[0], b[1] = min(b[0], v["x"]), min(b[1], v["y"])
+                b[2], b[3] = max(b[2], v["x"]), max(b[3], v["y"])
+
+    def too_small_dead_end(y, reach, radius):
+        b = box.get(y)
+        small = b is not None and min(b[2] - b[0], b[3] - b[1]) < 2 * radius
+        return small and all(n in reach for n in moves[y])
+    flo = [Range(f.lo, f.hi) if i in movable else Range(s.get("heightfloor", 0), s.get("heightfloor", 0))
+           for i, (f, s) in enumerate(zip(floor, sectors))]
+    cei = [Range(c.lo, c.hi) if i in movable else Range(s.get("heightceiling", 0), s.get("heightceiling", 0))
+           for i, (c, s) in enumerate(zip(ceil, sectors))]
+
+    def why_not(a, b, line, radius, height, flies):
+        """None if a monster this size can move from sector a to b over `line`, else the reason."""
+        if width.get(line, 0) < 2 * radius:
+            return f"gap {width.get(line, 0):g} wide, it needs {2 * radius}"
+        reason = "headroom"
+        for fa in {flo[a].lo, flo[a].hi}:
+            if cei[a].hi - fa < height:
+                continue
+            for fb in {flo[b].lo, flo[b].hi}:
+                room = min(cei[a].hi, cei[b].hi) - max(fa, fb) >= height and cei[b].hi - fb >= height
+                if not room:
+                    continue
+                if flies or (fb - fa <= STEP and fa - fb <= MONSTER_DROP):
+                    return None
+                reason = f"a step of {fb - fa:g}" if fb > fa else f"a drop of {fa - fb:g} (more than {MONSTER_DROP})"
+        return reason if reason != "headroom" else f"less than {height} of headroom"
+
+    def flood(start, size):
+        seen, todo = {start}, [start]
+        while todo:
+            a = todo.pop()
+            for line, f, b in portals:
+                for x, y in ((f, b), (b, f)):
+                    if x == a and y not in seen and why_not(x, y, line, *size) is None:
+                        seen.add(y)
+                        todo.append(y)
+        return seen
+
+    blocked: dict[tuple[int, str], list[str]] = {}
+    checked = 0
+    for t in tm.things:
+        kind = MONSTERS.get(t.get("type"))
+        if not kind or "x" not in t.fields:
+            continue
+        s = sector_at(tm, t["x"], t["y"])
+        if s is None or s not in res.reachable:
+            continue                                   # where the player never goes: nothing to chase
+        checked += 1
+        name, *size = kind
+        reach = flood(s, tuple(size))
+        for line, f, b in portals:
+            for a, y in ((f, b), (b, f)):
+                # The player goes both ways between a (the monster's) and y (not): it can't follow there.
+                if a in reach and y not in reach and y in res.reachable and a in moves[y] and y in moves[a] \
+                        and not too_small_dead_end(y, reach, size[0]):
+                    reason = why_not(a, y, line, *size)
+                    if reason:
+                        blocked.setdefault((line, reason), []).append(f"{name} ({t.get('user_gid') or s})")
+    issues = []
+    for (line, reason), who in sorted(blocked.items()):
+        ld = lines[line]
+        issues.append(Issue("warning", f"{', '.join(sorted(set(who)))} can't follow the player here: {reason}",
+                            f"line {ld.get('user_gid') or line}", _mid(tm, ld)))
+    report = f"monsters: {checked} checked for fit (their size, steps, drops)"
+    if issues:
+        report += f"; {len(issues)} place(s) one can't follow the player:\n" + "".join(f"  {i}\n" for i in issues)
+    else:
+        report += "; all can follow the player\n"
+    return issues, report
 
 
 def _name(tm: Textmap, s: int) -> str:

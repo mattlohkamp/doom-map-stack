@@ -20,7 +20,6 @@ from __future__ import annotations
 import re
 import subprocess
 import time
-import webbrowser
 from pathlib import Path
 
 from dms import maps
@@ -101,8 +100,8 @@ def start(root: Path, info: maps.MapInfo, choices: dict, board_here: bool = Fals
         board_up = _start_board(root, port)
     if choices.get("browser"):
         if board_up:
-            webbrowser.open(f"http://127.0.0.1:{port}/#{info.name}")
-            print("    browser: the board, on this map")
+            board.open_pages(f"http://127.0.0.1:{port}/#{info.name}")
+            print("    browser: the board, on this map, and the asset browser")
         elif board_here:
             lines.append("browser=1")  # the board opens it once it's listening
         else:

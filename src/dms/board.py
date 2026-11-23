@@ -418,9 +418,10 @@ def make_handler(root: Path, announce: bool = False):
         def do_POST(self) -> None:
             from dms import inbox
 
-            if urlparse(self.path).path != "/api/note":
+            path = urlparse(self.path).path
+            if path not in ("/api/note", "/api/assets/favorites"):
                 return self._missing()
-            # Only the board's own page may add notes (they're instructions Claude acts on). It sends
+            # Only the board's own pages may post (notes are instructions Claude acts on). They send
             # JSON with this header; another web page can't, without a CORS preflight this server
             # never answers. Origin, when sent, must be this server.
             port = self.server.server_address[1]
@@ -429,6 +430,8 @@ def make_handler(root: Path, announce: bool = False):
                     or not (self.headers.get("Content-Type") or "").startswith("application/json")
                     or origin not in (None, f"http://127.0.0.1:{port}", f"http://localhost:{port}")):
                 return self._send(HTTPStatus.FORBIDDEN, b"not from the board", "text/plain; charset=utf-8")
+            if path == "/api/assets/favorites":
+                return self._favorite()
             try:
                 length = int(self.headers.get("Content-Length") or 0)
                 if not 0 < length <= 16384:
@@ -449,6 +452,22 @@ def make_handler(root: Path, announce: bool = False):
                              target=note_target(info, pos) if pos else None)
             self._json(note)
 
+        def _favorite(self) -> None:
+            """The asset browser stars or unstars an asset: {category, name, on}."""
+            from dms import resources
+
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                if not 0 < length <= 4096:
+                    raise ValueError("bad length")
+                data = json.loads(self.rfile.read(length))
+                category, name = str(data["category"]), str(data["name"])
+                if not re.fullmatch(r"[a-z]{1,20}", category) or not 0 < len(name) <= 64:
+                    raise ValueError("bad category or name")
+            except (ValueError, TypeError, KeyError, json.JSONDecodeError) as e:
+                return self._send(HTTPStatus.BAD_REQUEST, f"bad favourite: {e}".encode(), "text/plain; charset=utf-8")
+            self._json(resources.set_favorite(root, category, name, bool(data.get("on"))))
+
         def do_GET(self) -> None:
             url = urlparse(self.path)
             parts = [p for p in url.path.split("/") if p]
@@ -460,6 +479,34 @@ def make_handler(root: Path, announce: bool = False):
                 elif parts == ["api", "ping"]:
                     # "page": board.html's version, so an open board reloads itself when it changes.
                     self._json({"dms_board": True, "root": str(root), "page": PAGE_FILE.stat().st_mtime_ns})
+                elif parts == ["assets"]:
+                    # The asset browser (docs/asset-browser.md): its own page, same server.
+                    self._send(HTTPStatus.OK, ASSETS_FILE.read_text(encoding="utf-8").encode("utf-8"),
+                               "text/html; charset=utf-8")
+                elif parts == ["assets-synth.js"]:
+                    self._send(HTTPStatus.OK, SYNTH_FILE.read_bytes(), "text/javascript; charset=utf-8")
+                elif parts == ["api", "assets", "favorites"]:
+                    from dms import resources
+
+                    self._json(resources.favorites(root))
+                elif len(parts) == 3 and parts[:2] == ["api", "assets"]:
+                    from dms import resources
+
+                    _, index, _ = resources.load(root)
+                    if parts[2] == "index":
+                        self._json({"key": index.key, "counts": index.counts()})
+                    elif parts[2] in index.categories:
+                        self._json({"key": index.key, "items": index.categories[parts[2]]})
+                    else:
+                        self._missing()
+                elif len(parts) == 4 and parts[0] == "asset":
+                    # /asset/<key>/<kind>/<NAME.ext>: converted on first request, cached in build/assets/<key>/.
+                    from dms import resources
+
+                    got = resources.asset_file(root, parts[2], parts[3])
+                    if got is None:
+                        return self._missing()
+                    self._send(HTTPStatus.OK, got[0], got[1], "max-age=31536000, immutable")
                 elif parts == ["api", "maps"]:
                     self._json(map_list(root))
                 elif parts == ["api", "map"]:
@@ -510,13 +557,21 @@ def _page_url(root: Path, url: str) -> str:
     return url + (f"#{quote(last)}" if last else "")
 
 
+def open_pages(board_url: str) -> None:
+    """Opens the asset browser and the board, each in a tab of its own, the board last (in front)."""
+    base = board_url.split("#", 1)[0].rstrip("/")
+    webbrowser.open_new_tab(base + "/assets")
+    time.sleep(1)  # keeps the order, and lets a browser that was closed finish starting
+    webbrowser.open_new_tab(board_url)
+
+
 def serve(root: Path, port: int, open_browser: bool = True, auto_pull: bool = True) -> int:
     url = f"http://127.0.0.1:{port}/"
     running = _running_here(port, root)
     if running:
         print(f"dms board: already running at {url}")
         if open_browser:
-            webbrowser.open(_page_url(root, url))
+            open_pages(_page_url(root, url))
         return 0
     try:
         server = ThreadingHTTPServer(("127.0.0.1", port), make_handler(root, announce=True))
@@ -535,7 +590,7 @@ def serve(root: Path, port: int, open_browser: bool = True, auto_pull: bool = Tr
     print()
     threading.Thread(target=_watch, args=(Watcher(root, auto_pull=auto_pull),), daemon=True).start()
     if open_browser:
-        webbrowser.open(_page_url(root, url))
+        open_pages(_page_url(root, url))
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -546,6 +601,8 @@ def serve(root: Path, port: int, open_browser: bool = True, auto_pull: bool = Tr
 
 
 PAGE_FILE = Path(__file__).with_name("board.html")
+ASSETS_FILE = Path(__file__).with_name("assets.html")
+SYNTH_FILE = Path(__file__).with_name("assets-synth.js")
 
 
 def page() -> str:

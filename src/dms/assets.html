@@ -1,0 +1,877 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assets - dms</title>
+<style>
+  :root { --bg: #16181c; --panel: #1f2228; --line: #33373f; --text: #d8dce3; --dim: #8a909b; --accent: #7fc4ff; --pick: #ffcf5a; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, sans-serif; }
+  body { display: grid; grid-template-rows: auto auto auto 1fr; height: 100vh; }
+  header { display: flex; align-items: center; gap: 4px; padding: 6px 10px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 14px; margin: 0 12px 0 0; color: var(--dim); font-weight: 600; }
+  .tab { background: none; border: 1px solid transparent; color: var(--text); padding: 4px 10px; border-radius: 4px; cursor: pointer; font: inherit; }
+  .tab:hover { border-color: var(--line); }
+  .tab.on { background: #2c3440; border-color: var(--accent); }
+  .tab .n { color: var(--dim); font-size: 11px; margin-left: 3px; }
+  #bar { display: flex; gap: 8px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  #bar input[type=search] { width: 240px; background: #111; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; font: inherit; }
+  select, button, input { font: inherit; }
+  select, .btn { background: #262a31; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px; cursor: pointer; }
+  .btn.on { border-color: var(--accent); background: #2c3440; }
+  .chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--line); border-radius: 10px; padding: 1px 8px; cursor: pointer; color: var(--dim); font-size: 12px; user-select: none; }
+  .chip.on { color: #111; background: var(--accent); border-color: var(--accent); }
+  #shown { color: var(--dim); margin-left: auto; }
+  main { display: grid; grid-template-columns: minmax(300px, 1fr) minmax(420px, 46%); min-height: 0; }
+  #list { overflow: auto; padding: 8px; min-height: 0; }
+  #side { border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; background: #1a1c21; }
+  .grid { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+  .tile { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px; border: 1px solid transparent; border-radius: 4px; cursor: pointer; max-width: 270px; }
+  .tile:hover { border-color: var(--line); background: #20242b; }
+  .tile.sel { border-color: var(--pick); background: #2a2718; }
+  .tile { position: relative; }
+  .tile .anim { position: absolute; top: 3px; right: 3px; width: 14px; height: 14px; border-radius: 3px; background: #e8741c;
+    color: #fff; font-size: 8px; line-height: 14px; text-align: center; box-shadow: 0 0 2px #000; pointer-events: none; }
+  .fav { background: none; border: 0; padding: 0 2px; cursor: pointer; color: #6a6f78; font-size: 14px; line-height: 1; }
+  .fav:hover { color: var(--pick); }
+  .fav.on { color: var(--pick); }
+  .tile .fav { position: absolute; top: 1px; left: 1px; text-shadow: 0 0 3px #000; }
+  .tile:not(:hover) .fav:not(.on) { visibility: hidden; }
+  .chip.favs { border-color: var(--pick); }
+  .tile .img { display: flex; align-items: flex-end; justify-content: center; }
+  .tile img, td img, .pix { image-rendering: pixelated; }
+  .tile .nm { font-size: 11px; color: var(--text); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tile .sz { font-size: 10px; color: var(--dim); }
+  table { border-collapse: collapse; width: 100%; }
+  th { text-align: left; color: var(--dim); font-weight: 500; border-bottom: 1px solid var(--line); padding: 4px 6px; cursor: pointer; position: sticky; top: -8px; background: var(--bg); user-select: none; }
+  th.sorted::after { content: " \25BE"; } th.sorted.rev::after { content: " \25B4"; }
+  td { padding: 3px 6px; border-bottom: 1px solid #22252b; vertical-align: middle; }
+  tr { cursor: pointer; } tr:hover td { background: #20242b; } tr.sel td { background: #2a2718; }
+  td img { max-height: 40px; max-width: 80px; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: middle; border: 1px solid #0006; }
+  .dim { color: var(--dim); }
+  .copy { cursor: copy; border-bottom: 1px dotted var(--dim); }
+  #side h2 { font-size: 13px; margin: 0; padding: 8px 10px; border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  #side .body { overflow: auto; padding: 10px; min-height: 0; flex: 1; }
+  #stage { position: relative; flex: 1 1 55%; min-height: 220px; border-bottom: 1px solid var(--line); overflow: hidden; background: #000; }
+  #stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; }
+  #stage canvas:active { cursor: grabbing; }
+  #cubes { position: absolute; inset: 0; perspective: 1400px; display: flex; align-items: center; justify-content: center; cursor: grab; overflow: hidden; }
+  #cubes .scene { position: relative; transform-style: preserve-3d; }
+  #cubes .box { position: absolute; transform-style: preserve-3d; }
+  #cubes .face { position: absolute; image-rendering: pixelated; background-repeat: repeat; backface-visibility: hidden; outline: 1px solid #0003; }
+  #stage .hint { position: absolute; left: 8px; bottom: 6px; color: #fff9; font-size: 11px; pointer-events: none; text-shadow: 0 0 3px #000; }
+  #controls { padding: 8px 10px; overflow: auto; flex: 1 1 45%; min-height: 0; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+  .row label { display: inline-flex; gap: 4px; align-items: center; color: var(--dim); }
+  .row input[type=number] { width: 62px; background: #111; color: var(--text); border: 1px solid var(--line); border-radius: 3px; padding: 1px 4px; }
+  .pick { border: 1px solid var(--line); border-radius: 4px; padding: 6px; margin-bottom: 6px; display: grid; grid-template-columns: 56px 1fr; gap: 8px; }
+  .pick img { width: 56px; height: 56px; object-fit: contain; background: #000; }
+  .pick .t { display: flex; gap: 8px; align-items: center; }
+  .pick .t b { font-weight: 600; }
+  .pick .t .x { margin-left: auto; cursor: pointer; color: var(--dim); }
+  .udmf { font: 11px ui-monospace, Consolas, monospace; color: #b9d7a5; }
+  .empty { color: var(--dim); padding: 20px; text-align: center; }
+  .voice { display: flex; gap: 8px; align-items: center; padding: 3px 0; border-bottom: 1px solid #22252b; }
+  .frames { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-end; }
+  .frames figure { margin: 0; text-align: center; font-size: 10px; color: var(--dim); }
+  .frames img { image-rendering: pixelated; }
+  .scale { position: relative; display: flex; align-items: flex-end; gap: 24px; padding: 10px; background: repeating-linear-gradient(0deg, #222 0 1px, transparent 1px 32px), #15171a; }
+  .playbtn { width: 26px; height: 22px; padding: 0; }
+  #toast { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); background: #2c3440; border: 1px solid var(--accent); padding: 5px 12px; border-radius: 4px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+  kbd { border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; font-size: 11px; }
+  .dms-nav { position: sticky; top: 0; z-index: 50; display: flex; gap: 14px; align-items: center; height: 24px;
+             padding: 0 12px; background: #101014; border-bottom: 1px solid #2c2c34; font: 12px/24px "Segoe UI", system-ui, sans-serif; }
+  .dms-nav b { color: #77778a; letter-spacing: .06em; }
+  .dms-nav a { color: #8fb4ff; text-decoration: none; } .dms-nav a:hover { text-decoration: underline; }
+  .dms-nav [aria-current] { color: #e4e4ea; font-weight: 600; text-decoration: none; pointer-events: none; }
+</style>
+</head>
+<body>
+<nav class="dms-nav"><b>DMS</b><a href="/" target="dms-board">board</a><a href="/assets" target="dms-assets" aria-current="page">asset browser</a></nav>
+<header id="tabs"></header>
+<div id="bar">
+  <input id="q" type="search" placeholder="search (* wildcards)   /" autocomplete="off">
+  <button class="btn" id="view-grid" title="grid view">grid</button><button class="btn" id="view-list" title="list view">list</button>
+  <select id="sort"></select>
+  <div class="chips" id="chips"></div>
+  <span id="shown"></span>
+</div>
+<main>
+  <div id="list"><div class="empty">loading... (the first time, the server reads the WAD: about 15 seconds)</div></div>
+  <div id="side"></div>
+</main>
+<div id="toast"></div>
+<script src="/assets-synth.js"></script>
+<script>
+window.name = "dms-assets";  // the board's link comes back to this tab
+"use strict";
+// The asset browser: docs/asset-browser.md. Served by the board (src/dms/board.py: /assets, /api/assets/*, /asset/*).
+const TABS = [
+  ["textures", "Textures"], ["flats", "Flats"], ["decals", "Decals"], ["items", "Items"], ["monsters", "Monsters"],
+  ["decorations", "Decorations"], ["sounds", "Sounds"], ["music", "Music"],
+];
+const $ = (s, el = document) => el.querySelector(s);
+const h = (tag, attrs = {}, ...kids) => {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") el.className = v; else if (k === "style") el.style.cssText = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v); else if (v !== undefined && v !== null && v !== false) el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) if (kid !== null && kid !== undefined && kid !== false) el.append(kid.nodeType ? kid : String(kid));
+  return el;
+};
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("dms-assets:" + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { localStorage.setItem("dms-assets:" + k, JSON.stringify(v)); },
+};
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 1400); }
+function copy(text) { navigator.clipboard.writeText(text).then(() => toast("copied: " + (text.length > 60 ? text.slice(0, 60) + "..." : text))); }
+const copyable = (text, shown = text) => h("span", { class: "copy", title: "click to copy", onclick: e => { e.stopPropagation(); copy(text); } }, shown);
+const fmtLen = s => s == null ? "" : s >= 60 ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : s.toFixed(s < 10 ? 2 : 1) + " s";
+
+let KEY = "", counts = {};
+const data = {};               // category -> items
+let cat = (location.hash.slice(1) || store.get("cat", "textures"));
+if (!TABS.some(t => t[0] === cat)) cat = "textures";
+const state = store.get("state", {}); // per category: {view, sort, rev, chips: {facet: [values]}}
+const st = () => (state[cat] ||= { view: ["sounds", "music"].includes(cat) ? "list" : "grid", sort: "name", rev: false, chips: {} });
+const assetUrl = u => `/asset/${KEY}/${u}`;
+
+// ---- per-category columns, facets and sorts ---------------------------------------------------
+const thingCols = [
+  ["img", "", t => t.url ? h("img", { src: assetUrl(t.url), loading: "lazy" }) : ""],
+  ["num", "#", t => t.num], ["name", "title", t => t.title], ["class", "class", t => copyable(t.class)],
+  ["category_title", "category", t => t.category_title], ["size", "size", t => t.radius != null ? `${t.radius * 2} x ${t.height}` : ""],
+];
+const texCols = [
+  ["img", "", t => h("img", { src: assetUrl(t.url), loading: "lazy" })],
+  ["name", "name", t => copyable(t.name)], ["size", "size", t => `${t.width} x ${t.height}`],
+  ["sets", "set", t => t.sets.join(", ")], ["hue", "colour", t => h("span", {}, h("span", { class: "sw", style: `background:${t.colour.rgb}` }), " ", t.colour.hue + " / " + t.colour.light)],
+  ["flags", "", t => [t.masked && "masked", t.anim && "animated", t.switch && "switch", t.sky && "sky"].filter(Boolean).join(", ")],
+];
+const CONF = {
+  textures: { cols: texCols, facets: { sets: t => t.sets, hue: t => [t.colour.hue], width: t => [String(t.width)], kind: t => [t.masked && "masked", t.anim && "animated", t.switch && "switch", t.sky && "sky"].filter(Boolean) },
+    sorts: { name: t => t.name, size: t => t.width * 10000 + t.height, hue: t => t.colour.h * 10 + t.colour.v, sets: t => t.sets.join() }, tex: true },
+  flats: { cols: texCols, facets: { sets: t => t.sets, hue: t => [t.colour.hue], kind: t => [t.anim && "animated", t.sky && "sky"].filter(Boolean) },
+    sorts: { name: t => t.name, hue: t => t.colour.h * 10 + t.colour.v, sets: t => t.sets.join() }, tex: true },
+  decals: { cols: [["img", "", t => t.url ? h("img", { src: assetUrl(t.url), loading: "lazy" }) : ""], ["name", "name", t => copyable(t.name)], ["kind", "kind", t => t.kind],
+      ["pic", "picture", t => t.pic], ["size", "size", t => `${t.width} x ${t.height}`], ["shade", "shade", t => t.shade_rgb ? h("span", {}, h("span", { class: "sw", style: `background:${t.shade_rgb}` }), " ", t.shade_rgb) : ""],
+      ["groups", "groups", t => t.groups.join(", ")]],
+    facets: { kind: t => [t.kind], shaded: t => [t.shade_rgb ? "shaded" : "plain"] }, sorts: { name: t => t.name.toLowerCase(), kind: t => t.kind, size: t => t.width * t.height } },
+  items: { cols: thingCols, facets: { category: t => [t.category_title] }, sorts: { name: t => t.title, num: t => t.num, category_title: t => t.category_title, size: t => (t.radius || 0) * 1000 + (t.height || 0) } },
+  sounds: { cols: [["play", "", t => playButton(t)], ["name", "name", t => copyable(t.name)], ["group", "group", t => t.group], ["lump", "lump", t => t.lump],
+      ["length", "length", t => fmtLen(t.length)], ["random", "", t => t.random ? `random of ${t.random.length}` : t.alias ? `alias of ${t.alias}` : ""]],
+    facets: { group: t => [t.group] }, sorts: { name: t => t.name, group: t => t.group + t.name, length: t => t.length || 0, lump: t => t.lump } , list: true },
+  music: { cols: [["play", "", t => musicButton(t)], ["name", "name", t => copyable(t.name)], ["length", "length", t => fmtLen(t.length)], ["maps", "used by", t => t.maps.join(", ")], ["format", "format", t => t.format]],
+    facets: {}, sorts: { name: t => t.name, length: t => t.length || 0, maps: t => t.maps[0] || "ZZ" }, list: true },
+};
+CONF.monsters = CONF.decorations = CONF.specials = CONF.items;
+
+// ---- loading ----------------------------------------------------------------------------------
+// Favourites: starred assets, per category, kept by the board in build/asset-favorites.json (so they
+// survive the browser, and Claude can read them).
+let favs = {};
+const isFav = t => (favs[cat] || []).includes(t.name);
+async function toggleFav(t, e) {
+  if (e) e.stopPropagation();
+  const on = !isFav(t), c = cat;
+  favs[c] = on ? [...(favs[c] || []), t.name] : (favs[c] || []).filter(n => n !== t.name);
+  buildBar(); render();
+  try {
+    const r = await fetch("/api/assets/favorites", { method: "POST", headers: { "Content-Type": "application/json", "X-DMS-Board": "1" },
+      body: JSON.stringify({ category: c, name: t.name, on }) });
+    if (!r.ok) throw new Error(await r.text());
+    favs = await r.json();
+  } catch (err) { alertLine("couldn't save the favourite: " + err.message); }
+  buildBar(); render();
+}
+const favButton = t => h("button", { class: "fav" + (isFav(t) ? " on" : ""), title: isFav(t) ? "favourite (click to unstar)" : "mark as a favourite",
+  onclick: e => toggleFav(t, e) }, isFav(t) ? "\u2605" : "\u2606");
+function alertLine(msg) { $("#shown").textContent = msg; }
+
+async function init() {
+  try { favs = await (await fetch("/api/assets/favorites")).json(); } catch { favs = {}; }
+  const idx = await (await fetch("/api/assets/index")).json();
+  KEY = idx.key; counts = idx.counts;
+  const tabs = $("#tabs");
+  for (const [k, label] of TABS) tabs.append(h("button", { class: "tab", "data-cat": k, onclick: () => go(k) }, label, h("span", { class: "n" }, counts[k] ?? "")));
+  go(cat);
+}
+async function go(c) {
+  cat = c; store.set("cat", c); history.replaceState(null, "", "#" + c);
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.dataset.cat === c));
+  if (!data[c]) {
+    $("#list").innerHTML = '<div class="empty">loading...</div>';
+    data[c] = (await (await fetch("/api/assets/" + c)).json()).items;
+  }
+  buildBar(); render(); renderSide();
+}
+
+// ---- the bar: view, sort, facets --------------------------------------------------------------
+function buildBar() {
+  const s = st(), conf = CONF[cat];
+  $("#view-grid").classList.toggle("on", s.view === "grid");
+  $("#view-list").classList.toggle("on", s.view === "list");
+  const sort = $("#sort"); sort.innerHTML = "";
+  for (const k of Object.keys(conf.sorts)) sort.append(h("option", { value: k, selected: s.sort === k }, "sort: " + (k === "hue" ? "colour" : k === "category_title" ? "category" : k)));
+  sort.append(h("option", { value: "__rev" }, s.rev ? "order: descending" : "order: ascending"));
+  const chips = $("#chips"); chips.innerHTML = "";
+  const nFav = (favs[cat] || []).filter(n => data[cat].some(t => t.name === n)).length;
+  chips.append(h("span", { class: "chip favs" + (s.favOnly ? " on" : ""), title: "only the favourites (click a star to mark one)",
+    onclick: () => { s.favOnly = !s.favOnly; store.set("state", state); buildBar(); render(); } }, `\u2605 favourites (${nFav})`));
+  for (const [facet, fn] of Object.entries(conf.facets)) {
+    const vals = new Map();
+    for (const t of data[cat]) for (const v of fn(t)) vals.set(v, (vals.get(v) || 0) + 1);
+    if (vals.size < 2 || vals.size > 40) continue;
+    const on = s.chips[facet] || [];
+    for (const [v, n] of [...vals].sort((a, b) => facet === "width" ? a[0] - b[0] : String(a[0]).localeCompare(String(b[0])))) {
+      chips.append(h("span", { class: "chip" + (on.includes(v) ? " on" : ""), title: `${facet}: ${v} (${n})`,
+        onclick: () => { const cur = s.chips[facet] || []; s.chips[facet] = cur.includes(v) ? cur.filter(x => x !== v) : [...cur, v]; store.set("state", state); buildBar(); render(); } },
+        (facet === "width" ? v + " wide" : v)));
+    }
+  }
+}
+$("#view-grid").onclick = () => { st().view = "grid"; store.set("state", state); buildBar(); render(); };
+$("#view-list").onclick = () => { st().view = "list"; store.set("state", state); buildBar(); render(); };
+$("#sort").onchange = e => { const s = st(); if (e.target.value === "__rev") s.rev = !s.rev; else s.sort = e.target.value; store.set("state", state); buildBar(); render(); };
+let qTimer; $("#q").oninput = () => { clearTimeout(qTimer); qTimer = setTimeout(render, 80); };
+document.addEventListener("keydown", e => {
+  if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); $("#q").focus(); }
+  if (e.key === "Escape" && document.activeElement === $("#q")) { $("#q").value = ""; render(); $("#q").blur(); }
+});
+
+function matcher(q) {
+  q = q.trim().toLowerCase();
+  if (!q) return () => true;
+  const words = q.split(/\s+/).map(w => w.includes("*") ? new RegExp("^" + w.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$") : w);
+  return t => {
+    const hay = [t.name, t.title, t.class, t.category_title, t.lump, t.group, t.kind, t.pic, ...(t.sets || []), ...(t.maps || []), t.colour && t.colour.hue].filter(Boolean).map(x => String(x).toLowerCase());
+    return words.every(w => typeof w === "string" ? hay.some(x => x.includes(w)) : hay.some(x => w.test(x)));
+  };
+}
+function visible() {
+  const s = st(), conf = CONF[cat], m = matcher($("#q").value);
+  let items = data[cat].filter(t => m(t) && (!s.favOnly || isFav(t)) && Object.entries(s.chips).every(([f, vals]) => !vals.length || !conf.facets[f] || vals.every(v => conf.facets[f](t).includes(v))));
+  const key = conf.sorts[s.sort] || conf.sorts.name;
+  items = items.slice().sort((a, b) => { const x = key(a), y = key(b); return (x < y ? -1 : x > y ? 1 : 0) * (s.rev ? -1 : 1); });
+  return items;
+}
+
+// ---- the list ---------------------------------------------------------------------------------
+function render() {
+  const items = visible(), s = st(), conf = CONF[cat], list = $("#list");
+  $("#shown").textContent = `${items.length} of ${data[cat].length} shown`;
+  list.innerHTML = "";
+  if (!items.length) { list.append(h("div", { class: "empty" }, "nothing matches")); return; }
+  if (s.view === "list" || (conf.list && s.view !== "grid")) {
+    const table = h("table"), head = h("tr", {}, h("th", { title: "favourites" }, "\u2605"));
+    for (const [k, label] of conf.cols) head.append(h("th", { class: s.sort === k ? "sorted" + (s.rev ? " rev" : "") : "",
+      onclick: () => { if (!conf.sorts[k]) return; if (s.sort === k) s.rev = !s.rev; else { s.sort = k; s.rev = false; } store.set("state", state); buildBar(); render(); } }, label));
+    table.append(h("thead", {}, head));
+    const body = h("tbody");
+    for (const t of items) {
+      const tr = h("tr", { class: isSelected(t) ? "sel" : "", onclick: () => pick(t) }, h("td", {}, favButton(t)));
+      for (const [, , fn] of conf.cols) tr.append(h("td", {}, fn(t)));
+      body.append(tr);
+    }
+    table.append(body); list.append(table);
+  } else {
+    const grid = h("div", { class: "grid" });
+    for (const t of items) grid.append(tile(t));
+    list.append(grid);
+  }
+}
+function tile(t) {
+  let img;
+  if (cat === "sounds" || cat === "music") img = cat === "sounds" ? playButton(t) : musicButton(t);
+  else if (t.url) {
+    const scale = CONF[cat].tex ? (Math.max(t.width, t.height) > 128 ? 1 : 2) : (cat === "decals" ? 3 : 2);
+    const w = (t.width || 0) * scale;
+    img = h("img", { src: assetUrl(t.url), loading: "lazy", style: w ? `width:${Math.min(w, 256)}px` : "max-width:128px" });
+    if (!CONF[cat].tex) img.onload = () => { img.style.width = Math.min(img.naturalWidth * scale, 256) + "px"; };
+    if (cat === "decals") img.style.background = "#555";
+  } else img = h("span", { class: "dim" }, "(no picture)");
+  const sz = CONF[cat].tex ? `${t.width} x ${t.height}` : t.num != null ? `#${t.num}` : t.length != null ? fmtLen(t.length) : "";
+  const n = animFrames(t);
+  return h("div", { class: "tile" + (isSelected(t) ? " sel" : ""), title: (t.title || t.name) + (n ? ` (animated, ${n} frames)` : ""), onclick: () => pick(t) },
+    favButton(t), n ? h("span", { class: "anim" }, "▶") : null,
+    h("div", { class: "img" }, img), h("div", { class: "nm" }, t.title || t.name), h("div", { class: "sz" }, sz));
+}
+// How many animation frames something has (0 = not animated): a texture/flat's animation (ANIMATED /
+// ANIMDEFS), or a thing's looping Spawn state (its idle animation in the game).
+function animFrames(t) {
+  if (t.anim) return t.anim.length;
+  if (t.spawn && t.spawn.length) return new Set(t.spawn.map(f => f[0])).size;
+  return 0;
+}
+
+// ---- selection --------------------------------------------------------------------------------
+// Textures and flats: a shortlist to audition side by side (kept per resource key). Others: one at a time.
+let picks = store.get("picks", []).filter(p => p && p.name);   // [{cat, name, ox, oy, sx, sy, w, h, d}]
+let current = null;
+const isSelected = t => CONF[cat].tex ? picks.some(p => p.cat === cat && p.name === t.name) : current === t;
+function pick(t) {
+  if (CONF[cat].tex) {
+    const i = picks.findIndex(p => p.cat === cat && p.name === t.name);
+    if (i >= 0) picks.splice(i, 1);
+    else picks.push({ cat, name: t.name, width: t.width, height: t.height, url: t.url, ox: 0, oy: 0, sx: 1, sy: 1, w: t.width, h: t.height, d: t.width });
+    store.set("picks", picks);
+  } else if (cat === "sounds") { current = t; play(t); }
+  else if (cat === "music") { current = t; render(); renderSide(); playMusic(t); return; }
+  else current = t;
+  render(); renderSide();
+}
+
+// ---- the side panel ---------------------------------------------------------------------------
+let auditionMode = store.get("mode", "plan");
+const audit = store.get("audit", { zoom: 2, light: 255, bg: "black", link: false, spin: true, perface: false, guides: true });
+function renderSide() {
+  const side = $("#side"); side.innerHTML = "";
+  stopAnim();
+  if (CONF[cat].tex) return renderAudition(side);
+  if (cat === "sounds") return renderSoundPanel(side);
+  if (cat === "music") return renderMusicPanel(side);
+  if (!current) { side.append(h("div", { class: "empty" }, "click something to see it here")); return; }
+  if (cat === "decals") return renderDecal(side, current);
+  return renderThing(side, current);
+}
+
+// ---- textures: audition -----------------------------------------------------------------------
+function renderAudition(side) {
+  const head = h("h2", {},
+    h("span", {}, "Audition"),
+    h("button", { class: "btn" + (auditionMode === "plan" ? " on" : ""), onclick: () => { auditionMode = "plan"; store.set("mode", auditionMode); renderSide(); } }, "2D plane"),
+    h("button", { class: "btn" + (auditionMode === "cube" ? " on" : ""), onclick: () => { auditionMode = "cube"; store.set("mode", auditionMode); renderSide(); } }, "3D boxes"),
+    h("span", { class: "dim", style: "margin-left:auto" }, `${picks.length} picked`),
+    picks.length ? h("button", { class: "btn", onclick: () => { picks = []; store.set("picks", picks); render(); renderSide(); } }, "clear") : null);
+  side.append(head);
+  const stage = h("div", { id: "stage" });
+  side.append(stage);
+  const controls = h("div", { id: "controls" });
+  side.append(controls);
+  if (!picks.length) { stage.append(h("div", { class: "empty", style: "color:#aaa" }, "click textures or flats in the list to put them here, side by side")); }
+  else if (auditionMode === "plan") planView(stage); else cubeView(stage);
+  renderControls(controls);
+}
+
+function renderControls(el) {
+  const save = () => { store.set("audit", audit); store.set("picks", picks); };
+  const redraw = () => { save(); if (auditionMode === "plan") drawPlan(); else layoutCubes(); };
+  const num = (label, val, step, on, title) => h("label", { title }, label, h("input", { type: "number", value: val, step, oninput: e => { const v = parseFloat(e.target.value); if (!isNaN(v)) on(v); } }));
+  el.append(h("div", { class: "row" },
+    h("label", {}, "light", h("input", { type: "range", min: 0, max: 255, value: audit.light, oninput: e => { audit.light = +e.target.value; lightOut.textContent = audit.light; redraw(); } })),
+    (lightOut = h("span", { class: "dim" }, audit.light)),
+    h("label", {}, "background", h("select", { onchange: e => { audit.bg = e.target.value; redraw(); } }, ...["black", "grey", "checker"].map(b => h("option", { selected: audit.bg === b }, b)))),
+    auditionMode === "plan" ? h("label", {}, h("input", { type: "checkbox", checked: audit.guides, onchange: e => { audit.guides = e.target.checked; redraw(); } }), "player + door for scale") : null,
+    auditionMode === "cube" ? h("label", {}, h("input", { type: "checkbox", checked: audit.spin, onchange: e => { audit.spin = e.target.checked; save(); } }), "turn") : null,
+    auditionMode === "cube" ? h("label", { title: "one box, a different picked texture on each face" }, h("input", { type: "checkbox", checked: audit.perface, onchange: e => { audit.perface = e.target.checked; save(); renderSide(); } }), "one box, a texture per face") : null,
+    h("label", { title: "a change to one applies to all" }, h("input", { type: "checkbox", checked: audit.link, onchange: e => { audit.link = e.target.checked; save(); } }), "link settings"),
+  ));
+  if (auditionMode === "plan") {
+    const door = audit.door;
+    const doorSel = h("select", { onchange: e => { door.tex = e.target.value; door.w = door.h = 0; save(); renderSide(); } });
+    const fillDoors = () => {
+      doorSel.innerHTML = "";
+      for (const t of doorTextures()) doorSel.append(h("option", { value: t.name, selected: t.name === door.tex }, `${t.name} ${t.width}x${t.height}`));
+    };
+    if (data.textures) fillDoors(); else ensureTextures().then(() => { fillDoors(); drawPlan(); });
+    const cur = (data.textures || []).find(t => t.name === door.tex);
+    el.append(h("div", { class: "row" },
+      h("label", { title: "lay a textured door over the strips; drag it into place (snaps to 8)" },
+        h("input", { type: "checkbox", checked: door.on, onchange: e => { door.on = e.target.checked; if (door.on) ensureTextures().then(drawPlan); save(); renderSide(); } }), "door overlay"),
+      door.on ? doorSel : null,
+      door.on ? h("label", { title: "door width (map units); 0 = the texture's width" }, "w", h("input", { type: "number", step: 8, value: door.w || (cur ? cur.width : 0), oninput: e => { door.w = Math.max(0, +e.target.value || 0); redraw(); } })) : null,
+      door.on ? h("label", { title: "door height; 0 = the texture's height" }, "h", h("input", { type: "number", step: 8, value: door.h || (cur ? cur.height : 0), oninput: e => { door.h = Math.max(0, +e.target.value || 0); redraw(); } })) : null,
+      door.on ? h("label", { title: "DOORTRAK jambs, 8 wide, either side" }, h("input", { type: "checkbox", checked: door.track, onchange: e => { door.track = e.target.checked; redraw(); } }), "track") : null,
+      door.on ? h("button", { class: "btn", title: "back to the middle, on the floor", onclick: () => { door.x = null; door.y = 0; redraw(); } }, "centre") : null,
+    ));
+  }
+  el.append(h("div", { class: "row dim" }, auditionMode === "plan"
+    ? "Wheel: zoom. Drag: pan. Each texture is a strip, side by side. Offsets in texels; scale as in the engine (2 = half size)."
+    : "Drag: turn. Wheel: zoom. Boxes start sized to show the whole texture once per face. Light is a CSS approximation of the engine's."));
+  for (const p of picks) {
+    const set = (k, v) => { for (const q of audit.link ? picks : [p]) q[k] = v; if (audit.link) renderSide(); else { udmf.textContent = udmfText(p); redraw(); } };
+    const udmf = h("div", { class: "udmf copy", title: "click to copy", onclick: () => copy(udmfText(p)) }, udmfText(p));
+    el.append(h("div", { class: "pick" },
+      h("img", { src: assetUrl(p.url), class: "pix" }),
+      h("div", {},
+        h("div", { class: "t" }, h("b", {}, copyable(p.name)), h("span", { class: "dim" }, `${p.width} x ${p.height} ${p.cat === "flats" ? "flat" : ""}`),
+          h("span", { class: "x", title: "remove", onclick: () => { picks = picks.filter(q => q !== p); save(); render(); renderSide(); } }, "✕")),
+        h("div", { class: "row" },
+          num("x off", p.ox, 1, v => set("ox", v), "UDMF offsetx: positive moves the texture left"),
+          num("y off", p.oy, 1, v => set("oy", v), "UDMF offsety: positive moves the texture up"),
+          num("x scale", p.sx, 0.25, v => set("sx", v || 1), "UDMF scalex: 2 = drawn half as wide"),
+          num("y scale", p.sy, 0.25, v => set("sy", v || 1), "UDMF scaley: 2 = drawn half as tall"),
+          h("button", { class: "btn", onclick: () => { for (const q of audit.link ? picks : [p]) Object.assign(q, { ox: 0, oy: 0, sx: 1, sy: 1 }); save(); renderSide(); } }, "reset")),
+        auditionMode === "cube" ? h("div", { class: "row" },
+          num("box w", p.w, 8, v => set("w", Math.max(1, v)), "box width (map units)"),
+          num("h", p.h, 8, v => set("h", Math.max(1, v)), "box height"),
+          num("d", p.d, 8, v => set("d", Math.max(1, v)), "box depth"),
+          h("button", { class: "btn", title: "size the box to show the whole texture once per face", onclick: () => { for (const q of audit.link ? picks : [p]) fitBox(q); save(); renderSide(); } }, "fit texture")) : null,
+        udmf)));
+  }
+}
+let lightOut;
+function fitBox(p) { p.w = Math.round(p.width / p.sx); p.h = Math.round(p.height / p.sy); p.d = p.w; }
+function udmfText(p) {
+  if (p.cat === "flats") {
+    const parts = [];
+    if (p.ox) parts.push(`xpanningfloor = ${p.ox};`); if (p.oy) parts.push(`ypanningfloor = ${p.oy};`);
+    if (p.sx !== 1) parts.push(`xscalefloor = ${p.sx};`); if (p.sy !== 1) parts.push(`yscalefloor = ${p.sy};`);
+    return `texturefloor = "${p.name}";` + (parts.length ? " " + parts.join(" ") : "");
+  }
+  const parts = [`texturemiddle = "${p.name}";`];
+  if (p.ox) parts.push(`offsetx = ${p.ox};`); if (p.oy) parts.push(`offsety = ${p.oy};`);
+  if (p.sx !== 1) parts.push(`scalex_mid = ${p.sx};`); if (p.sy !== 1) parts.push(`scaley_mid = ${p.sy};`);
+  return parts.join(" ");
+}
+const images = {};
+function img(url, then) {
+  let i = images[url];
+  if (!i) { i = images[url] = new Image(); i.src = assetUrl(url); }
+  if (i.complete && i.naturalWidth) return i;
+  i.addEventListener("load", then, { once: true });
+  return null;
+}
+
+// 2D plane: strips side by side, tiled, at 1 texel = 1 map unit x zoom; pan and zoom.
+let plan = { cx: 0, cy: 0, z: 2 }, canvas = null;
+function planView(stage) {
+  canvas = h("canvas");
+  stage.append(canvas, h("div", { class: "hint" }, "wheel: zoom · drag: pan · double-click: fit"));
+  plan.z = audit.zoom || 2;
+  const ro = new ResizeObserver(drawPlan); ro.observe(canvas);
+  let drag = null;
+  const world = e => { const r = canvas.getBoundingClientRect(); return [plan.cx + (e.clientX - r.left - r.width / 2) / plan.z, plan.cy + (e.clientY - r.top - r.height / 2) / plan.z]; };
+  canvas.onmousedown = e => {
+    const [wx, wy] = world(e), d = doorRect();
+    if (d && wx >= d.x0 && wx <= d.x1 && wy >= d.y0 && wy <= d.y1)   // grab the door, not the view
+      drag = { door: true, x: e.clientX, y: e.clientY, dx: audit.door.x, dy: audit.door.y };
+    else drag = { x: e.clientX, y: e.clientY, cx: plan.cx, cy: plan.cy };
+  };
+  window.onmousemove = e => {
+    if (!drag) {
+      const [wx, wy] = world(e), d = doorRect();
+      canvas.style.cursor = d && wx >= d.x0 && wx <= d.x1 && wy >= d.y0 && wy <= d.y1 ? "move" : "";
+      return;
+    }
+    if (drag.door) {
+      const snap = v => Math.round(v / 8) * 8;   // the editor's default grid
+      audit.door.x = snap(drag.dx + (e.clientX - drag.x) / plan.z);
+      audit.door.y = snap(drag.dy + (e.clientY - drag.y) / plan.z);
+    } else { plan.cx = drag.cx - (e.clientX - drag.x) / plan.z; plan.cy = drag.cy - (e.clientY - drag.y) / plan.z; }
+    drawPlan();
+  };
+  window.onmouseup = () => { if (drag && drag.door) store.set("audit", audit); drag = null; };
+  canvas.onwheel = e => {
+    e.preventDefault();
+    const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left - r.width / 2, my = e.clientY - r.top - r.height / 2;
+    const wx = plan.cx + mx / plan.z, wy = plan.cy + my / plan.z;
+    plan.z = Math.min(16, Math.max(0.25, plan.z * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+    plan.cx = wx - mx / plan.z; plan.cy = wy - my / plan.z; audit.zoom = plan.z; store.set("audit", audit); drawPlan();
+  };
+  canvas.ondblclick = () => fitPlan(true);
+  fitPlan(false);
+}
+// The door overlay's settings; x is the door's left edge, y its bottom (0 = the strips' floor line).
+audit.door ||= { on: false, tex: "BIGDOOR2", w: 0, h: 0, x: null, y: 0, track: true };
+async function ensureTextures() {
+  if (!data.textures) data.textures = (await (await fetch("/api/assets/textures")).json()).items;
+  return data.textures;
+}
+function doorTextures() {
+  const all = data.textures || [];
+  const doors = all.filter(t => t.sets.includes("Doors") && t.width >= 32);
+  return doors.length ? doors : all.filter(t => /DOOR/.test(t.name));
+}
+function trackUrl() { const t = (data.textures || []).find(x => x.name === "DOORTRAK"); return t ? t.url : "tex/DOORTRAK.png"; }
+function doorRect() {
+  if (!audit.door.on || !picks.length) return null;
+  const t = (data.textures || []).find(x => x.name === audit.door.tex);
+  if (!t) return null;
+  const w = audit.door.w || t.width, hh = audit.door.h || t.height;
+  if (audit.door.x == null) audit.door.x = Math.round((stripSize()[0] * picks.length - w) / 2 / 8) * 8;
+  return { x0: audit.door.x, x1: audit.door.x + w, y0: audit.door.y - hh, y1: audit.door.y, url: t.url };
+}
+function stripSize() {
+  const w = Math.max(...picks.map(p => p.width / p.sx)) * 2, hgt = Math.max(...picks.map(p => p.height / p.sy)) * 2;
+  return [Math.max(64, Math.round(w)), Math.max(128, Math.round(hgt))];
+}
+function fitPlan(redraw) {
+  const [sw, sh] = stripSize(), total = sw * picks.length;
+  plan.cx = total / 2; plan.cy = -sh / 2;
+  if (canvas && canvas.clientWidth) plan.z = Math.max(0.25, Math.min(16, Math.min(canvas.clientWidth * 0.9 / total, canvas.clientHeight * 0.85 / sh)));
+  if (redraw !== false) drawPlan(); else requestAnimationFrame(drawPlan);
+}
+function background(ctx, W, H) {
+  if (audit.bg === "checker") {
+    for (let y = 0; y < H; y += 16) for (let x = 0; x < W; x += 16) { ctx.fillStyle = ((x + y) / 16) % 2 ? "#2a2a2a" : "#3a3a3a"; ctx.fillRect(x, y, 16, 16); }
+  } else { ctx.fillStyle = audit.bg === "grey" ? "#555" : "#000"; ctx.fillRect(0, 0, W, H); }
+}
+function drawPlan() {
+  if (!canvas || !canvas.isConnected) return;
+  const dpr = window.devicePixelRatio || 1, W = canvas.clientWidth, H = canvas.clientHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.imageSmoothingEnabled = false;
+  background(ctx, W, H);
+  const [sw, sh] = stripSize(), z = plan.z;
+  const toX = wx => (wx - plan.cx) * z + W / 2, toY = wy => (wy - plan.cy) * z + H / 2;
+  picks.forEach((p, i) => {
+    const im = img(p.url, drawPlan);
+    if (!im) return;
+    const x0 = toX(i * sw), y0 = toY(-sh), x1 = toX((i + 1) * sw), y1 = toY(0);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x0, y0, x1 - x0, y1 - y0); ctx.clip();
+    const pat = ctx.createPattern(im, "repeat");
+    // The texture's top-left sits at the strip's top-left (like a wall pegged to its ceiling), moved by the offsets.
+    const m = new DOMMatrix().translateSelf(x0, y0).scaleSelf(z / p.sx, z / p.sy).translateSelf(-p.ox, -p.oy);
+    pat.setTransform(m);
+    ctx.fillStyle = pat;
+    ctx.filter = `brightness(${(audit.light / 255).toFixed(3)})`;
+    ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    ctx.restore();
+    ctx.fillStyle = "#fff"; ctx.font = "11px system-ui"; ctx.textBaseline = "bottom";
+    ctx.shadowColor = "#000"; ctx.shadowBlur = 3; ctx.fillText(p.name, x0 + 3, y0 - 2); ctx.shadowBlur = 0;
+  });
+  if (audit.guides) {
+    ctx.strokeStyle = "#ffcf5aaa"; ctx.lineWidth = 1; ctx.setLineDash([4, 3]);
+    const bx = sw * picks.length + 16;
+    ctx.strokeRect(toX(bx), toY(-128), 64 * z, 128 * z);           // a 64 x 128 doorway
+    ctx.strokeRect(toX(bx + 80), toY(-56), 32 * z, 56 * z);        // the player: 32 wide, 56 tall
+    ctx.setLineDash([]); ctx.fillStyle = "#ffcf5acc"; ctx.font = "10px system-ui"; ctx.textBaseline = "top";
+    ctx.fillText("door 64x128", toX(bx), toY(0) + 2); ctx.fillText("player 56", toX(bx + 80), toY(0) + 2);
+  }
+  // The door overlay: a textured door (and its track jambs) laid over the strips, dragged into place.
+  const d = doorRect();
+  if (d) {
+    const dimg = img(d.url, drawPlan), track = audit.door.track ? img(trackUrl(), drawPlan) : null;
+    const fill = (im, x0, x1) => {
+      if (!im) return;
+      const pat = ctx.createPattern(im, "repeat");
+      pat.setTransform(new DOMMatrix().translateSelf(toX(x0), toY(d.y0)).scaleSelf(z, z));
+      ctx.save(); ctx.fillStyle = pat; ctx.filter = `brightness(${(audit.light / 255).toFixed(3)})`;
+      ctx.fillRect(toX(x0), toY(d.y0), (x1 - x0) * z, (d.y1 - d.y0) * z); ctx.restore();
+    };
+    if (audit.door.track) { fill(track, d.x0 - 8, d.x0); fill(track, d.x1, d.x1 + 8); }
+    fill(dimg, d.x0, d.x1);
+    ctx.strokeStyle = "#ffcf5a"; ctx.lineWidth = 1; ctx.strokeRect(toX(d.x0) + 0.5, toY(d.y0) + 0.5, (d.x1 - d.x0) * z - 1, (d.y1 - d.y0) * z - 1);
+    ctx.fillStyle = "#ffcf5a"; ctx.font = "11px system-ui"; ctx.textBaseline = "bottom";
+    ctx.shadowColor = "#000"; ctx.shadowBlur = 3;
+    ctx.fillText(`${audit.door.tex} ${d.x1 - d.x0}x${d.y1 - d.y0} (drag me)`, toX(d.x0), toY(d.y0) - 2); ctx.shadowBlur = 0;
+  }
+  ctx.fillStyle = "#fff8"; ctx.font = "11px system-ui"; ctx.textBaseline = "top"; ctx.fillText(`zoom ${z.toFixed(2)}x`, W - 80, 6);
+}
+
+// 3D boxes: CSS 3D, side by side on a common floor, turning together.
+let cubeRot = { x: -18, y: -30 }, cubeZoom = 1, anim = null;
+function stopAnim() { if (anim) cancelAnimationFrame(anim); anim = null; window.onmousemove = null; }
+function cubeView(stage) {
+  const wrap = h("div", { id: "cubes" }), scene = h("div", { class: "scene" });
+  wrap.append(scene); stage.append(wrap, h("div", { class: "hint" }, "drag: turn · wheel: zoom · double-click: fit"));
+  let drag = null;
+  wrap.onmousedown = e => { drag = { x: e.clientX, y: e.clientY, rx: cubeRot.x, ry: cubeRot.y }; };
+  window.onmousemove = e => { if (!drag) return; cubeRot.y = drag.ry + (e.clientX - drag.x) * 0.4; cubeRot.x = Math.max(-89, Math.min(89, drag.rx - (e.clientY - drag.y) * 0.4)); place(); };
+  window.onmouseup = () => { drag = null; };
+  wrap.onwheel = e => { e.preventDefault(); cubeZoom = Math.min(8, Math.max(0.05, cubeZoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12))); place(); };
+  wrap.ondblclick = () => { layoutCubes.fitted = false; layoutCubes(); };
+  const place = () => { scene.style.transform = `scale(${cubeZoom}) rotateX(${cubeRot.x}deg) rotateY(${cubeRot.y}deg)`; };
+  layoutCubes = () => {
+    scene.innerHTML = "";
+    const boxes = audit.perface ? [{ ...picks[0], faces: picks }] : picks.map(p => ({ ...p, faces: [p] }));
+    const total = boxes.reduce((s, b) => s + b.w, 0), tallest = Math.max(...boxes.map(b => b.h)), deepest = Math.max(...boxes.map(b => b.d));
+    // Fit the whole row at any angle: the scene turns about its middle, so the shape always stays inside a
+    // sphere as wide as the row's diagonal; size that sphere to the stage (with room for perspective).
+    const sw = stage.clientWidth || 600, sh = stage.clientHeight || 300;
+    if (!layoutCubes.fitted) {
+      const diameter = Math.hypot(total, tallest, deepest) || 1;
+      cubeZoom = Math.min(sw, sh) * 0.8 / diameter;
+      layoutCubes.fitted = true;
+    }
+    let x = -total / 2;
+    const bright = `brightness(${(audit.light / 255).toFixed(3)})`;
+    for (const b of boxes) {
+      // Boxes stand on a common floor; the row's middle (not the floor) is the scene's centre.
+      const box = h("div", { class: "box", style: `transform: translate3d(${x + b.w / 2}px, ${tallest / 2 - b.h / 2}px, 0)` });
+      const face = (i, w, hh, tf) => {
+        const p = b.faces[i % b.faces.length];
+        const bg = `url(${assetUrl(p.url)})`;
+        const size = `${p.width / p.sx}px ${p.height / p.sy}px`;
+        const pos = `${-p.ox / p.sx}px ${-p.oy / p.sy}px`;
+        box.append(h("div", { class: "face", title: p.name, style: `width:${w}px;height:${hh}px;left:${-w / 2}px;top:${-hh / 2}px;background-image:${bg};background-size:${size};background-position:${pos};filter:${bright};transform:${tf}` }));
+      };
+      face(0, b.w, b.h, `translateZ(${b.d / 2}px)`);                       // front
+      face(1, b.d, b.h, `rotateY(90deg) translateZ(${b.w / 2}px)`);        // right
+      face(2, b.w, b.h, `rotateY(180deg) translateZ(${b.d / 2}px)`);       // back
+      face(3, b.d, b.h, `rotateY(-90deg) translateZ(${b.w / 2}px)`);       // left
+      face(4, b.w, b.d, `rotateX(90deg) translateZ(${b.h / 2}px)`);        // top
+      face(5, b.w, b.d, `rotateX(-90deg) translateZ(${b.h / 2}px)`);       // bottom
+      scene.append(box);
+      x += b.w;
+    }
+    wrap.style.background = audit.bg === "grey" ? "#555" : audit.bg === "checker" ? "repeating-conic-gradient(#2a2a2a 0 25%, #3a3a3a 0 50%) 0 0/32px 32px" : "#000";
+    place();
+  };
+  layoutCubes.fitted = false;
+  layoutCubes();
+  let last = performance.now();
+  const tick = now => { if (audit.spin && !drag) { cubeRot.y += (now - last) * 0.012; place(); } last = now; anim = requestAnimationFrame(tick); };
+  anim = requestAnimationFrame(tick);
+}
+let layoutCubes = () => {};
+
+// ---- things -----------------------------------------------------------------------------------
+function renderThing(side, t) {
+  side.append(h("h2", {}, t.title, h("span", { class: "dim" }, `#${t.num}`), h("span", { class: "dim" }, t.category_title)));
+  const body = h("div", { class: "body" }); side.append(body);
+  body.append(h("div", { class: "row" }, "class ", copyable(t.class || "?"), " · editor number ", copyable(String(t.num)),
+    t.radius != null ? ` · radius ${t.radius}, height ${t.height}` : "", t.hangs ? " · hangs from the ceiling" : ""));
+  if (!t.sprite_lump) { body.append(h("div", { class: "empty" }, "no sprite in this game (an editor marker)")); return; }
+  // To scale: the sprite at 2x beside the player (56 tall) and a 64-unit grid, its radius as a box under it.
+  const Z = 2, scale = h("div", { class: "scale", style: `background-size: 100% ${32 * Z}px` });
+  const sprite = h("img", { class: "pix", src: assetUrl(t.url) }); sprite.onload = () => { sprite.style.width = sprite.naturalWidth * Z + "px"; };
+  const player = h("img", { class: "pix", src: assetUrl("sprite/PLAYA1.png"), title: "the player, 56 tall" }); player.onload = () => { player.style.width = player.naturalWidth * Z + "px"; };
+  const anim = h("img", { class: "pix", title: "frames in order" });
+  scale.append(h("figure", { style: "margin:0;text-align:center" }, sprite, h("figcaption", { class: "dim" }, t.sprite_lump)),
+    h("figure", { style: "margin:0;text-align:center" }, anim, h("figcaption", { class: "dim" }, t.spawn && t.spawn.length ? "idle (as in the game)" : "still")),
+    h("figure", { style: "margin:0;text-align:center" }, player, h("figcaption", { class: "dim" }, "player")));
+  body.append(h("div", { class: "row dim" }, "at 2x, on a 32-unit grid"), scale);
+  // Frames: the front rotation (or the rotation-less one) of each letter, played in order.
+  const prefix = t.sprite_lump.slice(0, 4), front = t.frames.filter(f => /^.{5}[01]/.test(f));
+  const letters = [...new Set(front.map(f => f[4]))];
+  // Its idle animation as in the game: the Spawn state's frames at their own tics (35 a second).
+  // Things without one (a still sprite) show their first frame.
+  const seq = t.spawn && t.spawn.length ? t.spawn : [[t.sprite_lump, -1]];
+  let i = 0;
+  const step = () => {
+    const [lump, tics] = seq[i % seq.length];
+    anim.src = assetUrl(`sprite/${lump}.png`); anim.onload = () => { anim.style.width = anim.naturalWidth * Z + "px"; };
+    i++;
+    if (seq.length > 1) animTimer = setTimeout(step, Math.max(1, tics) * 1000 / 35);
+  };
+  step();
+  // Rotations of the first frame.
+  const rot = t.frames.filter(f => f[4] === t.sprite_lump[4]);
+  if (rot.length > 1) {
+    const row = h("div", { class: "frames" });
+    for (const f of rot) { const im = h("img", { src: assetUrl(`sprite/${f}.png`) }); im.onload = () => { im.style.width = im.naturalWidth * Z + "px"; }; row.append(h("figure", {}, im, h("figcaption", {}, f))); }
+    body.append(h("div", { class: "row dim", style: "margin-top:10px" }, "rotations (the second angle of a pair is drawn mirrored)"), row);
+  }
+  const all = h("div", { class: "frames" });
+  for (const f of front) { const im = h("img", { src: assetUrl(`sprite/${f}.png`) }); all.append(h("figure", {}, im, h("figcaption", {}, f))); }
+  body.append(h("div", { class: "row dim", style: "margin-top:10px" }, `all frames, front view (${letters.length})`), all);
+}
+let animTimer = null;
+const _stopAnim = stopAnim;
+stopAnim = function () { _stopAnim(); if (animTimer) clearTimeout(animTimer); animTimer = null; };
+
+// ---- decals -----------------------------------------------------------------------------------
+function renderDecal(side, d) {
+  side.append(h("h2", {}, d.name, h("span", { class: "dim" }, d.kind)));
+  const body = h("div", { class: "body" }); side.append(body);
+  body.append(h("div", { class: "row" }, "spray: ", copyable(`A_SprayDecal("${d.name}");`), d.groups.length ? h("span", { class: "dim" }, "in groups: " + d.groups.join(", ")) : ""));
+  body.append(h("div", { class: "row dim" }, `picture ${d.pic}, ${d.width} x ${d.height}` + (d.xscale !== 1 || d.yscale !== 1 ? `, scale ${d.xscale} x ${d.yscale}` : "") +
+    (d.shade_rgb ? `, a stencil shaded ${d.shade_rgb}` : "") + (d.add != null ? `, additive ${d.add}` : "") + (d.translucent != null ? `, translucent ${d.translucent}` : "") + (d.fullbright ? ", fullbright" : "")));
+  const cv = h("canvas", { class: "pix", style: "background:#555;max-width:100%" });
+  const colour = h("input", { type: "color", value: d.shade_rgb || "#a030ff" });
+  const retint = h("input", { type: "checkbox", checked: false });
+  const wallSel = h("select", {}, h("option", { value: "" }, "grey wall"), ...picks.map(p => h("option", { value: p.url }, p.name)));
+  body.append(h("div", { class: "row" }, h("label", {}, retint, "re-tint"), colour, h("label", {}, "on", wallSel), h("span", { class: "dim" }, "(pick textures in the Textures tab to try them here)")), cv);
+  const src = new Image(); src.src = assetUrl(d.url);
+  const draw = () => {
+    if (!src.complete) return;
+    const Z = 4, W = Math.max(160, d.width * d.xscale * Z * 2), H = Math.max(120, d.height * d.yscale * Z * 2);
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext("2d"); ctx.imageSmoothingEnabled = false;
+    const finish = () => {
+      const w = d.width * d.xscale * Z, hh = d.height * d.yscale * Z, x = (W - w) / 2, y = (H - hh) / 2;
+      let pic = src;
+      if (retint.checked) {
+        const t = document.createElement("canvas"); t.width = src.naturalWidth; t.height = src.naturalHeight;
+        const c = t.getContext("2d"); c.drawImage(src, 0, 0); c.globalCompositeOperation = "source-in"; c.fillStyle = colour.value; c.fillRect(0, 0, t.width, t.height); pic = t;
+      }
+      ctx.globalAlpha = d.translucent != null ? d.translucent : 1;
+      if (d.add != null) ctx.globalCompositeOperation = "lighter";
+      ctx.drawImage(pic, x, y, w, hh);
+      ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+    };
+    if (wallSel.value) {
+      const wall = new Image(); wall.src = assetUrl(wallSel.value);
+      wall.onload = () => { const p = ctx.createPattern(wall, "repeat"); p.setTransform(new DOMMatrix().scaleSelf(Z, Z)); ctx.fillStyle = p; ctx.fillRect(0, 0, W, H); finish(); };
+    } else { ctx.fillStyle = "#555"; ctx.fillRect(0, 0, W, H); finish(); }
+  };
+  src.onload = draw; colour.oninput = () => { retint.checked = true; draw(); }; retint.onchange = draw; wallSel.onchange = draw;
+  if (retint.checked || src.complete) draw();
+  body.append(h("div", { class: "row dim", style: "margin-top:8px" }, "Drawn at 4x on the wall, as the engine blends it (an approximation). Re-tint previews A_SprayDecal with a colour, as Cacobelisk's violet blood does."));
+}
+
+// ---- sounds -----------------------------------------------------------------------------------
+let actx = null;
+const buffers = {};
+const voices = [];   // {t, src, gain, settings}
+const snd = store.get("snd", { volume: 1, pitch: 1, loop: false, fadeIn: 0, fadeOut: 0, start: 0, atten: "ATTN_NORM", dist: 0, every: 0 });
+function audio() { return actx ||= new AudioContext(); }
+async function buffer(t) {
+  if (buffers[t.url]) return buffers[t.url];
+  const raw = await (await fetch(assetUrl(t.url))).arrayBuffer();
+  return (buffers[t.url] = await audio().decodeAudioData(raw));
+}
+// Distance attenuation, as the engine's (S_GetRolloff, linear rolloff; ATTN_NORM: full to 200, silent at 1200 x atten).
+function distanceGain(atten, dist) {
+  const a = { ATTN_NONE: 0, ATTN_NORM: 1, ATTN_IDLE: 1.001, ATTN_STATIC: 3 }[atten] ?? 1;
+  if (!a) return 1;
+  const min = 200 / a, max = 1200 / a;
+  return dist <= min ? 1 : dist >= max ? 0 : 1 - (dist - min) / (max - min);
+}
+async function play(t, settings = snd) {
+  const buf = await buffer(t), ac = audio();
+  const src = ac.createBufferSource(), gain = ac.createGain();
+  src.buffer = buf; src.loop = settings.loop; src.playbackRate.value = settings.pitch;
+  const vol = settings.volume * distanceGain(settings.atten, settings.dist), now = ac.currentTime;
+  gain.gain.setValueAtTime(settings.fadeIn > 0 ? 0 : vol, now);
+  if (settings.fadeIn > 0) gain.gain.linearRampToValueAtTime(vol, now + settings.fadeIn);
+  src.connect(gain).connect(ac.destination);
+  src.start(0, Math.min(settings.start, buf.duration - 0.01));
+  const v = { t, src, gain, settings: { ...settings }, again: null };
+  voices.push(v);
+  src.onended = () => {
+    const i = voices.indexOf(v); if (i >= 0 && !v.again) voices.splice(i, 1);
+    if (settings.every > 0 && !v.stopped) { v.again = setTimeout(() => { const j = voices.indexOf(v); if (j >= 0) voices.splice(j, 1); if (!v.stopped) play(t, settings); }, settings.every * 1000 * (0.5 + Math.random())); }
+    refreshVoices();
+  };
+  refreshVoices();
+  return v;
+}
+function stopVoice(v) {
+  v.stopped = true; clearTimeout(v.again);
+  const ac = audio(), now = ac.currentTime, f = v.settings.fadeOut;
+  try {
+    if (f > 0) { v.gain.gain.cancelScheduledValues(now); v.gain.gain.setValueAtTime(v.gain.gain.value, now); v.gain.gain.linearRampToValueAtTime(0, now + f); v.src.stop(now + f); }
+    else v.src.stop();
+  } catch {}
+  const i = voices.indexOf(v); if (i >= 0) voices.splice(i, 1); refreshVoices();
+}
+function playButton(t) {
+  return h("button", { class: "btn playbtn", title: "play (again to stop)", onclick: e => {
+    e.stopPropagation(); current = t;
+    const v = voices.find(v => v.t === t); if (v) stopVoice(v); else play(t);
+    render(); if (cat === "sounds") renderSide();
+  } }, voices.some(v => v.t === t) ? "■" : "▶");
+}
+function zscriptLine(t, s) {
+  const flags = s.loop ? "CHANF_LOOPING" : "CHANF_DEFAULT";
+  return `A_StartSound("${t.name}", CHAN_AUTO, ${flags}, ${+s.volume.toFixed(2)}, ${s.atten}, ${+s.pitch.toFixed(2)}${s.start ? `, ${s.start}` : ""});`;
+}
+let voicesEl = null;
+function refreshVoices() {
+  if (!voicesEl || !voicesEl.isConnected) return;
+  voicesEl.innerHTML = "";
+  if (!voices.length) voicesEl.append(h("div", { class: "dim" }, "nothing playing"));
+  for (const v of voices) voicesEl.append(h("div", { class: "voice" }, h("button", { class: "btn playbtn", onclick: () => stopVoice(v) }, "■"), h("b", {}, v.t.name),
+    h("span", { class: "dim" }, `vol ${v.settings.volume} · pitch ${v.settings.pitch}${v.settings.loop ? " · loop" : ""}${v.settings.every ? ` · every ~${v.settings.every}s` : ""}`)));
+  document.querySelectorAll(".playbtn").forEach(() => {});
+}
+function renderSoundPanel(side) {
+  const t = current;
+  side.append(h("h2", {}, t ? t.name : "Sounds", t ? h("span", { class: "dim" }, `${t.lump || ""} ${fmtLen(t.length)}`) : null));
+  const body = h("div", { class: "body" }); side.append(body);
+  const save = () => { store.set("snd", snd); line.textContent = t ? zscriptLine(t, snd) : ""; };
+  const slider = (label, k, min, max, step, title) => {
+    const out = h("span", { class: "dim", style: "width:40px" }, snd[k]);
+    return h("label", { title }, label, h("input", { type: "range", min, max, step, value: snd[k], oninput: e => { snd[k] = +e.target.value; out.textContent = snd[k]; save(); } }), out);
+  };
+  body.append(h("div", { class: "row dim" }, "Click a sound to play it with these settings; each click starts another voice (layering). The settings are the ones the engine has, so the line below can go straight into a map's script."));
+  body.append(h("div", { class: "row" }, slider("volume", "volume", 0, 1, 0.01, "A_StartSound volume, 0-1"), slider("pitch", "pitch", 0.25, 2, 0.01, "pitch and speed together, as in the engine")));
+  body.append(h("div", { class: "row" }, slider("fade in", "fadeIn", 0, 5, 0.1, "seconds (the script steps A_SoundVolume)"), slider("fade out", "fadeOut", 0, 5, 0.1, "seconds, when stopped"),
+    slider("start at", "start", 0, Math.max(1, (t && t.length) || 1), 0.01, "startTime, seconds in")));
+  body.append(h("div", { class: "row" },
+    h("label", {}, h("input", { type: "checkbox", checked: snd.loop, onchange: e => { snd.loop = e.target.checked; save(); } }), "loop (CHANF_LOOPING)"),
+    h("label", {}, "falloff", h("select", { onchange: e => { snd.atten = e.target.value; save(); } }, ...["ATTN_NONE", "ATTN_NORM", "ATTN_IDLE", "ATTN_STATIC"].map(a => h("option", { selected: snd.atten === a }, a)))),
+    slider("heard from", "dist", 0, 1200, 10, "distance in map units, through the falloff curve"),
+    slider("again every", "every", 0, 20, 0.5, "seconds (random 0.5-1.5x) between plays: 'now and then'; 0 = once")));
+  const line = h("div", { class: "udmf copy", title: "click to copy", onclick: () => t && copy(zscriptLine(t, snd)) }, t ? zscriptLine(t, snd) : "pick a sound");
+  body.append(h("div", { class: "row" }, line));
+  body.append(h("div", { class: "row" }, t ? h("button", { class: "btn", onclick: () => play(t) }, "▶ play") : null,
+    h("button", { class: "btn", onclick: () => [...voices].forEach(stopVoice) }, "■ stop all")));
+  body.append(h("div", { class: "row dim", style: "margin-top:8px" }, "Playing now:"));
+  voicesEl = h("div"); body.append(voicesEl); refreshVoices();
+  if (t && t.random) body.append(h("div", { class: "row dim", style: "margin-top:8px" }, `$random: one of ${t.random.join(", ")} (this plays the first)`));
+}
+
+// ---- music ------------------------------------------------------------------------------------
+// Songs are MIDI, played by our own synth (assets-synth.js) through the game's soundfont: a close
+// preview of the game's FluidSynth, nothing rendered or stored. Only what the game can do is offered: it plays
+// a song as it is (no tempo or pitch), looping or not. The synth can do speed/transpose; the page doesn't use them.
+const music = store.get("music", { loop: false, volume: 0.6 });
+let synth = null, song = null, sfPromise = null, musicTimer = null;
+function soundfont() {
+  return sfPromise ||= fetch(assetUrl("soundfont/uzdoom.sf2")).then(r => { if (!r.ok) throw new Error("no soundfont"); return r.arrayBuffer(); })
+    .then(buf => DmsSynth.parseSF2(buf));
+}
+const isPlaying = t => synth && synth.playing && song && song.name === t.name;
+function musicButton(t) {
+  return h("button", { class: "btn playbtn", title: "play (again to stop)", onclick: e => { e.stopPropagation(); if (current !== t) current = t; playMusic(t); } }, isPlaying(t) ? "\u25A0" : "\u25B6");
+}
+async function playMusic(t) {
+  const note = m => { const box = $("#musicnote"); if (box) box.textContent = m; };
+  if (song && song.name === t.name && synth) {   // the same song: a toggle
+    if (synth.playing) synth.pause(); else synth.play();
+    render(); renderSide(); return;
+  }
+  try {
+    note("loading the soundfont (3 MB, once)...");
+    const sf = await soundfont();
+    if (!synth) { synth = new DmsSynth.Player(audio(), sf); synth.onend = () => { render(); renderSide(); }; }
+    const parsed = DmsSynth.parseMidi(await (await fetch(assetUrl(t.url))).arrayBuffer());
+    song = { name: t.name };
+    synth.load(parsed);
+    synth.loop = music.loop; synth.volume = music.volume;
+    synth.play();
+    note("");
+  } catch (err) { note("couldn't play it: " + err.message); }
+  render(); renderSide();
+}
+function renderMusicPanel(side) {
+  const t = current;
+  clearInterval(musicTimer);
+  side.append(h("h2", {}, t ? t.name : "Music", t ? h("span", { class: "dim" }, fmtLen(t.length)) : null));
+  const body = h("div", { class: "body" }); side.append(body);
+  if (!t) { body.append(h("div", { class: "empty" }, "click a song")); return; }
+  body.append(h("div", { class: "row" }, "MAPINFO: ", copyable(`music = "${t.name}"`)), h("div", { class: "row dim" }, t.maps.length ? "Doom II uses it on " + t.maps.join(", ") : "not used by a Doom II map"));
+  const save = () => store.set("music", music);
+  const mine = song && song.name === t.name && synth;
+  const clock = h("span", { class: "dim", style: "min-width:90px" });
+  const bar = h("input", { type: "range", min: 0, max: Math.max(1, (mine ? synth.length : t.length) || 1), step: 0.1, value: 0, style: "flex:1",
+    oninput: e => { if (mine) synth.seek(+e.target.value); } });
+  const tick = () => {
+    const len = mine ? synth.length : (t.length || 0), pos = mine ? Math.min(synth.position, len) : 0;
+    if (document.activeElement !== bar) bar.value = pos;
+    clock.textContent = `${fmtClock(pos)} / ${fmtClock(len)}`;
+  };
+  body.append(h("div", { class: "row" },
+    h("button", { class: "btn", onclick: () => playMusic(t) }, isPlaying(t) ? "\u275A\u275A pause" : "\u25B6 play"),
+    mine ? h("button", { class: "btn", onclick: () => { synth.stop(); render(); renderSide(); } }, "\u25A0 stop") : null, bar, clock));
+  const slider = (label, k, min, max, step, fmt, apply, title) => {
+    const out = h("span", { class: "dim", style: "min-width:48px" }, fmt(music[k]));
+    return h("label", { title }, label, h("input", { type: "range", min, max, step, value: music[k],
+      oninput: e => { music[k] = +e.target.value; out.textContent = fmt(music[k]); if (synth) apply(+e.target.value); save(); } }), out);
+  };
+  body.append(h("div", { class: "row" },
+    slider("volume", "volume", 0, 1.5, 0.05, v => Math.round(v * 100) + "%", v => { synth.volume = v; }),
+    h("label", {}, h("input", { type: "checkbox", checked: music.loop, onchange: e => { music.loop = e.target.checked; if (synth) synth.loop = music.loop; save(); } }), "loop")));
+  body.append(h("div", { id: "musicnote", class: "row dim" }));
+  body.append(h("div", { class: "row dim", style: "margin-top:8px" },
+    "A preview: the song's MIDI through the game's own soundfont (uzdoom.sf2), in a small browser synth. Close to the game, not exact (the game's FluidSynth has its own filters and reverb). Speed and pitch are for the preview: the engine plays a song as it is, so using a changed one means a new MIDI file packed with the map (ask Claude)."));
+  body.append(h("div", { class: "row" }, h("a", { href: assetUrl(t.url), download: t.name + ".mid", style: "color:var(--accent)" }, "download MIDI")));
+  tick(); musicTimer = setInterval(() => { if (!bar.isConnected) return clearInterval(musicTimer); tick(); }, 250);
+}
+const fmtClock = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+
+init();
+</script>
+</body>
+</html>
