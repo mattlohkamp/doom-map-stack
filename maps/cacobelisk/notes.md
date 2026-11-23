@@ -22,6 +22,17 @@ light and pickups tuned by ear and eye from the game.*
   On landing, the platform's light flickers and sparks fly off the shaft walls just above it, with the
   spark sound (`zscript.zs`, `CacobeliskElevator`). One-way on purpose: the elevator is broken, and
   nothing is left up there.
+- **Second session (2026-11-22 evening, notes #29-#84 and two editor saves): the map grew past the hall.**
+  An entry secret (shoot the glowing valve wheel over the start door: a panel opens on partial
+  invisibility). The obelisks reveal as a show once the player is down; the purple switch obelisk only
+  when its shotgun is taken, hinted by a stain trail, a dead marine, a violet-tinted east gutter and a
+  violet leak from a slit in its back. Both gutters meander, meet in front of the landing under a low
+  bridge (a 3D floor), and run out under the walls through vine grates into drains. At the far end a
+  great door, stuck ajar, with a small door in its left leaf; behind it imps, then a mossy, torch-lit
+  passage (wide enough for pinkies: 128) that climbs, turns back and goes down into a dark, flooded
+  cistern east of the hall, its west wall a sheet of falling water, the hall glimpsed above through the
+  vines; spectres lie in ambush there. Music D_ROMER2. **Open:** where the cistern leads (it's a dead
+  end); what using the switch obelisk does; an exit.
 
 ## Feedback log
 
@@ -181,3 +192,189 @@ light and pickups tuned by ear and eye from the game.*
   (those sectors are lit 120, the hall 104). Their ceilings are now at the hall's light (lightceiling 104,
   lightceilingabsolute); floors and pickups keep 120. The bases' colour tint (lightcolor, the glow) still
   applies to their ceilings: if a tinted patch shows, that's next.
+- 2026-11-22, chat: music D_ULTIMA (was D_RUNNIN; map.toml).
+- 2026-11-22, chat: hints that the switch obelisk is special: a trail of violet blood on the floor (Doom's
+  pools of blood and brains drawn as violet silhouettes, renderstyle addstencil, 0xC020FF), sparse from
+  the aisle's middle at y ~1060, denser towards its altar, then on behind it across the walkway into the
+  east gutter; the gutter cut into pieces that turn from green to violet towards it (desaturation +
+  color_floor, strongest beside the obelisk). Not taken: a glow on its sleeve before the reveal, or purple
+  tinges on the earlier obelisks.
+- 2026-11-22, chat: the reveal is now a show watched from the elevator: 3 s after it lands and breaks,
+  the obelisks reveal one at a time, nearest pair first, west then east, 2 s apart (zscript.zs
+  SHOW_DELAY, SHOW_GAP); all but the switch obelisk, which reveals when the player takes the shotgun from
+  its altar (thing id 300). After H (player in the hall, the elevator up again) the show starts from there.
+- 2026-11-22, note #29 (game): an entry secret. Turning round at the start, a small glowing target inset
+  above the start door: a lintel beam 8 out from the door's recess (ceiling 56) with a slot in its middle
+  (16 wide, 8 high, 8 deep) whose back is one blue light panel (LITEBLU4, full bright, a faint pulsing
+  blue light in front). Shooting it (impact line, Door_Open tag 3) opens a panel in the closet's east wall
+  between its 2nd and 3rd channels (40 wide, looks like the wall, `secret` on the automap); behind it an
+  alcove with light amplification goggles that count as the secret when taken (countsecret).
+- 2026-11-22, note #30 (game): the blood trail "too stark": now a dark stain in the floor's grey with a
+  faint violet cast (stencil 0x2A2232; was glowing violet addstencil); the pools behind the switch
+  obelisk removed; a dead marine lies in front of its altar.
+- 2026-11-22, chat: music D_ROMER2 (Doom II's MAP27; D_ULTIMA briefly). The obelisk show waits until the
+  player is at the bottom (below z -200): riding down, 3 s after the landing; if they press the switch and
+  step back (the platform goes without them), 3 s after they drop down the shaft.
+- 2026-11-22, note #31 (game): the secret could be taken by walking into the shut panel (the goggles sat
+  20 behind it, and pickups go by touching boxes): the alcove is 40 deep now, the goggles 36 behind the
+  wall. The target is the flesh switch, SW1SKIN (SW2SKIN once shot, by the engine), scaled to a quarter to
+  fit the slot (now 12 high), pegged to its top and moved to the fleshy plate; a faint red pulse (was blue).
+- 2026-11-22, note #32 (game): the target the other way round: the flesh's blue eye open at first
+  (SW2SKIN), closed once shot (SW1SKIN), as if the player blinded it to open the secret; the eye centred
+  in the slot (scale 2, offsets 8 / 31.5 on the upper part: columns 16-48, rows 63-87 of the texture).
+- 2026-11-22, note #33 (game): the eye still didn't show: UDMF per-part texture offsets are in texture
+  pixels, not world units (8 / 31.5 showed rows 31-55, plain flesh). Now 16 / 63.
+- 2026-11-22, note #34 (game): the eye sat low in the slot: offset y 72 (was 63).
+- 2026-11-22, editor save 21:37: the east gutter's south end reshaped into a winding stream: from
+  (400, 304) west along the south wall towards the mouth's corner, then north, swinging out round the
+  first two east obelisks (in front of e1, between e1 and e2) and back to the wall; the first two cuts
+  moved to (240, 1088) and (256, 1184) on its west side. Ported into map.py (GUTTER_E_SE, GUTTER_E_WEST).
+- 2026-11-22, note #35 (game): the switch obelisk leaks violet from its back: a fall (WFALL, the blue
+  waterfall, with red added: coloradd_bottom 0x500030) down the back of its sleeve, of its slab once the
+  sleeve has sunk, and over its base's step; then a rivulet across the walkway into the gutter (part of
+  the gutter's full-violet piece, 8 short of the base, 24 wide at its head, 45 at the gutter).
+- 2026-11-22, notes #36, #37 (game): the hall's walls lifted off the floor all round (not the mouth): a gap
+  16 high at their foot onto a dark channel of water (the drain: 16 deep behind every wall, floor -272,
+  light 64), its grate hanging vines (MIDVINE1, the mapper's pick). The gutters now reach the walls (their
+  lips gone: the west gutter's outer edge is the west wall, the east one's the east wall, the stream's
+  south edge the south wall), so their water runs under the walls and out of sight.
+- 2026-11-22, chat: the target is BROWNWEL's red valve wheel instead of the eye (a bullseye), unscaled in
+  the 16 x 12 slot (offsets 166 / 4 round the upper wheel); it glows until shot (full bright, red pulse,
+  thing id 301), then zscript.zs puts its wall back to the closet's light and turns the pulse off.
+- 2026-11-22, note #38 (game): the waterfall over the whole back read as a blue wall; the violet now spills
+  from a slit low on the switch obelisk's back (a sector cut 4 into the sleeve, 16 wide, 32 high from the
+  base, liquid falling down its back wall), over the base's step (the 16 of its edge below the slit) into
+  the rivulet, whose head now meets the base. The rest of the back is plain stone. The fall (WFALL) is in
+  sectors desaturated and tinted violet (color_wall*), since coloradd on the base's walls didn't show.
+  zscript.zs raises the slit's top with the sinking sleeve, so nothing of it is left standing.
+- 2026-11-22, note #39 (game): the drain 96 deep behind the walls (was 16) and darker (32), so its far wall
+  is out of sight past the vines.
+- 2026-11-22, note #40 (game): the target's slot 16 high (ceiling 72, was 68) and the wheel moved up in it
+  (offset y 5): it sat low, cut off at the bottom.
+- 2026-11-22, note #41 (board): the violet water "greyed out": its colours were pale (lots of green), so
+  desaturated it came out grey; now saturated violets (piece 5 and the slit 0x8A10FF).
+- 2026-11-22, note #42 (game): once the switch obelisk's sleeve had sunk, the slit's walls showed as liquid
+  up in the ceiling slot: now only its back wall's lower part is the fall; the rest is the slot's dark
+  marble (light -88, ceiling dark too).
+- 2026-11-22, note #43 (game): the leak vanished on the base's floor between the slit and the base's edge:
+  now a strip of the same violet liquid (the spill, 8 x 16) runs across the base from the slit's mouth to
+  the edge, where it falls into the rivulet.
+- 2026-11-22, note #44 (game): the lifted wall, drain and vines only where the water runs out: behind the
+  west gutter's stretch of the west wall, and the east gutter's stretches of the east and south walls
+  (two drains, closed off at their ends); plain walls everywhere else.
+- 2026-11-22, note #45 (game): the great door at the end of the hall, in the apse's middle wall: a
+  192-wide doorway, 128 high under a marble lintel, its two carved leaves (BIGDOOR7, solid, 12 thick)
+  stuck ajar, half ruined (swung in 12 and 20 degrees), a gap of about 15 between them to glimpse the
+  vestibule beyond (256 x 176, dim, a red glow at its back), too narrow to pass. A small door (WOODMET1,
+  64 x 128, Door_Raise, usable from both sides) set into the left leaf is the way on. Beyond the
+  vestibule: nothing yet.
+- 2026-11-22, note #46 (board): the west gutter meanders like the east stream: its inner edge swings in
+  towards the row between the obelisks and out beside them (GUTTER_W_INNER).
+- 2026-11-22, note #47 (game): both channels join in front of the elevator's landing: the west gutter runs
+  round the south-west corner along the south wall (to x -72, west of the mouth) and a channel (y 270-327)
+  crosses the aisle to the east stream. A low marble bridge over it (x -40 to 104), a step up (the
+  bases' height), a 3D floor (Sector_Set3DFloor from a control sector outside the map, tag 500), so the
+  water runs on beneath it.
+- 2026-11-22, notes #48-50 (game): the great door's leaves closer (swung 5 and 8 degrees, were 12 and 20:
+  a gap of about 7); BIGDOOR7's skull pile centred on each leaf (offsets worked out per stretch); the
+  small door human-sized (64 x 72), the leaf going on above it as a lintel: its panel (WOODMET1) sinks
+  into the floor when used and comes back up after 3 s (Plat_DownWaitUpStay, tag 501), from either side.
+- 2026-11-22, note #51 (game): the switch obelisk's back had lost its alignment with the others once split
+  round the slit: each piece now carries the marble on from the last (x offsets), and the stretch above
+  the slit (an upper part, pegged to the top) is moved to match the lower parts beside it.
+- 2026-11-22, note #52 (game): bars under the bridge deck's open sides (MIDBARS3 squeezed to the 12 from
+  the water to the slab, pegged to the water), so it doesn't seem to hover; the water shows through.
+- 2026-11-22, note #53 (game): the left leaf plain (BIGDOOR5, wood and iron bands, no skulls), the right
+  keeps BIGDOOR7's skulls; the small door a brass-framed metal door (DOOR1, exactly 64 x 72) so it reads
+  as a door, not part of the leaf.
+- 2026-11-22, note #54 (game): the strip of the switch obelisk's back above the slit came out grey: it's
+  drawn by the sector in front of the slit, and the spill is desaturated for its liquid. A lip 1 wide
+  (marble floor, lit and tinted like the base) now stands between the slit and the spill and draws it.
+- 2026-11-22, note #55 (game): bars all round the bridge: on its ends over the bank too (filling the 4
+  between the bank's floor and the slab; MIDBARS3 squeezed, pegged to the higher floor).
+- 2026-11-22, note #56 (game): the wall above the drain's grate stood out from the plain wall beside it:
+  it was pegged from the gap's top (now dontpegtop: from the ceiling, like the plain walls) and tinted
+  violet by the gutter pieces' wall colours (dropped: only their floors are tinted; GRAY1 is grey, so
+  their desaturation doesn't show). The fall over the switch obelisk's step keeps its violet with its own
+  sidedef colours (useowncolors_bottom).
+- 2026-11-22, note #57 (game): the small door BIGDOOR6 (wood and iron, one skull; was DOOR1), the skull
+  centred on its 64 x 72 panel (per-part offsets on the lower part, which add to the side's own offset).
+- 2026-11-22, note #58 (game): the small door set back into the left leaf in its own rusted metal frame:
+  a recess 4 deep, 4 wider each side and 4 taller than the door, lined with SUPPORT3; the door at its
+  back, posts of the frame either side of it through the rest of the leaf. (The leaf's pieces are built
+  from one table of edges in the leaf's own coordinates, so neighbours share their lines.)
+- 2026-11-22, note #59 (game): two imps waiting behind the great doors, facing them (ambush).
+- 2026-11-22, note #60 (game): build #84 had the small door in plain SUPPORT3 and without its special (a
+  bug in the build script); since build #85 the door is BIGDOOR6 (skull centred) in its SUPPORT3 frame,
+  and opens.
+- 2026-11-22, note #61 (game): a lost soul hidden high up (96 above the floor) behind the 2nd west obelisk
+  (x -160, y 810), out of sight from the aisle's south end until that pillar sinks; ambush.
+- 2026-11-22, note #62 (game): shooting one imp through the gap left the other asleep (they were ambush:
+  deaf); ambush off, so gunfire wakes both.
+- 2026-11-22, note #63 (game): through the small door, a cramped passage of mossy stone (A-MOSRK2 on
+  walls, floor and ceiling; 64 wide, 88 high, light 80) leaves the vestibule (now 224 x 96, the imps in
+  it) on the right, bends north and twists, stepping up 8 at a time from its 3rd piece; short red torches
+  (57) in niches in its walls (24 wide, 12 deep, sill 24). It ends at a wall for now (PASSAGE in map.py).
+- 2026-11-22, note #64 (game): the imps couldn't open the small door once woken: its faces are monsteruse
+  now, so monsters open it too.
+- 2026-11-22, note #65 (game): the passage goes on, twisting east and then back south along the hall's
+  north-east side (towards the first room), its pieces longer, wider (to about 160) and taller (16 more
+  each from piece 9) so it opens out; the floor rises to piece 12, then levels; more torch niches; three
+  pinkies in the wide stretch, two imps behind them, facing back up the passage. Ends at a wall for now.
+- 2026-11-22, note #66 (game): a pinky couldn't get through the passage's first stretch (58-64 wide; it
+  needs 60): every cross-section widened about its middle to at least 88 (the opening onto the vestibule
+  76).
+- 2026-11-22, note #67 (game): two pinkies were wedged side by side in one piece: now one pinky a piece
+  (pieces 12, 13, 14), the imps behind them.
+- 2026-11-22, note #68 (game): still too tight for pinkies at the bends (88): every cross-section at least
+  128 now. Monsters must be able to path to the player (docs/map-design-notes.md); Doom's move in 8
+  directions and catch on tight bends, so a 60-wide pinky wants about twice its width.
+- 2026-11-22, note #69 (game): a box of shotgun shells (20) by the right-hand wall just into the passage
+  (PASSAGE_ITEMS).
+- 2026-11-22, note #70 (game): pinkies still stopped at a bend. Likely the torch niches: a sill 24 up and
+  only 48 high (a monster brushing the mouth found too little headroom), the torch sticking out of the
+  12-deep niche, one on a bend's inside corner. Now the niches start at the floor, 72 high, 24 deep, the
+  torch 14 in (wholly inside), and the torches are on the outsides of the bends. Unverified: if they
+  still stick, the next suspect is the hairpin's sharp inside corner (r12).
+- 2026-11-22, note #71 (game): 20 more shells across the obelisk altars: a pack of 4 on e1, w2, e3, e4 and
+  w6 (those with the fewest items).
+- 2026-11-22, note #72 (game): a pinky couldn't follow into the vestibule (a 76 opening beside the right
+  leaf's hinge, then a tight turn): the vestibule ballooned out, twice as deep (to about 208), rounded,
+  its north-east side curving back down to a wide, slanted opening onto the passage (about 122).
+- 2026-11-22, note #73 (editor): the shell cache was the wrong thing (2048 is a box of bullets; a box of
+  20 shells is 2049) and on the floor: now 2049 on a shelf in a niche in the passage's right wall (its
+  2nd piece: the 1st's right wall runs right against the hall's), 32 wide, 16 deep, 32 up, 40 high, the
+  box 8 in so it can be taken from the passage (PASSAGE_SHELVES).
+- 2026-11-22, note #74 (game): the entry secret holds partial invisibility (2024) instead of the light
+  amplification goggles (still counts as the secret).
+- 2026-11-22, note #75 (game): the fog stopped abruptly at the passage: the hall's fog now thins out over the
+  passage's first six pieces (density 309 down to 51), then none.
+- 2026-11-22, note #76 (game): the shell shelf wider (48), deeper (24) and lower (24 high), lit (and fogged)
+  as the passage piece it opens off.
+- 2026-11-22, note #77 (editor) and editor save 22:36: the passage leads down instead of on up: it rises
+  to its 10th piece, then goes down 16 a piece, and from its 15th section four steps go on down south to
+  a cistern, the big room the mapper drew east of the hall (x about 510-832, y 170-1760): floor -320
+  (flooded, NUKAGE), ceiling -128, light 40, very foggy (0x101810, 420). Its west wall is the far side of
+  the drain behind the hall's east wall: water pouring down it (SFALL) above and below the slot through
+  the drain (32 high), and through the slot and the vines the player looks up into the obelisk hall.
+  (A first version made the drain itself the cistern; replaced by the mapper's shape.) Two property
+  tweaks from the save went to overrides.toml under drain_2.back_3/back_6, lines that no longer exist
+  (now cistern.wall_w_*): they do nothing; the file can go.
+- 2026-11-22, note #78 (game): looking down through the vines, the drain (the hall's grey fog) showed a seam
+  against the cistern's dark fog beyond: both drains now have the cistern's light (40) and dark fog, so the
+  water fades uniformly into darkness.
+- 2026-11-22, note #79 (game): the mapper prefers the grey: the drains, the cistern and the stairs down now use
+  the hall's grey fog (0x50585C, 360; the near-black one looked wrong from afar), the drains and the cistern
+  at the same light (40), so through the grate it fades uniformly to grey. To check from below next.
+- 2026-11-22, note #80 (game): the 2nd pinky moved up to the passage's peak (piece 9, passage_10, where it
+  starts down), away from the third pinky and the imps.
+- 2026-11-22, note #81 (game): from the cistern the hall showed through some gaps clear and others through
+  vines: the vines were only on the gutter side of the grate lines (a middle texture is drawn per side);
+  now on both sides, so it's always seen through vines.
+- 2026-11-22, note #82 (game): three spectres (shadow pinkies, 58), ambush, along the cistern (y 1350, 880,
+  430), facing north, the way the player comes down.
+- 2026-11-22, note #83 (game): the grate lines block monster sight (blocksight), so the cistern's ambush
+  spectres can't see the player in the hall through the vines.
+- 2026-11-22, note #84 (game): the cistern (and the stairs down) darker and less foggy: near-black fog
+  (0x080808, 200), light 32, so the spectres don't stand out against grey mist. The drains keep the hall's
+  grey (note #79); to watch for a seam where the two meet, seen from the hall.

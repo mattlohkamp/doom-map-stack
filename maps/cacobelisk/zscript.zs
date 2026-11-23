@@ -22,11 +22,34 @@ class CacobeliskElevator : EventHandler
 
 	bool riding;
 	bool broken;
+	int landedAt;       // Level.maptime of the landing (CacobeliskObelisks starts its sequence from it)
 	int nextSpark;
+
+	const SECRET_TAG = 3;       // the entry secret's panel (map.py SECRET_TAG)
+	const TARGET_TID = 301;     // the target's red pulse (map.py TARGET_TID)
+
+	// The entry secret's target (the valve wheel over the start door, map.py) glows until it's shot:
+	// then its wall goes back to the closet's own light and its pulse goes out.
+	void DimTarget(Line ln)
+	{
+		Side sd = ln.sidedef[0];
+		if (sd != null)
+		{
+			sd.Light = 0;
+			sd.Flags &= ~Side.WALLF_ABSLIGHTING;
+		}
+		let it = Level.CreateActorIterator(TARGET_TID);
+		Actor l;
+		while ((l = it.Next()) != null)
+			l.Deactivate(null);
+		Console.Printf("[DMS] CacobeliskElevator: the target was shot; the secret panel opens");
+	}
 
 	override void WorldLineActivated(WorldEvent e)
 	{
 		Line ln = e.ActivatedLine;
+		if (ln != null && ln.special == Door_Open && ln.args[0] == SECRET_TAG)
+			DimTarget(ln);
 		// The top switch (Floor_LowerByValue) or the bottom call switch (Floor_MoveToValue, note #10).
 		if (ln != null && (ln.special == Floor_LowerByValue || ln.special == Floor_MoveToValue)
 			&& ln.args[0] == CAR_TAG && !riding)
@@ -77,6 +100,7 @@ class CacobeliskElevator : EventHandler
 			if (car.floorplane.ZAtPoint(car.centerspot) > LANDED_Z + 0.5)
 				return;
 			broken = true;
+			landedAt = Level.maptime;
 			// Light_Flicker (tag, upper, lower): the car's light jumps between bright and dim.
 			Level.ExecuteSpecial(Light_Flicker, null, null, false, CAR_TAG, 144, 40);
 			for (int i = 0; i < 3; i++)   // the bang on landing
@@ -151,9 +175,13 @@ class CacobeliskElevator : EventHandler
 	int sparkTurn;
 }
 
+// The mapper, 2026-11-22: the reveal is a show watched from the elevator. A few beats after it lands
+// and breaks (CacobeliskElevator), the obelisks are revealed one at a time, nearest pair first, west then
+// east, a pause between each: all but the switch obelisk, which is revealed only when the player takes
+// the shotgun from its altar (thing id SHOTGUN_TID). (Until then, from note #8, each pair was revealed
+// as the player walked past it.)
 // Note #8: the obelisks' reveal. Each starts as a plain pillar up to the ceiling (its sleeve, map.py
-// monolith). When the player crosses the line between a pair (the middle of the two slabs, going north
-// up the hall), both sleeves sink slowly into their bases (Floor_LowerToLowest: down to the base, the
+// monolith). Its sleeve sinks slowly into its base (Floor_LowerToLowest: down to the base, the
 // lowest floor beside them), down out of their slots in the ceiling, uncovering the carved slabs, a
 // cacodemon on the one that has one (note #11: only the switch obelisk; spawned now, still hidden inside
 // the sleeve),
@@ -172,9 +200,21 @@ class CacobeliskObelisks : EventHandler
 	// leaving an 8-high rim of the sleeve round each slab.
 	const SLEEVE_REST = -240;
 	const SINK_OTHERS = 0.25;
+	const SLIT_TAG = 400;        // the switch obelisk's slit (map.py SLIT_TAG)
 
-	Array<double> pairY;         // the line between pair i's obelisks (their middle, north-south)
-	Array<bool> revealed;
+	const SHOTGUN_TID = 300;
+	const SHOW_DELAY = 105;      // tics from the landing to the first obelisk (3 s)
+	const SHOW_GAP = 70;         // tics between one obelisk and the next (2 s)
+	const HALL_Z = -200;         // a player below this is in the hall (after H, the elevator is up again)
+
+	// Every sleeve in reveal order (pair by pair, west then east), with its pair; the switch obelisk's
+	// sleeve apart.
+	Array<int> order, orderPair;
+	int switchSleeve, switchPair;
+	int shown;                   // how many of `order` are revealed
+	int showStart;               // maptime of the first; -1 until the elevator lands
+	bool switchShown;
+	Inventory shotgun;
 	bool ready;
 
 	// Mapper, 2026-11-22: the switch obelisk's face is splattered with blood of a colour nothing else
@@ -201,25 +241,55 @@ class CacobeliskObelisks : EventHandler
 	Array<int> rumbleSleeve, rumbleFade;
 	Array<double> rumbleLastZ;
 
-	void FindPairs()
+	// Whether sleeve sector `sleeve` is round the slab tagged CACO_TAG + pair (the switch obelisk).
+	bool IsSwitchSleeve(int sleeve, int pair)
 	{
+		let it = Level.CreateSectorTagIterator(CACO_TAG + pair);
+		int s;
+		while ((s = it.Next()) >= 0)
+		{
+			if ((Level.Sectors[sleeve].centerspot - Level.Sectors[s].centerspot).Length() < 40)
+				return true;
+		}
+		return false;
+	}
+
+	void FindObelisks()
+	{
+		switchSleeve = -1;
+		showStart = -1;
+		int pairs = 0;
 		for (int i = 0; i < 64; i++)
 		{
+			Array<int> sl;
 			let it = Level.CreateSectorTagIterator(SLEEVE_TAG + i);
-			double sum = 0;
-			int n = 0, s;
+			int s;
 			while ((s = it.Next()) >= 0)
 			{
-				sum += Level.Sectors[s].centerspot.y;
-				n++;
+				int k = 0;                              // kept sorted west to east
+				while (k < sl.Size() && Level.Sectors[sl[k]].centerspot.x < Level.Sectors[s].centerspot.x)
+					k++;
+				sl.Insert(k, s);
 			}
-			if (n == 0)
+			if (sl.Size() == 0)
 				break;
-			pairY.Push(sum / n);
-			revealed.Push(false);
+			pairs++;
+			for (int k = 0; k < sl.Size(); k++)
+			{
+				if (IsSwitchSleeve(sl[k], i))
+				{
+					switchSleeve = sl[k];
+					switchPair = i;
+					continue;
+				}
+				order.Push(sl[k]);
+				orderPair.Push(i);
+			}
 			Hum(i);
 		}
-		Console.Printf("[DMS] CacobeliskObelisks: %d pair(s) waiting", pairY.Size());
+		shotgun = Inventory(Level.CreateActorIterator(SHOTGUN_TID).Next());
+		Console.Printf("[DMS] CacobeliskObelisks: %d pair(s), %d obelisk(s) in the show; switch obelisk %s, shotgun %s",
+			pairs, order.Size(), switchSleeve >= 0 ? "found" : "missing", shotgun != null ? "found" : "missing");
 	}
 
 	// Note #11: a low rumble from inside the obelisk with the cacodemon (the one to interact with), from
@@ -243,15 +313,31 @@ class CacobeliskObelisks : EventHandler
 		if (!ready)
 		{
 			ready = true;
-			FindPairs();
+			FindObelisks();
 		}
 		PlayerPawn p = players[consoleplayer].mo;
 		if (p == null)
 			return;
-		for (int i = 0; i < pairY.Size(); i++)
+		// The show starts once the player is down at the bottom (the mapper, 2026-11-22: they can press
+		// the switch and step back, letting the platform go down without them; then it waits until they
+		// drop down the shaft). Riding it, that's when it lands; after H (the player put back in the
+		// hall, the platform up again), straight away.
+		if (showStart < 0 && p.pos.z < HALL_Z)
 		{
-			if (!revealed[i] && p.pos.y >= pairY[i])
-				Reveal(i, p);
+			let el = CacobeliskElevator(EventHandler.Find("CacobeliskElevator"));
+			if (el == null || el.broken || !el.riding)
+				showStart = Level.maptime + SHOW_DELAY;
+		}
+		while (showStart >= 0 && shown < order.Size() && Level.maptime >= showStart + shown * SHOW_GAP)
+		{
+			Reveal(order[shown], orderPair[shown], false, p);
+			shown++;
+		}
+		// The switch obelisk: once the shotgun is taken (it has an owner, or it's gone).
+		if (!switchShown && switchSleeve >= 0 && (shotgun == null || shotgun.Owner != null))
+		{
+			switchShown = true;
+			Reveal(switchSleeve, switchPair, true, p);
 		}
 		SpraySplats();
 		UpdateRumbles();
@@ -362,67 +448,70 @@ class CacobeliskObelisks : EventHandler
 		}
 	}
 
-	void Reveal(int i, Actor player)
+	// Reveals one obelisk: its sleeve (sector `sleeve`, of pair `pair`) sinks, its rumble and clack
+	// start, its glow comes on; the switch obelisk also gets its cacodemon and its violet splats.
+	void Reveal(int sleeve, int pair, bool isSwitch, Actor player)
 	{
-		revealed[i] = true;
-		// Each sleeve down to the lowest floor beside it (its base): the switch obelisk's (round a slab
-		// tagged CACO_TAG + i) at SINK_SWITCH, the rest at SINK_OTHERS.
-		Array<int> switchSlabs;                    // sector numbers (no Vector2 arrays in ZScript)
-		let cs = Level.CreateSectorTagIterator(CACO_TAG + i);
-		int cso;
-		while ((cso = cs.Next()) >= 0)
-			switchSlabs.Push(cso);
-		let sinking = Level.CreateSectorTagIterator(SLEEVE_TAG + i);
-		int si;
-		while ((si = sinking.Next()) >= 0)
+		Sector sec = Level.Sectors[sleeve];
+		Vector2 sc = sec.centerspot;
+		double drop = sec.floorplane.ZAtPoint(sc) - SLEEVE_REST;
+		Level.CreateFloor(sec, Floor.floorLowerByValue, null, isSwitch ? SINK_SWITCH : SINK_OTHERS, drop);
+		if (isSwitch)
 		{
-			Sector sleeve = Level.Sectors[si];
-			bool isSwitch = false;
-			for (int k = 0; k < switchSlabs.Size(); k++)
-				isSwitch |= (sleeve.centerspot - Level.Sectors[switchSlabs[k]].centerspot).Length() < 40;
-			double drop = sleeve.floorplane.ZAtPoint(sleeve.centerspot) - SLEEVE_REST;
-			Level.CreateFloor(sleeve, Floor.floorLowerByValue, null, isSwitch ? SINK_SWITCH : SINK_OTHERS, drop);
-		}
-		let it = Level.CreateSectorTagIterator(CACO_TAG + i);
-		int s;
-		int cacos = 0;
-		while ((s = it.Next()) >= 0)
-		{
-			Sector slab = Level.Sectors[s];
-			Vector2 c = slab.centerspot;
-			Actor caco = Actor.Spawn("Cacodemon", (c.x, c.y, slab.floorplane.ZAtPoint(c)), ALLOW_REPLACE);
-			if (caco != null)
+			// Note #38: the slit the violet spills from (cut into the sleeve's back, map.py slit_edges)
+			// opens upwards as the sleeve sinks, its top rising to the sleeve's at the same speed, so
+			// nothing of it is left standing once the slab is uncovered.
+			let slits = Level.CreateSectorTagIterator(SLIT_TAG);
+			int k;
+			while ((k = slits.Next()) >= 0)
 			{
-				caco.angle = caco.AngleTo(player);
-				// A dark cacodemon (the mapper, 2026-11-22): a dark, mostly see-through silhouette.
-				caco.A_SetRenderStyle(1.0, STYLE_Shadow);
-				cacos++;
+				Sector slit = Level.Sectors[k];
+				double rise = sec.ceilingplane.ZAtPoint(sc) - slit.ceilingplane.ZAtPoint(slit.centerspot);
+				Level.CreateCeiling(slit, Ceiling.ceilRaiseByValue, null, SINK_SWITCH, SINK_SWITCH, rise);
 			}
 		}
-		QueueSplats(i);
-		let sleeves = Level.CreateSectorTagIterator(SLEEVE_TAG + i);
-		int sl;
-		while ((sl = sleeves.Next()) >= 0)
+		int cacos = 0;
+		if (isSwitch)
 		{
-			Sector sleeve = Level.Sectors[sl];
-			Vector2 sc = sleeve.centerspot;
-			Actor r = Actor.Spawn("MapSpot", (sc.x, sc.y, player.pos.z + 48));
-			if (r == null)
-				continue;
+			let it = Level.CreateSectorTagIterator(CACO_TAG + pair);
+			int s;
+			while ((s = it.Next()) >= 0)
+			{
+				Sector slab = Level.Sectors[s];
+				Vector2 c = slab.centerspot;
+				Actor caco = Actor.Spawn("Cacodemon", (c.x, c.y, slab.floorplane.ZAtPoint(c)), ALLOW_REPLACE);
+				if (caco != null)
+				{
+					caco.angle = caco.AngleTo(player);
+					// A dark cacodemon (the mapper, 2026-11-22): a dark, mostly see-through silhouette.
+					caco.A_SetRenderStyle(1.0, STYLE_Shadow);
+					cacos++;
+				}
+			}
+			QueueSplats(pair);
+		}
+		Actor r = Actor.Spawn("MapSpot", (sc.x, sc.y, player.pos.z + 48));
+		if (r != null)
+		{
 			r.A_StartSound("world/quake", CHAN_BODY, CHANF_LOOPING, RUMBLE_VOLUME, RUMBLE_REACH, RUMBLE_PITCH);
 			// Note #23: a sharp clack as it starts: the switch click, pitched a little down, over the
 			// lift's starting clunk.
 			r.A_StartSound("switches/normbutn", CHAN_5, 0, 1.0, ATTN_NORM, 0.75);   // 75% speed (the mapper)
 			r.A_StartSound("plats/pt1_strt", CHAN_6, 0, 0.7, ATTN_NORM, 0.75);
 			rumbles.Push(r);
-			rumbleSleeve.Push(sl);
+			rumbleSleeve.Push(sleeve);
 			rumbleFade.Push(-1);
 			rumbleLastZ.Push(1e9);           // "moving": the floor only starts on the next tic
 		}
-		let lights = Level.CreateActorIterator(GLOW_TID + i);
+		// Its glow: of the pair's lights (GLOW_TID + pair), the one in front of this obelisk.
+		let lights = Level.CreateActorIterator(GLOW_TID + pair);
 		Actor l;
 		while ((l = lights.Next()) != null)
-			l.Activate(null);
-		Console.Printf("[DMS] CacobeliskObelisks: pair %d revealed (%d cacodemon(s))", i + 1, cacos);
+		{
+			if ((l.pos.xy - sc).Length() < 100)
+				l.Activate(null);
+		}
+		Console.Printf("[DMS] CacobeliskObelisks: pair %d, %s obelisk revealed%s", pair + 1,
+			sc.x < 32 ? "west" : "east", cacos > 0 ? " (with its cacodemon)" : "");
 	}
 }
