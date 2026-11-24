@@ -108,8 +108,10 @@ def _show(win, focus) -> None:
     win.mainloop()
 
 
-def pick_map(root: Path, action: str) -> maps.MapInfo | None:
-    """Show the picker; `action` labels the button ("Play", "Edit"). None if cancelled."""
+def pick_map(root: Path, action: str, options: dict | None = None) -> maps.MapInfo | None:
+    """Show the picker; `action` labels the button ("Play", "Edit"). None if cancelled.
+    options: ticks under the list, {key: (label, hint, default)}; the dict is left as {key: bool}, the
+    mapper's answers."""
     from tkinter import messagebox, ttk
 
     found = maps.all_maps(root)
@@ -126,6 +128,8 @@ def pick_map(root: Path, action: str) -> maps.MapInfo | None:
         info = selected()
         if info:
             chosen.append(info)
+            if options is not None:
+                options.update({k: v.get() for k, v in ticks.items()})
             win.destroy()
 
     frame = ttk.Frame(win, padding=12)
@@ -133,6 +137,15 @@ def pick_map(root: Path, action: str) -> maps.MapInfo | None:
     ttk.Label(frame, text=f"Choose a map to {action.lower()}:").pack(anchor="w", pady=(0, 6))
     tree, selected = _map_list(frame, root, found, choose)
     tree.pack(fill="both", expand=True)
+    import tkinter as tk
+
+    ticks = {}
+    for key, (label, hint, default) in (options or {}).items():
+        ticks[key] = tk.BooleanVar(value=bool(default))
+        line = ttk.Frame(frame)
+        line.pack(fill="x", pady=(8, 0))
+        ttk.Checkbutton(line, text=label, variable=ticks[key]).pack(side="left")
+        ttk.Label(line, text=hint, foreground="#666").pack(side="left", padx=(6, 0))
     buttons = ttk.Frame(frame)
     buttons.pack(fill="x", pady=(10, 0))
     ttk.Button(buttons, text="Cancel", command=win.destroy).pack(side="right")
@@ -167,6 +180,7 @@ def pick_session(root: Path, defaults: dict, agents: dict[str, str],
     win = _window("Start a session - dms")
     result: list = []
     toggles = {k: tk.BooleanVar(value=bool(defaults.get(k, True))) for k in SESSION_PARTS}
+    toggles["nomonsters"] = tk.BooleanVar(value=bool(defaults.get("nomonsters", False)))
     names = {"": "(none)", **agents}
     agent_name = tk.StringVar(value=names.get(defaults.get("agent", ""), "(none)"))
 
@@ -200,6 +214,15 @@ def pick_session(root: Path, defaults: dict, agents: dict[str, str],
         ttk.Checkbutton(opts, text=label, variable=toggles[key]).grid(row=i, column=0, sticky="w")
         ttk.Label(opts, text=hint, foreground="#666").grid(row=i, column=1, sticky="w", padx=(6, 0))
     row = len(SESSION_PARTS)
+    # An option of the game, not something to open: indented under it, off when the game is.
+    no_mon = ttk.Checkbutton(opts, text="No monsters", variable=toggles["nomonsters"])
+    no_mon.grid(row=row, column=0, sticky="w", padx=(18, 0))
+    ttk.Label(opts, text="a quiet look round (in the game, key P calms them)", foreground="#666").grid(
+        row=row, column=1, sticky="w", padx=(6, 0))
+    game_changed = lambda *_a: no_mon.state(["!disabled"] if toggles["game"].get() else ["disabled"])
+    toggles["game"].trace_add("write", game_changed)
+    game_changed()
+    row += 1
     ttk.Label(opts, text="Agent").grid(row=row, column=0, sticky="w", pady=(8, 0))
     ttk.Combobox(opts, textvariable=agent_name, values=list(names.values()), state="readonly", width=18).grid(
         row=row, column=1, sticky="w", padx=(6, 0), pady=(8, 0))

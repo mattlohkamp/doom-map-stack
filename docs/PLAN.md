@@ -361,7 +361,51 @@ Still to build later:
 
 ## 9. Where we left off
 
-*Updated 2026-11-23. A new session starts here.*
+*Updated 2026-11-24. A new session starts here.*
+
+**2026-11-24, a long session on Cacobelisk (in-game and board notes #73-#140 and chat) and the tools round it.**
+155 tests. `maps/cacobelisk/notes.md` has every note; the short of it:
+
+*Cacobelisk now, in play order:* the start as before (the elevator's ride has a sound of its own now); the hall
+on the edge of a cliff (no west wall: a low railing, sky beyond), a darker sky that turns red-violet later,
+mouldings on its north walls and a crown along the east one; the ordinary obelisks carry a star (the mapper's
+artwork), each with a torch behind its altar that flares up green as it is revealed; the **switch obelisk goes
+in three steps** (shotgun: revealed; a switch: its violet torch and paint, a niche; an item placed: the sky
+turns, and what follows): only step 1 is built, steps 2 and 3 wait in the script for a switch, a niche and an
+item that don't exist yet. Behind the great door a bigger vestibule (wooden boxes, torches), the main passage
+(bare rock and mud now) and a **side passage** round it (green rock, six torches, an alcove with armour, two
+deaf imps), timber frames in the openings; the cistern stairs and the cistern with unlit torches in outcrops,
+which flare up one by one when the big door opens; the shotgunner room (crates, a medikit, a twin switch that
+sinks) with a tech door under a small red lamp; a tech room; and **the pumping station**, a first layout only
+(main pump hall with a pit, pumps and catwalks, corridors, control room, pipe gallery, generator room, storage;
+no monsters or items; plain blocks for machines).
+**Open:** the switch obelisk's steps 2 and 3 (where the switch and the niche are, what the item is, what
+happens after); the station (railings, real machines, water, textures, an exit); an exit for the map; whether
+the cistern's green glows should stay under torches that now light; the violet water still greys the weapon.
+Much of today is unchecked in the game by Claude: each note says what.
+
+*Tools built today* (all in `AGENTS.md`):
+- **A map's own pictures:** `maps/<map>/textures/NAME.png`, packed between TX_START and TX_END (`extras.py`); a
+  picture made from Freedoom's needs its licence beside it (`textures/NOTICE.txt`). Used for the star and for
+  the eye in the alcoves, where composing in TEXTURES couldn't scale or soften an edge.
+- **The asset browser** lists each map's own assets (a violet tag) and what the maps use (a count, "in use
+  first"): `src/dms/mapassets.py`. The board opens alone now; the browser is a click away in its banner.
+- **Peaceful monsters** (key P in the game, sticks through restarts) and a **No monsters** tick in Start
+  Session and Play Map.
+- `map.py` helpers worth knowing: `raster()` (rooms from a plan of rectangles: the station), `rough_niche()`,
+  `moulded_wall()`, `timber_frame()`, `_stair_wall()` / `_stair_carving()`.
+
+*Lessons:* **read a build's errors before closing its note**: four times a broken build (unclosed sectors, a
+dropped drain) reached the game's copy because the note was closed first. TEXTURES: one change per `Patch`
+(Translation + Blend kept only the Blend: a red sky); a turned patch lands where its x, y say; a scratch load
+proves the engine takes a definition, not how it looks: **measure the mapper's screenshot** rather than guess
+(the sky took four rounds until it was measured). Under an open sky, no wall is drawn between two sky ceilings:
+don't cut holes with ceilings there (the slit ended as a 3D floor). A sector a later pass matches by name gets
+changed by it (`monolith_...`). The game's sector numbers in a note are from the build it runs: go by where the
+mapper stood. The 30-minute watch lapses: re-arm at once, a note can land in the gap.
+**Worth building next:** the watch re-arming itself or a longer one; a way for Claude to see the game (a
+screenshot on request) so less is "unchecked"; `dms rename`; a decal lump for maps (a scaled picture on a wall
+without a new texture).
 
 **2026-11-23, a long session on Cacobelisk (72 in-game and board notes, two editor saves) and the tools
 round it.** Not committed until the end of the day; 147 tests.

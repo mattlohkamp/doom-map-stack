@@ -93,8 +93,9 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return 1 if any(i.severity == "error" for i in issues) else 0
 
 
-def pick_map(root: Path, given: str | None, action: str):
-    """The map named on the command line or dropped onto a launcher; with none, the picker window.
+def pick_map(root: Path, given: str | None, action: str, options: dict | None = None):
+    """The map named on the command line or dropped onto a launcher; with none, the picker window
+    (options: its ticks, see picker.pick_map; untouched when the map was given).
     Returns None if the picker was cancelled."""
     from dms import maps, picker
 
@@ -102,7 +103,7 @@ def pick_map(root: Path, given: str | None, action: str):
         info = maps.resolve(root, given)
         picker.remember(root, info.name)
         return info
-    return picker.pick_map(root, action)
+    return picker.pick_map(root, action, options) if options is not None else picker.pick_map(root, action)
 
 
 def cmd_render(args: argparse.Namespace) -> int:
@@ -132,10 +133,17 @@ def cmd_play(args: argparse.Namespace) -> int:
     from dms import launch
 
     root = repo_root()
-    info = pick_map(root, args.map, "Play")
+    from dms import session
+    from dms.configure import project_settings
+
+    # The window's "No monsters" tick starts as Start Session's does ([session] nomonsters, or --nomonsters).
+    ticks = {"nomonsters": ("No monsters", "a quiet look round (in the game, key P calms them)",
+                           args.nomonsters or session.defaults(project_settings(root))["nomonsters"])}
+    info = pick_map(root, args.map, "Play", ticks)
     if info is None:
         return 0
-    return launch.play(root, info, skill=args.skill, nomonsters=args.nomonsters)
+    nomonsters = ticks["nomonsters"] if isinstance(ticks["nomonsters"], bool) else args.nomonsters
+    return launch.play(root, info, skill=args.skill, nomonsters=nomonsters)
 
 
 def cmd_edit(args: argparse.Namespace) -> int:
@@ -164,6 +172,8 @@ def cmd_session(args: argparse.Namespace) -> int:
                 choices[part] = False
         if args.no_agent:
             choices["agent"] = ""
+        if args.nomonsters:
+            choices["nomonsters"] = True
     else:
         from dms import agents
 
@@ -412,6 +422,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("map", nargs="?", help=MAP_HELP + "; none: the session window (choose, or start a new map)")
     for part in ("browser", "editor", "game", "agent"):
         p.add_argument(f"--no-{part}", action="store_true", help=f"with a map: don't open the {part}")
+    p.add_argument("--nomonsters", action="store_true", help="with a map: start the game without monsters")
     p.add_argument("--board-here", action="store_true",
                    help="(Start Session.cmd) leave starting the board to the caller's window, via build/session.txt")
     p.set_defaults(func=cmd_session)

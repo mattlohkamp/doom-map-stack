@@ -20,6 +20,9 @@ test_automap = true
 browser = true
 editor = true
 game = true
+# Start the game without monsters (the "No monsters" tick under Game), for a quiet look round.
+# In the game, key P makes monsters ignore the player instead, and can be turned off again.
+nomonsters = false
 # The coding agent started in a window of its own, from [agents] below ("" = none). It isn't
 # started if one is already watching notes for the map (`dms watch`).
 agent = "claude"

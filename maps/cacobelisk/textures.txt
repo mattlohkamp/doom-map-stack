@@ -20,5 +20,126 @@ WallTexture "CACOBASE", 128, 128
 // starfield SKY4 with its red and blue halved: Patch "SKY4", 0, 0 { Blend "80FF80" }.)
 WallTexture "CACOSKY", 512, 128
 {
+	// Notes #104, #105 (2026-11-24): "make the sky dark like the walls": blended 80% towards the hall's fog colour
+	// (0x0A160E, what its far walls fade to), so wall and sky nearly meet; the clouds still show faintly. The
+	// number is how far (0 = the bright green clouds of before).
+	// (First as one patch with both Translation and Blend: the engine kept only the Blend, and the sky came out
+	// dark red. So two layers: the green clouds, and over them the same picture as one flat colour, 80% opaque.)
 	Patch "P-SKY3", 0, 0 { Translation "Green" }
+	// Note #110: the aim is that the dark walls look like the sky's dark clouds, so the clouds must keep their
+	// light and dark: the layer over them is near black now (it only darkens), 70% opaque. Measured in the
+	// mapper's screenshot: far walls (7, 11, 8); the 80% fog-colour layer gave a flat (15, 25, 15), twice as light
+	// and without clouds. With this the sky should run from about (3, 5, 4) to (17, 19, 10) round the walls' colour.
+	// Note #113: "the sky is olive drab, the wall almost a dark cyan green". Measured in the shot: sky (12, 17, 11),
+	// far wall (6, 12, 8): too light and too yellow. A stronger layer (85%) of a dark cyan-green: worked out so
+	// the sky where the mapper looked comes to the wall's (6, 12, 8); the clouds are fainter for it.
+	Patch "P-SKY3", 0, 0 { Blend "#000604", 1.0 Style Translucent Alpha 0.85 }
 }
+
+// Chat, 2026-11-24: an unlit torch, from the short red torch's own frames (SMRTA-D, 21 x 66: the flame in
+// rows 0-37, the skull bowl and stem in rows 38-65). CACTA0: the bowl and stem alone, darkened. CACSA0-D0: the
+// flame alone, turned grey: smoke, drawn see-through over the bowl by zscript.zs (CacobeliskDeadTorch).
+// Chat, 2026-11-24: the skull's red eyes (one pixel each, at 7 and 14 across, 3 down the bowl) are a dim,
+// still purple: a one-pixel texture cut from the eye itself and coloured, laid over each. (Three frames
+// flickering at first: "too much".)
+Texture "CACOEYA", 1, 1
+{
+	Patch "SMRTA0", -7, -41 { Blend "#501888", 1.0 }
+}
+Sprite "CACTA0", 21, 28
+{
+	Offset 11, 28
+	Patch "SMRTA0", 0, -38 { Blend "#000000", 0.3 }
+	Patch "CACOEYA", 7, 3
+	Patch "CACOEYA", 14, 3
+}
+Sprite "CACSA0", 21, 38
+{
+	Offset 11, 38
+	Patch "SMRTA0", 0, 0 { Translation "Desaturate", 31 }
+}
+Sprite "CACSB0", 21, 38
+{
+	Offset 11, 38
+	Patch "SMRTB0", 0, 0 { Translation "Desaturate", 31 }
+}
+Sprite "CACSC0", 21, 38
+{
+	Offset 11, 38
+	Patch "SMRTC0", 0, 0 { Translation "Desaturate", 31 }
+}
+Sprite "CACSD0", 21, 38
+{
+	Offset 11, 38
+	Patch "SMRTD0", 0, 0 { Translation "Desaturate", 31 }
+}
+
+// Note #88 (2026-11-24): the tech door past the shotgunner room: DOOR1 (64 x 72), darkened: as it is, it was
+// "oddly bright" in that dim room. The number is how far towards black.
+WallTexture "CACODOOR", 64, 72
+{
+	Patch "DOOR1", 0, 0 { Blend "#000000", 0.45 }
+}
+
+// Note #108 (2026-11-24): the wall over the tech door (64 x 56: its metal frame) with a red bar light across it:
+// the red tube (LITERED, 16 x 128) turned on its side, the middle 64 of it, 12 down from the top.
+Texture "CACOLAMP", 32, 12
+{
+	Patch "LITERED", -48, -2 { Rotate 90 }
+}
+WallTexture "CACOBAR", 64, 56
+{
+	Patch "SUPPORT3", 0, 0
+	// Note #112: at y 12 the bar came out at the very top, its upper edge cut off (the turned patch lands about
+	// 16 higher than its y says): y 36 should put it across the middle (rows 20-36 of 56).
+	// Note #124: not the tube across the whole panel (its ends cut off; then, in note #122, right across a wider
+	// frame: "looks worse"), but one small lamp in the panel's middle: a 32 x 12 piece of the tube (CACOLAMP, below).
+	Patch "CACOLAMP", 16, 22
+}
+
+// Note #109 (2026-11-24): a violet torch for the switch obelisk's altar (the game has red, green and blue): the
+// short blue torch's frames (24 x 70) with the red torch's (21 x 66) laid over them half see-through, flame on
+// flame, so the two mix to violet. zscript.zs CacobeliskVioletTorch.
+Sprite "CACPA0", 24, 70
+{
+	Offset 12, 70
+	Patch "SMBTA0", 0, 0
+	Patch "SMRTA0", 1, 4 { Style Translucent Alpha 0.5 }
+}
+Sprite "CACPB0", 24, 70
+{
+	Offset 12, 70
+	Patch "SMBTB0", 0, 0
+	Patch "SMRTB0", 1, 4 { Style Translucent Alpha 0.5 }
+}
+Sprite "CACPC0", 24, 70
+{
+	Offset 12, 70
+	Patch "SMBTC0", 0, 0
+	Patch "SMRTC0", 1, 4 { Style Translucent Alpha 0.5 }
+}
+Sprite "CACPD0", 24, 70
+{
+	Offset 12, 70
+	Patch "SMBTD0", 0, 0
+	Patch "SMRTD0", 1, 4 { Style Translucent Alpha 0.5 }
+}
+
+// Note #116 (2026-11-24): when the switch obelisk wakes, the sky turns from its dark green to a dark red-violet, "a
+// prelude to what the obelisk will do" (zscript.zs CacobeliskObelisks swaps the sky: CACOSKY1 for a second on the
+// way, then CACOSKY2). The same clouds (P-SKY3 is red as it comes); each change is a layer of its own.
+WallTexture "CACOSKY1", 512, 128
+{
+	Patch "P-SKY3", 0, 0 { Translation "Green" }
+	Patch "P-SKY3", 0, 0 { Style Translucent Alpha 0.5 }
+	Patch "P-SKY3", 0, 0 { Blend "#0A0312", 1.0 Style Translucent Alpha 0.78 }
+}
+WallTexture "CACOSKY2", 512, 128
+{
+	Patch "P-SKY3", 0, 0
+	Patch "P-SKY3", 0, 0 { Blend "#14001E", 1.0 Style Translucent Alpha 0.7 }
+}
+
+// (The ordinary obelisks' star, CACOSTAR, was drawn here from 191 small patches of MARBFAC2 (note #120); it is a
+// picture now: textures/CACOSTAR.png, from the mapper's own artwork. CACOFACE, the eye in the satyr's stone, is
+// a picture too: textures/CACOFACE.png.)

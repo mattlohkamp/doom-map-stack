@@ -40,7 +40,10 @@ class DmsNotes : EventHandler
 				// The map outgrew play.wad (or it isn't a live one): the board (Open Board.cmd) sees this
 				// line, rebuilds, and restarts the game here.
 				Console.Printf("[DMS-RELOAD] %.1f %.1f %.1f %.1f %.1f", mo.pos.x, mo.pos.y, mo.pos.z, mo.angle, mo.pitch);
-				Console.MidPrint(NewSmallFont, "Restarting the game here...\n(this needs the board running: Open Board.cmd)");
+				// (The wording used to say "this needs the board running", which read as an error while the
+				// board was at work: the mapper, 2026-11-24. It takes a few seconds: the board sees this in
+				// the log, closes the game and starts it again here.)
+				Console.MidPrint(NewSmallFont, "A script or texture changed: the game has to restart.\nRestarting here in a few seconds...\n(if nothing happens, the board isn't running: Open Board.cmd)");
 			}
 			return;
 		}
@@ -326,5 +329,75 @@ class DmsLive : StaticEventHandler
 		for (int i = 0; i < wrapped.Size(); i++)
 			Screen.DrawText(f, first[i] ? Font.CR_GOLD : Font.CR_WHITE, x, y + i * lh, wrapped[i],
 				DTA_ScaleX, scale, DTA_ScaleY, scale);
+	}
+}
+
+// Peaceful monsters (key P, KEYCONF: "netevent dms_peaceful"): for a quick look at a change without a
+// fight. While it's on, monsters don't notice the player (the engine's own `notarget`), and any that
+// are after a player anyway (already awake, hurt, or set on the player by a map's script) are sent back
+// to idling twice a second. A static handler, so it stays on through key H; each change is logged as
+// [DMS-PEACEFUL] 0|1, which `dms play` reads from the last game's log to start the next one the same
+// way (+set dms_peaceful, CVARINFO): it sticks through restarts until it's turned off.
+class DmsPeaceful : StaticEventHandler
+{
+	bool active;
+	bool wasActive;
+	bool started;
+
+	override void NetworkProcess(ConsoleEvent e)
+	{
+		if (e.Player != consoleplayer || e.Name != "dms_peaceful") return;
+		active = !active;
+		Console.Printf("[DMS-PEACEFUL] %d", active ? 1 : 0);
+		let live = DmsLive(StaticEventHandler.Find("DmsLive"));
+		if (live)
+			live.Say(active ? "Peaceful: monsters ignore you (P turns it off)" : "Peaceful off: monsters notice you again",
+				DmsLive.ARRIVAL_TICS);
+	}
+
+	override void WorldTick()
+	{
+		if (!started)
+		{
+			started = true;
+			let c = CVar.FindCVar("dms_peaceful");
+			if (c && c.GetBool())
+			{
+				active = true;
+				Console.Printf("[DMS-PEACEFUL] 1");
+			}
+		}
+		let p = players[consoleplayer];
+		if (!p.mo) return;
+		if (active)
+		{
+			p.cheats |= CF_NOTARGET;
+			if (level.maptime % 17 == 0) Soothe();
+		}
+		else if (wasActive)
+			p.cheats &= ~CF_NOTARGET;
+		wasActive = active;
+	}
+
+	void Soothe()
+	{
+		let it = ThinkerIterator.Create("Actor");
+		Actor a;
+		while (a = Actor(it.Next()))
+		{
+			if (!a.bIsMonster || a.health <= 0 || !a.target || !a.target.player) continue;
+			a.target = null;
+			a.lastheard = null;
+			a.SetIdle();
+		}
+	}
+
+	// A reminder in the corner for as long as it's on, so a quiet map isn't taken for a broken one.
+	override void RenderOverlay(RenderEvent e)
+	{
+		if (!active) return;
+		Font f = NewSmallFont;
+		int scale = max(1, Screen.GetHeight() / 400);
+		Screen.DrawText(f, Font.CR_GREEN, 8 * scale, 8 * scale, "Peaceful (P)", DTA_ScaleX, scale, DTA_ScaleY, scale);
 	}
 }

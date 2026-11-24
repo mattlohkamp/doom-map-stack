@@ -18,7 +18,8 @@ See [`docs/PLAN.md`](docs/PLAN.md) for the roadmap.
 
 **Example:** [`maps/cacobelisk`](maps/cacobelisk) was made in one evening this way, entirely from notes sent
 from inside the game, editor saves and chat: a broken elevator ride down from a dark closet into a fogged hall of
-obelisks that sink into the floor as you pass, one of them hiding a cacodemon. Its
+obelisks that sink into the floor as you pass, one of them hiding a cacodemon. It has grown since (a cliff edge, a
+flooded cistern, passages, the start of a pumping station), the same way. Its
 [`notes.md`](maps/cacobelisk/notes.md) shows every request and what was done about it.
 
 ## Requirements
@@ -50,9 +51,15 @@ works too.
 | `launchers\start-claude.bat` | Starts Claude on its own (after updating the repo and Claude Code). |
 | `launchers\Open Board.cmd` | A local web page with each map's builds: a top-down map you can zoom and pan, with the changes marked (or before and after), Claude's note on what changed and what to check, validation results, the editor's state and problems from the last play session. Updates by itself; its console window lists everything as it happens. |
 | `launchers\Edit Map.cmd` | Opens a map in Ultimate Doom Builder. When Claude rebuilds the map, the open editor reloads it in place (view and zoom kept). |
-| `launchers\Play Map.cmd` | Builds the map if needed and plays it in UZDoom. |
+| `launchers\Play Map.cmd` | Builds the map if needed and plays it in UZDoom (with a "No monsters" tick, for a quiet look round). |
 | `launchers\Pull Map.cmd` | Brings changes saved in the editor back into the map's source. While the board is open this happens by itself on every save. |
 | `launchers\Open Editor.cmd` | Opens the editor on its own. |
+
+**In the game:** N sends Claude a note about what you're looking at (with a screenshot), H reloads the map where you
+stand after Claude's change, and P makes monsters ignore you while you look round.
+
+**The board** also has an asset browser (a link in its top banner): every texture, thing, sound and song the game
+provides, each map's own, and which of them the maps already use.
 
 **Changes made in the editor** are kept: light levels, heights, textures, offsets and things' positions become
 tweaks that survive every rebuild (`maps/<map>/overrides.toml`). Comments left on a sector, line or thing become

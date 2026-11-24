@@ -29,7 +29,8 @@ CHANNEL_RGB = (96, 20, 12)
 CHANNEL_RADIUS = 48
 # Varied (mapper, 2026-11-22): some channels dimmer than the rest, not mirrored across the closet,
 # as if some tubes are failing. Keyed by wall gid and channel number (1 = nearest the wall's start).
-CHANNEL_DIM = {("closet.wall_w", 1), ("closet.wall_w", 3), ("closet.wall_e", 2)}
+CHANNEL_DIM = {("closet.wall_w", 1), ("closet.wall_w", 3), ("closet.wall_e", 2),
+               ("tech_hall.wall_n", 2), ("tech_hall.wall_n", 5), ("tech_hall.wall_s", 1), ("tech_hall.wall_s", 3)}   # note #77: the corridor past the tech door
 CHANNEL_DIM_LIGHT = 96
 CHANNEL_DIM_RGB = (56, 12, 8)
 # The closet breathes (mapper, 2026-11-22): its light fades slowly between these, 3 s each way
@@ -129,6 +130,7 @@ HALL_FOG_DENSITY = 240    # note #66: thinner with the dark colour, or nothing w
 # Note #4: all the ring (MARBFAC2), the mapper's favourite of the three; the skull (MARBFACE) and the
 # alien (MARBFAC3) are kept for another use.
 FACE = "MARBFAC2"
+FACE_STAR = "CACOSTAR"       # textures/CACOSTAR.png: the mapper's artwork (art/), scaled to 128 x 128
 STONE = "MARBLE1"
 # The slabs' west edges. Editor save 2026-11-22 01:23: both rows 64 further out (were -96 and 128), an
 # aisle 320 wide, x -128 to 192.
@@ -207,19 +209,58 @@ WICKET_TAG = 501
 # a tight turn). Now twice as deep, rounded, its north-east side curving back down to a wide opening
 # onto the passage (about 122, slanted). Its outline from the west jamb's back corner round to the
 # east one's, (u, d) in the doorway's frame; the passage's first cross-section is the opening.
-VESTIBULE_OUTLINE = ((-112, 16), (-128, 112), (-88, 184), (16, 208), (104, 184), (136, 136))
+# Note #121 (2026-11-24): bloated out to the west and the back for a few wooden boxes (it was ((-112, 16),
+# (-128, 112), (-88, 184), (16, 208), (104, 184), (136, 136))).
+VESTIBULE_OUTLINE = ((-112, 16), (-190, 60), (-206, 176), (-140, 230), (0, 260), (104, 210), (136, 136))   # (its 3rd point from (-200, 150): a longer wall for the side passage's wider mouth)
+# The boxes: strictly wooden (no tech crates): the map's own wood, as the shell niche and the cistern's
+# platform. (u0, d0, u1, d1 in the doorway's frame, height): two along the back wall, a small one out in the room.
+VESTIBULE_BOXES = ((-130, 160, -66, 224, 64), (-40, 196, 8, 244, 48), (-96, 120, -64, 152, 32))
+VESTIBULE_BOX_SIDE, VESTIBULE_BOX_TOP = "WOOD1", "FLAT5_2"
 VESTIBULE = (224, 96)           # width, depth (from the wall); note #63: smaller (was 256 x 176), the
                                 # passage leading on from its east side
 VESTIBULE_LIGHT = 72
 VESTIBULE_GLOW = (180, 50, 24, 144)   # note #13: from the torch in the wall now (was mid-room, radius 112)
-VESTIBULE_TORCH_WALL = 1              # between VESTIBULE_OUTLINE's points 1 and 2 (vestibule.wall_2)
+VESTIBULE_TORCH_WALL = 5              # the wall of the torch the red glow comes from (it was 1, vestibule.wall_2: now the side passage's entrance)
+VESTIBULE_SIDE_WALL = 1               # between VESTIBULE_OUTLINE's points 1 and 2: the side passage's entrance
+VESTIBULE_TORCH_WALLS = (5, 0)         # note #126: one in vestibule.wall_6, beside the way out to the passage. (The first
+                                      # torch's wall, 1, is the side passage's entrance now: chat, 2026-11-24.)
+                                      # Note #139: and one in vestibule.wall_1 (0), the wall left of the great door as you come in.
+# Chat, 2026-11-24: a side passage, an alternative way round. Its entrance takes the place of the vestibule's
+# first torch niche (the vestibule's west wall); it snakes west, then north up and round the outside of the
+# main passage, hugging the map, curls east and south, and comes out where the torch niche of the main
+# passage's 12th piece was (its outer wall). The same mossy stone, climbing a step at a time. Its middle
+# line, in map units, between the two openings (each SIDE_MOUTH wide; the passage itself SIDE_WIDE):
+SIDE_PATH = ((-300, 2150), (-360, 2240), (-370, 2400), (-340, 2560), (-260, 2720), (-140, 2850), (20, 2920),
+             (200, 2945), (380, 2935), (500, 2895), (572, 2838))
+SIDE_WIDE, SIDE_MOUTH, SIDE_HIGH = 128, 88, 112     # the mouths 88 (72 until note #130): 72 clear between the frame's posts
+SIDE_EXIT_MOUTH = 144                 # note #137 (the way out into the main passage; the wall may allow less)
+SIDE_EXIT = (11, "l")                 # the main passage's piece and wall it comes out in (PASSAGE_TORCHES had a niche there)
+SIDE_TORCHES = ((1, "l"), (3, "l"), (5, "l"), (7, "r"), (9, "l"), (10, "r"))   # in rough niches (note #132: the 4th piece's on its left wall, was right)
+# Note #129 (2026-11-24): "even older, dirtier, more rundown" than the main passage: a greyer, duller mossy rock, mud
+# underfoot, darker (56; the main passage is 80), a thin dark brown fog, and half its torches burnt out.
+# Note #133: the two passages' textures swapped: "side can be more heavily green and stony, main can be more bare
+# stone and dirt". The side passage has the green mossy rock the main one had (walls, floor and ceiling); the
+# main passage (its pieces, niches and steps; not the vestibule, the stairs or the cistern, which keep
+# PASSAGE_TEXTURE) the greyer rock and the mud floor first given to the side passage (note #129).
+SIDE_WALL, SIDE_FLOOR = "A-MOSRK2", "A-MOSRK2"
+MAIN_WALL, MAIN_FLOOR = "A-MOSROK", "A-MUD"
+SIDE_LIGHT = 56
+SIDE_FOG = (0x0E0C08, 180)
+SIDE_CARVING = (8, "r")       # note #134: a carved alcove like the passage's in the 9th piece's right wall
+SIDE_CARVING_ITEMS = (2015,) * 5     # armour bonuses (ARMOR_BONUS is defined further down)
+# Note #136 (2026-11-24): two shadow imps lurking in it, deaf (ambush: they wake on seeing the player): (piece, the way
+# it faces): in the 9th piece facing west, in the 12th facing south. "Shadow": drawn as a dark shape (UDMF
+# renderstyle "shadow", as the switch obelisk's cacodemon is by its script); ordinary imps otherwise.
+SIDE_IMPS = ((8, 180), (11, 270))
+SIDE_TORCHES_OUT = set()      # note #131: none: "all the torches on the side passage should be lit" (three were out in note #129)
+SIDE: dict = {}                       # filled as the map is built: its sectors, and its two openings' ends
 # Note #59: two imps waiting behind the great doors, facing them. (u, d) in the doorway's frame. Note #62:
 # not ambush (deaf) any more: shooting one through the gap left the other asleep; now gunfire wakes both.
 IMP = 3001
-VESTIBULE_IMPS = ((-56, 64), (60, 72))
+VESTIBULE_IMPS = ((0, 76), (60, 72))     # note #138: the first straight behind the gap between the leaves, to be glimpsed through it (it stood at (-56, 64))
 # Note #9 (2026-11-23): a third imp, deaf (ambush), in the vestibule's back corner behind the left leaf:
 # gunfire draws the other two out, this one waits for whoever comes through the small door.
-VESTIBULE_AMBUSH_IMP = (-72, 150)
+VESTIBULE_AMBUSH_IMP = (-120, 70)     # beside the side passage's entrance, out of its way (it stood in front of the torch that was there)
 # Note #63: through the small door, a cramped, twisting passage of mossy stone (A-MOSRK2 on walls, floor
 # and ceiling) leaves the vestibule on the right (east), bends north and gradually steps up, 8 at a
 # time; dimly lit, with torches (short red, 57) in niches in its walls. PASSAGE: its cross-sections in the
@@ -270,7 +311,13 @@ TORCH = 57
 # of the 12-deep niche, one right on a bend's inside corner. Now the niches start at the floor, 72 high,
 # 24 deep, the torch 14 in (wholly inside), and torches are on the outside of the bends.
 NICHE_DEEP, NICHE_HIGH, NICHE_TORCH_IN = 24, 72, 14
-PASSAGE_TORCHES = ((1, "l"), (3, "r"), (5, "l"), (7, "l"), (9, "l"), (11, "l"), (13, "r"), (14, "l"))
+PASSAGE_TORCHES = ((1, "l"), (3, "r"), (5, "l"), (7, "l"), (9, "l"), (13, "r"), (14, "l"))   # ((11, "l") is the side passage's way out now)
+# Chat, 2026-11-24: some torches are out: the map's own unlit torch (textures.txt, zscript.zs
+# CacobeliskDeadTorch: the bowl with grey smoke, no light), swapped in for torches with this thing id;
+# their niches are no brighter than the passage. A first pair as a sample: the mapper says which.
+DEAD_TORCH_TID = 320
+ALTAR_TORCH_TID = 321     # note #109: the altars' torches (zscript.zs)
+PASSAGE_TORCHES_UNLIT = set()   # note #75: every torch in the vestibule and the passage is lit (a sample pair was out: 5 l, 11 l); the dark starts at the cistern stairs (STAIR_TORCHES)
 # Note #65: a few pinkies in the wider stretch, imps behind them: (piece, type, along 0-1, across 0-1 from
 # the left), all facing back up the passage.
 PINKY = 3002
@@ -289,7 +336,9 @@ PASSAGE_SHELVES = ((1, "r", SHELL_BOX),)   # the 2nd piece: the 1st's right wall
 PASSAGE_CARVINGS = ((12, "l"),)
 # Note #5 (2026-11-23): the skull read as significant; now a patterned marble panel (MARBLE3, no face), lit
 # only a little above the passage (96, was 112), so it's plainly decoration.
-CARVING_TEXTURE, CARVING_SILL, CARVING_DEEP, CARVING_LIGHT = "GSTSATYR", 32, 24, 96
+# Note #125 (2026-11-24): the satyr's face swapped for the obelisks' eye: CACOFACE (textures/CACOFACE.png: GSTSATYR with
+# MARBFAC2's carving scaled down and blended over the face; the stone round it is the satyr's own).
+CARVING_TEXTURE, CARVING_SILL, CARVING_DEEP, CARVING_LIGHT = "CACOFACE", 32, 24, 96
 # Note #10 (2026-11-23): the mapper's pick, GSTSATYR, once only: the texture is 64 wide (one face), so it
 # takes the middle 64 of the alcove's 128-wide back, with plain gothic stone (GSTONE1, which the face is
 # carved in) either side, its blocks carried on across the three stretches, and on the alcove's sides.
@@ -309,6 +358,18 @@ DRAIN_FLOOR = -DROP - 16
 DRAIN_DEPTH = 96          # note #39: deep enough that its far wall is out of sight (was 16)
 DRAIN_LIGHT = 32          # note #39: darker (was 64)
 DRAIN_GRATE = "MIDVINE1"
+# Note #96 (2026-11-24): the hall stands on the edge of a cliff. Where the west gutter meets the wall (the west
+# side, and the south side west of the landing) there is no wall and no drain any more: the water runs to
+# the edge and over it, a railing along the edge (so nobody falls: the line is impassable), and beyond it
+# only sky, above and below. Built from the west drain's sector: its floor far down and sky, like its
+# ceiling, and round its far side a strip with no height (floor = ceiling, sky), which the engine shows
+# as open sky instead of a wall.
+CLIFF_FLOOR = -DROP - 1024
+CLIFF_RAIL = "MIDBARS3"         # 72 high: the bars already used in this map; its top 64 above the hall's floor
+CLIFF_FALL = "SFALL1"           # down the cliff's face under the edge (out of sight from the hall)
+CLIFF_HORIZON = 16
+CLIFF_RAIL_SUNK = 36            # note #100: how much of the railing (72 high) is under the water
+CLIFF_PIER = 64                 # note #98: the south wall turns the corner this far up the west side, as a pier
 # Note #77 and the mapper's editor save (22:36): the passage goes down, in CISTERN_STEPS steps, into a big
 # dark room east of the hall (the cistern: CISTERN_EAST, its east and south walls as drawn), whose west
 # wall is the far side of the drain behind the hall's east wall. That wall, facing the obelisk hall, is
@@ -371,8 +432,48 @@ CISTERN_DOOR_TEXTURE = "BIGDOOR6"
 # Note #53 (2026-11-23): the chamber about twice as big and less boxy: its outline (along the wall from the
 # door's middle, away from the stairs), from the door's far side round to its near side; about 330 x 280.
 # (It was a 192 x 192 box.)
-CISTERN_DOOR_OUTLINE = ((96, 16), (150, 60), (168, 150), (120, 250), (30, 296), (-70, 280), (-150, 200),
-                        (-160, 90), (-110, 24))
+# Note #77 (2026-11-24): a little bigger (about 350 x 340), with a straight far wall (its 5th: (40, 352) to
+# (-56, 352)) for the tech door. It was ((96, 16), (150, 60), (168, 150), (120, 250), (30, 296), (-70, 280),
+# (-150, 200), (-160, 90), (-110, 24)).
+# Note #91: the south side out by about 40 ((176, 160) and (170, 270) before), so there is a way round behind
+# the crates (56 wide) to the medikit.
+# (Note #122 made the far wall 128 wide for a wider door frame; note #124 took that back.)
+CISTERN_DOOR_OUTLINE = ((96, 16), (168, 56), (212, 150), (214, 280), (40, 352), (-56, 352), (-160, 270),
+                        (-176, 100), (-110, 24))
+# Note #77: the room is where the mossy rock ends and the rusty tech of the start comes back. Wooden crates
+# in it (u0, d0, u1, d1 in the room's frame, height, side texture, top flat): cover from the shotgunners,
+# clear of where they stand and of the way to the far door.
+CISTERN_DOOR_CRATES = ((90, 130, 154, 194, 64, "CRATE1", "CRATOP2"), (90, 194, 154, 258, 96, "CRATE2", "CRATOP1"),
+                       (-90, 240, -26, 304, 64, "CRATE2", "CRATOP1"))
+# The tech door in the far wall (DOOR1, 64 x 72, in a recess lined with the track's metal, the room's rock
+# above it: note #81): Door_Raise from both sides, monsters too. Behind it a corridor like the start
+# closet: 128 wide, LOW high, its walls CACOBASE (METAL4 over the track strip), red light channels in
+# both long walls, dim. It ends at a wall for now.
+TECH_DOOR_TAG = 8
+# Note #87 (2026-11-24): the twin of the cistern's switch inside the room, so the big door opens from this side
+# too: the same wooden post (16 x 64, 48 high) with the skull switch (SW1WOOD) on its face towards the room's
+# middle, standing clear of the north wall (u0, d0, u1, d1 in the room's frame). One use only: zscript.zs
+# snaps it into the floor (tag) when either switch is used; its top is the room's rock, so nothing is left.
+# Note #93: by the wall segment next to the door (the slanted one north of it); it stood one segment further on,
+# at (-150, 110, -134, 174). The deaf guard of that corner moved over a little to make room.
+CISTERN_DOOR_SWITCH = (-118, 56, -102, 120)
+MEDIKIT = 2012
+CISTERN_DOOR_MEDIKIT = (184, 230)   # note #89: stashed behind the tall crate; note #91: in the middle of the way round behind it (it was out of reach in a gap 18 wide)
+CISTERN_DOOR_SWITCH_TAG = 9
+TECH_DOOR_TEXTURE = "CACODOOR"   # note #88: DOOR1 darkened (the map's own, textures.txt): DOOR1 itself was "oddly bright"
+TECH_DOOR_FRAME = "SUPPORT3"     # note #88: the thin wall either side of the door and above it: the track's rusty metal, as round the small door
+TECH_DOOR = (-40, 24, 352)      # u0, u1 along the far wall, the wall's d
+TECH_DOOR_HIGH = 72
+TECH_DOOR_LAMP = "CACOBAR"       # note #108 (textures.txt)
+TECH_DOOR_POST = 16              # the frame's posts either side of the door (note #122 made them 32 for a bar right across; note #124: "looks worse", back)
+TECH_DOOR_LAMP_GLOW = 80         # added to the room's light on the bar's three pieces of wall
+TECH_DOOR_LAMP_RGB, TECH_DOOR_LAMP_RADIUS, TECH_DOOR_LAMP_PERIOD = (255, 40, 30), (40, 104), 50
+# Note #82 (2026-11-24): three times the size (it was the closet's 128 x 256) and brighter (128; the closet's
+# 80 at first): this is the part of the base that is in use, where the start was a forgotten way in.
+TECH_HALL_WIDE, TECH_HALL_LONG = 256, 384
+TECH_HALL_LIGHT = 128
+TECH_HALL_HIGH = 128             # note #84: twice the closet's 64
+TECH_HALL_CHANNELS = (64, 128, 192, 256, 320)   # the light channels along each long wall
 CISTERN_DOOR_ROOM_HIGH = 128
 CISTERN_DOOR_LIGHT, CISTERN_DOOR_TINT = 144, 0xFF7050
 CISTERN_DOOR_GLOW = (255, 70, 30, 176)
@@ -383,7 +484,7 @@ SHOTGUNNER = 9
 # wake on seeing or hearing the player), two deaf ones ("deaf": ambush, in the corners beside the door,
 # out of sight from the doorway). Not mirrored.
 CISTERN_DOOR_GUARDS = ((-34, 46, "wake"), (26, 74, "wake"), (-70, 160, "idle"), (60, 210, "idle"),
-                       (-100, 40, "deaf"), (100, 54, "deaf"))
+                       (-78, 24, "deaf"), (100, 54, "deaf"))    # note #93: the first was at (-100, 40), where the switch post is now
 CISTERN_DOOR_WAKE_TID = 304
 SWITCH_TAG = 601                # the platform, dais and post: the switch lights them a little (and tells the script)
 FLOW_WEST_TAG, FLOW_EAST_TAG = 610, 611
@@ -392,7 +493,12 @@ SWITCH_LIGHT = 96
 # Note #7: dim lights along the east wall (PointLightAttenuated: every CISTERN_GLOW_GAP from the north,
 # 20 out from the wall, 40 above the water), pale green like the water, so a spectre crossing in front of
 # one shows as a shadow. (colour, radius), alternating a little so they don't read as a row of lamps.
+CISTERN_TORCH_SILL = 8          # note #78: the torch shelves one step above the water (28 at first, over the slot: too high)
+CISTERN_OUTCROP = (56, 32)      # note #78: each torch's outcrop: along the east wall, out into the cistern
 CISTERN_GLOW_GAP = 250
+# Note #85: 72 out (40 at first: level with the outcrops' faces, 28-42 out, which a light in their own plane
+# can't light: the wall above each hollow stayed black).
+CISTERN_GLOW_SIDE, CISTERN_GLOW_OUT = 48, 72   # note #83: a light either side of each torch's outcrop
 CISTERN_GLOWS = (((70, 120, 90), 104), ((60, 105, 85), 88))
 CISTERN_LIGHT = 40
 # Note #79: grey, the hall's own fog (was a near-black 0x101810 at 420: from far off the black looked
@@ -431,6 +537,8 @@ VIOLET_FALL = "WFALL1"
 LIP_VIOLET = 0x2E0555             # VIOLET x 35/104 (note #31)
 VIOLET = 0x8A10FF                 # note #41: saturated (was 0xB060FF, which came out a lavender grey)
 SLIT = (32, 48, 4, 32)            # along the back from the slab's y0: 32-48; 4 deep; 32 high above the base
+SLIT_CONTROL, SLIT_CONTROL_TAG = (848, -96), 402   # note #107: the 3D floor above the slit's hollow (zscript.zs)
+LIP_TAG = 401                     # note #101: the lip in front of the slit (zscript.zs LIP_TAG)
 SLIT_TAG = 400                    # zscript.zs opens it upwards as the sleeve sinks
 RIVULET = {}                      # the gutter piece the rivulet belongs to (set by violet_gutter)
 GUTTER_E_WEST_EXTRA = {4: ((347, 1535), (240, 1552), (240, 1568), (348, 1580))}
@@ -670,7 +778,9 @@ def build(m: MapBuilder) -> None:
     wb = on_line(sw, nw, GUTTER_W_TOP)
     q = (CROSSING_WALL_X, MOUTH_W[1] + (sw[1] - MOUTH_W[1]) * (CROSSING_WALL_X - MOUTH_W[0]) / (sw[0] - MOUTH_W[0]))
     gutter_w = west_water(m, room, wb, q)
-    great_door(m, room, apse[0], apse[1])
+    MOULD_JOINTS.clear()
+    FRAMES.clear()
+    great_door(m, room, apse[0], apse[1], before=nw, after=ne)
     drains = hall_walls(m, room, [
         (MOUTH_W, [(q, room, "room.wall_s"), (sw, gutter_w, "gutter_w.edge_s")]),
         (sw, [(wb, gutter_w, "gutter_w.edge_w"), (nw, room, "room.wall_w2")]),
@@ -678,7 +788,10 @@ def build(m: MapBuilder) -> None:
         (apse[1], [(ne, room, "room.wall_n3")]),
         (ne, east[0]),
         (se, east[1] + [(MOUTH_E, room, "room.wall_s2")]),
-    ])
+    ], mould={"room.wall_n": dict(skip_start=32, after=apse[1], line=(nw, apse[0])),   # note #119: the north side
+              "room.wall_n3": dict(before=apse[0], skip_end=72, line=(apse[1], ne))})
+    mould_joint(m, "room.wall_n", "room.wall_n2")
+    mould_joint(m, "room.wall_n2b", "room.wall_n3")
     cistern(m, *drains["cistern"])  # needs the passage (great_door) and the drains
     # Notes #54, #57 (2026-11-23): the track metal as a strip along the foot of the closet's walls, as it
     # shows round the car (textures.txt: CACOBASE, the wall with the strip in its bottom rows; turned on
@@ -732,11 +845,16 @@ def build(m: MapBuilder) -> None:
             for key in ("texturetop", "texturemiddle", "texturebottom"):
                 if sd.get(key) == CLOSET_WALL:
                     sd[key] = CLOSET_SKIN
+    # Note #114 (2026-11-24): the elevator's ride is given its sound by zscript.zs (it was silent); the engine's own
+    # floor sound is off for its sectors, so the two can't play together.
+    for sct in m.sectors:
+        if sct.get("id") == CAR_TAG:
+            sct["soundsequence"] = "Silence"
     for sct in m.sectors:                                # note #18: which way each water runs (zscript.zs)
         gid = sct["user_gid"]
         if gid in ("gutter_w", "drain"):
             sct["id"] = FLOW_WEST_TAG
-        elif gid == "gutter_e" or gid.startswith("gutter_e.violet_") or gid == "drain_2":
+        elif gid in ("gutter_e", "gutter_e.crown", "drain_2") or gid.startswith("gutter_e.violet_"):   # (the crown's strips: note #123)
             sct["id"] = FLOW_EAST_TAG
         elif gid == "cistern.out":                       # note #23: turns with the cistern's water at the switch
             sct["id"] = CISTERN_TAG
@@ -748,7 +866,9 @@ def build(m: MapBuilder) -> None:
     # The monoliths, in two rows (west row facing east, east row facing west).
     for r, x0 in enumerate(MONOLITH_ROWS):
         for i, y0 in enumerate(MONOLITH_YS):
-            face = FACE
+            # Note #120 (2026-11-24): the eye (MARBFAC2) only on the switch obelisk; the others carry the star
+            # made from it (textures.txt CACOSTAR: no pupil, the gaps between its lobes drawn in to the middle).
+            face = FACE if (i, "we"[r]) == SWITCH_OBELISK else FACE_STAR
             monolith(m, room, f"monolith_{'we'[r]}{i + 1}", x0, y0, facing="e" if r == 0 else "w", face=face,
                      pair=i, switch=(i, "we"[r]) == SWITCH_OBELISK)
 
@@ -766,9 +886,14 @@ def build(m: MapBuilder) -> None:
             sct.fields.update(heightceiling=HALL_SKY, textureceiling=SKY_FLAT)
             for k in ("lightceiling", "lightceilingabsolute"):
                 sct.fields.pop(k, None)
-        elif gid.endswith(".slit"):                      # its top rises to the sleeve's (zscript.zs): sky then
-            sct["textureceiling"] = SKY_FLAT
-            sct.fields.pop("lightceiling", None)
+            if False and gid.endswith(".lip"):               # (note #101's way, given up in note #107: see the slit)
+                # Note #101 (2026-11-24): the strip of the sleeve's back above the slit is the upper part of the
+                # line between the slit and this lip. With both ceilings sky (the slit's was, for when it has
+                # risen) the engine draws no wall between two skies: a see-through slice up the obelisk's
+                # back. So until the sleeve sinks the slit's ceiling is stone, and the lip's sky is at the
+                # sleeve's top: the strip is exactly as tall as the sleeve. zscript.zs turns the slit's
+                # ceiling to sky and lifts the lip's as the sleeve starts down (LIP_TAG).
+                sct.fields.update(heightceiling=SLEEVE_TOP, id=LIP_TAG)
 
 
 def on_line(a, b, y):
@@ -871,6 +996,25 @@ def _leak_side(m: MapBuilder, room, piece, rivulet, name: str, south, extra, nor
         outer = ring
 
 
+def rough_niche(gid: str, wide: float = 24, deep: float = NICHE_DEEP, undercut: bool = True):
+    """Note #79 (2026-11-24): a torch niche hacked out of the rock, not a square box: its mouth and depth a
+    little different each time, its back a few diagonals. Returns (mouth width, depth, back): back is the
+    points between the mouth's two ends as (along the mouth from its first end, into the rock). The same
+    for a gid on every build (drawn from the gid). undercut: the hollow may be a little wider inside
+    than its mouth (not where rock is thin, as in the cistern's outcrops)."""
+    import hashlib
+    import random
+    r = random.Random(int(hashlib.md5(gid.encode()).hexdigest()[:8], 16))
+    w = wide + r.choice((-2, 0, 2, 4, 6))
+    dp = deep + r.choice((-2, 0, 3, 6))
+    lo, hi = (-0.10, 1.10) if undercut else (0.03, 0.97)
+    back = [(w * r.uniform(lo, 0.12), dp * r.uniform(0.42, 0.66)),
+            (w * r.uniform(0.24, 0.42), dp * r.uniform(0.88, 1.0)),
+            (w * r.uniform(0.58, 0.78), dp * r.uniform(0.82, 1.0)),
+            (w * r.uniform(0.90, hi), dp * r.uniform(0.38, 0.62))]
+    return w, dp, back
+
+
 def _edges(m: MapBuilder, sector, edges) -> None:
     """A sector's outline: edges (a, b, other, gid), the sector on either side of a -> b as given; turned
     round if needed so it's on the right (clockwise). other: a sector (two-sided), None (a wall), or
@@ -944,7 +1088,7 @@ def passage(m: MapBuilder, vest, P, floor0) -> None:
     for k in range(len(PASSAGE) - 1):
         f = floor0 + 8 * max(0, min(k, PASSAGE_RISE_END) - PASSAGE_STEP + 1) - 16 * max(0, k - PASSAGE_RISE_END)
         s = m.sector(f"passage_{k + 1}", floor=f, ceiling=f + PASSAGE_HIGH + 16 * max(0, k - 7), light=PASSAGE_LIGHT,
-                     floor_tex=PASSAGE_TEXTURE, ceiling_tex=PASSAGE_TEXTURE)
+                     floor_tex=MAIN_FLOOR, ceiling_tex=MAIN_WALL)
         if k < PASSAGE_FOG_PIECES:
             m.sectors[s.index].fields.update(
                 fadecolor=HALL_FOG, fogdensity=round(HALL_FOG_DENSITY * (1 - (k + 1) / (PASSAGE_FOG_PIECES + 1))))
@@ -952,10 +1096,19 @@ def passage(m: MapBuilder, vest, P, floor0) -> None:
     # The opening from the vestibule, and the steps between pieces (front: the piece before, on the right
     # of a line from the left wall to the right).
     (l0, r0) = PASSAGE[0]
-    m.two_sided(P(*l0), P(*r0), vest, secs[0], "passage.opening", texture=PASSAGE_TEXTURE)
+    # Note #127: a wooden frame in the opening; the first piece starts FRAME_DEEP further in.
+    import math
+    (l1, r1) = PASSAGE[1]
+    on = math.hypot(r0[0] - l0[0], r0[1] - l0[1])
+    nx, ny = -(r0[1] - l0[1]) / on, (r0[0] - l0[0]) / on
+    if nx * ((l1[0] + r1[0]) / 2 - (l0[0] + r0[0]) / 2) + ny * ((l1[1] + r1[1]) / 2 - (l0[1] + r0[1]) / 2) < 0:
+        nx, ny = -nx, -ny                                  # towards the passage's next cross-section
+    l0b, r0b = (l0[0] + nx * FRAME_DEEP, l0[1] + ny * FRAME_DEEP), (r0[0] + nx * FRAME_DEEP, r0[1] + ny * FRAME_DEEP)
+    opening_frame = timber_frame(m, P(*l0), P(*r0), P(*l0b), P(*r0b), vest, secs[0], "passage.frame")
+    PASSAGE = [(l0b, r0b)] + list(PASSAGE[1:])
     for k in range(1, len(PASSAGE) - 1):
         l, r = PASSAGE[k]
-        step = m.two_sided(P(*l), P(*r), secs[k - 1], secs[k], f"passage_{k + 1}.step", texture=PASSAGE_TEXTURE)
+        step = m.two_sided(P(*l), P(*r), secs[k - 1], secs[k], f"passage_{k + 1}.step", texture=MAIN_WALL)
         if k in PASSAGE_QUIET:
             m.linedefs[step]["blocksound"] = True
     le, re_ = PASSAGE[-1]
@@ -984,16 +1137,36 @@ def passage(m: MapBuilder, vest, P, floor0) -> None:
         # Going along, the left wall runs la -> lb with the passage on its right; the right wall rb -> ra.
         for side, a, b in (("l", la, lb), ("r", rb, ra)):
             gid = f"passage_{k + 1}.wall_{side}"
+            rough = None
+            if (k, side) == SIDE_EXIT:                         # the side passage comes out here: an opening, SIDE_MOUTH wide
+                dx, dy = b[0] - a[0], b[1] - a[1]
+                n = math.hypot(dx, dy)
+                # Note #137: monsters struggled through it at 88 (72 between the posts): as wide as the wall allows,
+                # up to SIDE_EXIT_MOUTH.
+                mouth = min(SIDE_EXIT_MOUTH, n - 16)
+                print(f"    side passage: its way out is {mouth:.0f} wide ({mouth - 2 * FRAME_POST:.0f} between the posts) in a wall {n:.0f} long")
+                o0 = (a[0] + dx / n * (n / 2 - mouth / 2), a[1] + dy / n * (n / 2 - mouth / 2))
+                o1 = (a[0] + dx / n * (n / 2 + mouth / 2), a[1] + dy / n * (n / 2 + mouth / 2))
+                m.wall(P(*a), P(*o0), s, f"{gid}_a", texture=MAIN_WALL)
+                # Note #128: its wooden frame, out through the wall (the rock is on the left of a -> b).
+                fx, fy = -dy / n * FRAME_DEEP, dx / n * FRAME_DEEP
+                o0b, o1b = (o0[0] + fx, o0[1] + fy), (o1[0] + fx, o1[1] + fy)
+                out_frame = timber_frame(m, P(*o0), P(*o1), P(*o0b), P(*o1b), s, SIDE["sectors"][-1], "side_passage.frame_out",
+                                         rock=MAIN_WALL)
+                m.wall(P(*o1), P(*b), s, f"{gid}_b", texture=MAIN_WALL)
+                SIDE["exit"] = (P(*o0b), P(*o1b))
+                continue
             if (k, side) in torches:
                 # A torch niche: 24 wide, NICHE_DEEP deep, from the floor, the torch wholly inside.
                 kind, wide, deep, sill, high, thing_in, thing = "niche", 24, NICHE_DEEP, 0, NICHE_HIGH, NICHE_TORCH_IN, TORCH
+                wide, deep, rough = rough_niche(gid)             # note #79: a rough hollow, each a little different
             elif (k, side) in PASSAGE_CARVINGS:
                 kind, wide, deep, sill, high, thing_in, thing = "carving", 128, CARVING_DEEP, CARVING_SILL, 128, 12, None
             elif (k, side) in shelves:
                 # Note #76: wider, deeper and lower (was 32 wide, 16 deep, 40 high), lit as the passage.
                 kind, wide, deep, sill, high, thing_in, thing = "shelf", 48, 24, 32, 24, 10, shelves[(k, side)]
             else:
-                m.wall(P(*a), P(*b), s, gid, texture=PASSAGE_TEXTURE)
+                m.wall(P(*a), P(*b), s, gid, texture=MAIN_WALL)
                 continue
             dx, dy = b[0] - a[0], b[1] - a[1]
             n = math.hypot(dx, dy)
@@ -1005,9 +1178,9 @@ def passage(m: MapBuilder, vest, P, floor0) -> None:
             q0, q1 = (p0[0] + ox, p0[1] + oy), (p1[0] + ox, p1[1] + oy)
             f = m.sectors[s.index]["heightfloor"]
             niche = m.sector(f"{gid}.{kind}", floor=f + sill, ceiling=f + sill + high, light=PASSAGE_LIGHT + 64,
-                             floor_tex=PASSAGE_TEXTURE, ceiling_tex=PASSAGE_TEXTURE)
+                             floor_tex=MAIN_WALL, ceiling_tex=MAIN_WALL)
             m.sectors[niche.index]["user_scenery"] = True
-            inside = PASSAGE_TEXTURE
+            inside = MAIN_WALL
             if kind == "carving":
                 inside = CARVING_STONE
                 m.sectors[niche.index].fields.update(lightlevel=CARVING_LIGHT, texturefloor="FLOOR7_2",
@@ -1037,19 +1210,24 @@ def passage(m: MapBuilder, vest, P, floor0) -> None:
                 m.sectors[frame.index].fields.update(
                     user_scenery=True, **{k2: piece[k2] for k2 in ("fadecolor", "fogdensity") if k2 in piece})
                 m.sectors[niche.index]["lightlevel"] = max(0, piece["lightlevel"] - 24)
-                m.wall(P(*a), P(*g0), s, f"{gid}_a", texture=PASSAGE_TEXTURE)
-                m.two_sided(P(*g0), P(*g1), s, frame, f"{gid}.shelf_frame.mouth", texture=PASSAGE_TEXTURE)
-                m.wall(P(*g1), P(*b), s, f"{gid}_b", texture=PASSAGE_TEXTURE)
+                m.wall(P(*a), P(*g0), s, f"{gid}_a", texture=MAIN_WALL)
+                m.two_sided(P(*g0), P(*g1), s, frame, f"{gid}.shelf_frame.mouth", texture=MAIN_WALL)
+                m.wall(P(*g1), P(*b), s, f"{gid}_b", texture=MAIN_WALL)
                 m.wall(P(*g0), P(*h0), frame, f"{gid}.shelf_frame.side_a", texture=inside)
                 m.wall(P(*h0), P(*p0), frame, f"{gid}.shelf_frame.back_a", texture=inside)
                 m.two_sided(P(*p0), P(*p1), frame, niche, f"{gid}.{kind}.mouth", texture=inside)
                 m.wall(P(*p1), P(*h1), frame, f"{gid}.shelf_frame.back_b", texture=inside)
                 m.wall(P(*h1), P(*g1), frame, f"{gid}.shelf_frame.side_b", texture=inside)
             else:
-                m.wall(P(*a), P(*p0), s, f"{gid}_a", texture=PASSAGE_TEXTURE)
-                m.two_sided(P(*p0), P(*p1), s, niche, f"{gid}.{kind}.mouth", texture=PASSAGE_TEXTURE)
-                m.wall(P(*p1), P(*b), s, f"{gid}_b", texture=PASSAGE_TEXTURE)
-            m.wall(P(*p0), P(*q0), niche, f"{gid}.{kind}.side_a", texture=inside)
+                m.wall(P(*a), P(*p0), s, f"{gid}_a", texture=MAIN_WALL)
+                m.two_sided(P(*p0), P(*p1), s, niche, f"{gid}.{kind}.mouth", texture=MAIN_WALL)
+                m.wall(P(*p1), P(*b), s, f"{gid}_b", texture=MAIN_WALL)
+            if rough:
+                pts = [p0] + [(p0[0] + ex * t2 + ox / deep * s2, p0[1] + ey * t2 + oy / deep * s2) for t2, s2 in rough] + [p1]
+                for n2, (c0, c1) in enumerate(zip(pts, pts[1:])):
+                    m.wall(P(*c0), P(*c1), niche, f"{gid}.{kind}.rock_{n2 + 1}", texture=inside)
+            else:
+                m.wall(P(*p0), P(*q0), niche, f"{gid}.{kind}.side_a", texture=inside)
             if kind == "carving":
                 fl = (wide - CARVING_WIDE) / 2               # the plain stone either side of the face
                 c0 = (q0[0] + ex * fl, q0[1] + ey * fl)
@@ -1059,19 +1237,154 @@ def passage(m: MapBuilder, vest, P, floor0) -> None:
                 right = m.wall(P(*c1), P(*q1), niche, f"{gid}.{kind}.back_b", texture=inside)
                 m.sidedefs[m.linedefs[left]["sidefront"]]["offsetx"] = round(-fl) % 256
                 m.sidedefs[m.linedefs[right]["sidefront"]]["offsetx"] = CARVING_WIDE
-            else:
+            elif not rough:
                 m.wall(P(*q0), P(*q1), niche, f"{gid}.{kind}.back", texture=inside)
-            m.wall(P(*q1), P(*p1), niche, f"{gid}.{kind}.side_b", texture=inside)
+            if not rough:
+                m.wall(P(*q1), P(*p1), niche, f"{gid}.{kind}.side_b", texture=inside)
             k_in = thing_in / deep
             cx, cy = (p0[0] + p1[0]) / 2 + ox * k_in, (p0[1] + p1[1]) / 2 + oy * k_in
             if kind == "carving":                            # two stimpacks on the sill, either side of the middle
                 for j, along in enumerate((-22, 18)):
                     m.thing(STIMPACK, *P(cx + ex * along, cy + ey * along), f"{gid}.stimpack_{j + 1}", angle=90)
                 continue
-            m.thing(thing, *P(cx, cy), f"{gid}.{'torch' if kind == 'niche' else 'item'}")
+            ti = m.thing(thing, *P(cx, cy), f"{gid}.{'torch' if kind == 'niche' else 'item'}")
+            if kind == "niche" and (k, side) in PASSAGE_TORCHES_UNLIT:
+                m.things[ti].fields["id"] = DEAD_TORCH_TID
+                m.sectors[niche.index]["lightlevel"] = m.sectors[s.index]["lightlevel"]
 
 
-def great_door(m: MapBuilder, room, a, b) -> None:
+# Notes #127, #128 (2026-11-24): a wooden frame in each opening between a room and a passage (the vestibule's two,
+# and the side passage's way out into the main passage). Note #130: not a wood-lined doorway (wood to the
+# ceiling, flush with the wall): the opening is cut through the rock (a throat FRAME_DEEP deep, rock all round,
+# its top 8 under the lower of the two ceilings), and a timber frame stands in front of it, out from the
+# wall into the room, bracing it: two posts (FRAME_POST square) and a beam across their tops (FRAME_BEAM
+# high), the rock wall showing above the beam. Posts and beam are 3D floors (their control sectors stand
+# outside the map, FRAME_CONTROLS on), so the beam is a real beam with air over it.
+FRAME_DEEP, FRAME_WOOD, FRAME_BOARDS = 12, "WOOD1", "FLAT5_2"
+FRAME_POST, FRAME_BEAM = 8, 16
+FRAME_TAG = 800                 # each frame takes two: its posts, its beam
+FRAME_CONTROLS = (912, -96)     # the first control sector's corner; the rest follow, 48 apart
+FRAMES: list = []
+
+
+def timber_frame(m: MapBuilder, a, b, a2, b2, outer, inner, gid: str, rock: str = "A-MOSRK2"):
+    """The opening a - b in a wall of `outer`, cut through to a2 - b2 (FRAME_DEEP further in, where `inner`
+    begins), with its timber frame standing in the room in front of it. Builds everything: the throat, its
+    line with `inner`, the posts and the beam and their lines with the room. The caller builds no line
+    from a to b."""
+    import math
+    r2 = lambda pt: (round(pt[0], 2), round(pt[1], 2))
+    src, dst = m.sectors[outer.index].fields, m.sectors[inner.index].fields
+    floor, top = src["heightfloor"], min(src["heightceiling"], dst["heightceiling"]) - 8
+    look = dict(light=src["lightlevel"], floor_tex=src["texturefloor"], ceiling_tex=src["textureceiling"])
+    fogged = {k: src[k] for k in ("fadecolor", "fogdensity") if k in src}
+    throat = m.sector(gid, floor=floor, ceiling=top, **look)
+    m.sectors[throat.index].fields.update(fogged)
+    made = _edges(m, throat, [(a, b, "skip", ""), (b, b2, None, f"{gid}.side_b"),
+                              (b2, a2, inner, f"{gid}.inner"), (a2, a, None, f"{gid}.side_a")])
+    # The timber: along the wall u, out into the room n.
+    L = math.dist(a, b)
+    ux, uy = (b[0] - a[0]) / L, (b[1] - a[1]) / L
+    D = math.dist(a, a2)
+    nx, ny = (a[0] - a2[0]) / D, (a[1] - a2[1]) / D
+    at = lambda along, out: r2((a[0] + ux * along + nx * out, a[1] + uy * along + ny * out))
+    w, o = FRAME_POST, FRAME_POST
+    a_in, b_in, qa, qa_in, qb_in, qb = at(w, 0), at(L - w, 0), at(0, o), at(w, o), at(L - w, o), at(L, o)
+    k = len(FRAMES)
+    FRAMES.append(gid)
+    post_tag, beam_tag = FRAME_TAG + 2 * k, FRAME_TAG + 2 * k + 1
+    parts = {}
+    for name, tag in (("post_a", post_tag), ("beam", beam_tag), ("post_b", post_tag)):
+        s = m.sector(f"{gid}.{name}", floor=floor, ceiling=src["heightceiling"], **look)
+        m.sectors[s.index].fields.update(fogged, id=tag, user_scenery=name != "beam")
+        parts[name] = s
+    made += _edges(m, parts["post_a"], [(a, a_in, throat, f"{gid}.post_a.back"), (a_in, qa_in, parts["beam"], f"{gid}.post_a.in"),
+                                        (qa_in, qa, outer, f"{gid}.post_a.front"), (qa, a, outer, f"{gid}.post_a.end")])
+    made += _edges(m, parts["beam"], [(a_in, b_in, throat, f"{gid}.beam.back"), (b_in, qb_in, parts["post_b"], f"{gid}.beam.in"),
+                                      (qb_in, qa_in, outer, f"{gid}.beam.front"), (qa_in, a_in, "skip", "")])
+    made += _edges(m, parts["post_b"], [(b_in, b, throat, f"{gid}.post_b.back"), (b, qb, outer, f"{gid}.post_b.end"),
+                                        (qb, qb_in, outer, f"{gid}.post_b.front"), (qb_in, b_in, "skip", "")])
+    for ln in made:                                        # every face of the cut is the room's rock
+        ld = m.linedefs[ln]
+        if "sideback" in ld.fields:
+            for sd in ("sidefront", "sideback"):
+                m.sidedefs[ld[sd]].fields.update(texturetop=rock, texturebottom=rock)
+        else:
+            m.sidedefs[ld["sidefront"]]["texturemiddle"] = rock
+    # The 3D floors: the posts from the floor to the beam's top, the beam its own height under that.
+    for n, (name, tag, lo) in enumerate((("posts", post_tag, floor), ("beam", beam_tag, top - FRAME_BEAM))):
+        cx, cy = FRAME_CONTROLS[0] + 48 * (2 * k + n), FRAME_CONTROLS[1]
+        control = m.room(f"{gid}.{name}_control", cx, cy, 32, 32, floor=lo, ceiling=top,
+                         floor_tex=FRAME_BOARDS, ceiling_tex=FRAME_BOARDS, light=src["lightlevel"])
+        m.sectors[control.index]["user_scenery"] = True
+        cl = next(i for i, l in enumerate(m.linedefs) if l["user_gid"] == f"{gid}.{name}_control.wall_s")
+        m.linedefs[cl].fields.update(special=160, arg0=tag, arg1=1, arg2=1, arg3=255)
+        m.sidedefs[m.linedefs[cl]["sidefront"]]["texturemiddle"] = FRAME_WOOD
+    return throat
+
+def side_sectors(m: MapBuilder, floor: int) -> None:
+    """The side passage's pieces (sectors only: the vestibule and the main passage, built first, each open
+    onto one). One piece between each pair of cross-sections: the entrance, SIDE_PATH's points, the way
+    out. It climbs 8 every third piece, and a last 8 into the main passage."""
+    pieces = len(SIDE_PATH) + 1
+    SIDE["sectors"] = []
+    for i in range(pieces):
+        f = floor + 8 * min(i // 3, 3)
+        s = m.sector(f"side_passage_{i + 1}", floor=f, ceiling=f + SIDE_HIGH, light=SIDE_LIGHT,
+                     floor_tex=SIDE_FLOOR, ceiling_tex=SIDE_WALL)
+        m.sectors[s.index].fields.update(fadecolor=SIDE_FOG[0], fogdensity=SIDE_FOG[1])
+        SIDE["sectors"].append(s)
+
+
+def side_passage(m: MapBuilder) -> None:
+    """The side passage's lines: its cross-sections between the two openings (SIDE["entrance"], SIDE["exit"],
+    built by the vestibule and the main passage), its walls, and its torches (SIDE_TORCHES: lit, in rough
+    niches)."""
+    import math
+    secs = SIDE["sectors"]
+    mid = lambda pair: ((pair[0][0] + pair[1][0]) / 2, (pair[0][1] + pair[1][1]) / 2)
+    line = [mid(SIDE["entrance"])] + list(SIDE_PATH) + [mid(SIDE["exit"])]
+
+    def left_right(pair, d):
+        """The opening's two ends as (left, right) of someone going along d."""
+        c = mid(pair)
+        first_is_left = d[0] * (pair[0][1] - c[1]) - d[1] * (pair[0][0] - c[0]) > 0
+        return (pair[0], pair[1]) if first_is_left else (pair[1], pair[0])
+
+    def unit(p, q):
+        n = math.hypot(q[0] - p[0], q[1] - p[1])
+        return ((q[0] - p[0]) / n, (q[1] - p[1]) / n)
+
+    cuts = [left_right(SIDE["entrance"], unit(line[0], line[1]))]
+    for i in range(1, len(line) - 1):
+        d1, d2 = unit(line[i - 1], line[i]), unit(line[i], line[i + 1])
+        bx, by = d1[0] + d2[0], d1[1] + d2[1]
+        bn = math.hypot(bx, by)
+        nx, ny = -by / bn, bx / bn                        # across the passage, to the left
+        half = SIDE_WIDE / 2 / max(0.75, d1[0] * bx / bn + d1[1] * by / bn)     # a little wider at a bend
+        c = line[i]
+        cuts.append(((round(c[0] + nx * half, 2), round(c[1] + ny * half, 2)),
+                     (round(c[0] - nx * half, 2), round(c[1] - ny * half, 2))))
+    cuts.append(left_right(SIDE["exit"], unit(line[-2], line[-1])))
+    for k, (i, facing) in enumerate(SIDE_IMPS):
+        imp = m.thing(3001, round((line[i][0] + line[i + 1][0]) / 2), round((line[i][1] + line[i + 1][1]) / 2),
+                      f"side_passage_{i + 1}.imp", angle=facing)
+        m.things[imp]["ambush"] = True                     # note #137: plain deaf imps (shadow ones in note #136)
+    torches = set(SIDE_TORCHES)
+    for i, s in enumerate(secs):
+        (la, ra), (lb, rb) = cuts[i], cuts[i + 1]
+        if i:                                              # (the entrance's own line is the vestibule's)
+            m.two_sided(la, ra, secs[i - 1], s, f"side_passage_{i + 1}.step", texture=SIDE_WALL)
+        _stair_wall(m, s, la, lb, f"side_passage_{i + 1}.wall_l", (i, "l") in torches,
+                    lit=(i, "l") not in SIDE_TORCHES_OUT, texture=SIDE_WALL)
+        if (i, "r") == SIDE_CARVING:                       # note #134: a carved alcove, five armour bonuses on its shelf
+            _stair_carving(m, s, rb, ra, f"side_passage_{i + 1}.wall_r", items=SIDE_CARVING_ITEMS, texture=SIDE_WALL)
+        else:
+            _stair_wall(m, s, rb, ra, f"side_passage_{i + 1}.wall_r", (i, "r") in torches,
+                        lit=(i, "r") not in SIDE_TORCHES_OUT, texture=SIDE_WALL)
+
+
+def great_door(m: MapBuilder, room, a, b, before=None, after=None) -> None:
     """Note #45: the great doorway in the wall a -> b (the room on its right), in the middle of it; its
     stuck leaves, the small door in the left one, and the vestibule beyond. Built in the wall's own
     frame (u along it from its middle, d away from the room), then placed."""
@@ -1084,8 +1397,10 @@ def great_door(m: MapBuilder, room, a, b) -> None:
     vw, vd = VESTIBULE[0] / 2, VESTIBULE[1]
 
     # The wall either side of the opening, and the opening with its lintel.
-    m.wall(a, P(-half, 0), room, "room.wall_n2")
-    m.wall(P(half, 0), b, room, "room.wall_n2b")
+    # Note #119: the wall either side of the doorway has the hall's mouldings (before / after: the far ends of
+    # the walls it meets, for the mitres); they stop 16 short of the doorway.
+    moulded_wall(m, room, a, P(-half, 0), "room.wall_n2", before=before, skip_end=16, line=(a, b))
+    moulded_wall(m, room, P(half, 0), b, "room.wall_n2b", skip_start=16, after=after, line=(a, b))
     vest = m.sector("vestibule", floor=floor, ceiling=top, light=VESTIBULE_LIGHT)
     fog(m, vest)
     # Note #2 (2026-11-23): the wall above the doorway is the hall's own wall (it was a marble lintel,
@@ -1099,28 +1414,57 @@ def great_door(m: MapBuilder, room, a, b) -> None:
     j = 16
     # Note #13 (2026-11-23): a torch set in the vestibule's wall VESTIBULE_TORCH_WALL (a niche like the
     # passage's: 24 wide, from the floor), to explain the room's red glow; the glow now comes from it.
-    ta, tb = VESTIBULE_OUTLINE[VESTIBULE_TORCH_WALL], VESTIBULE_OUTLINE[VESTIBULE_TORCH_WALL + 1]
-    tn = math.hypot(tb[0] - ta[0], tb[1] - ta[1])
-    te = ((tb[0] - ta[0]) / tn, (tb[1] - ta[1]) / tn)
-    to = (-te[1], te[0])                                 # out of the room: away from its middle
-    tmid = ((ta[0] + tb[0]) / 2, (ta[1] + tb[1]) / 2)
-    if to[0] * (0 - tmid[0]) + to[1] * (100 - tmid[1]) > 0:
-        to = (-to[0], -to[1])
-    t0 = (tmid[0] - te[0] * 12, tmid[1] - te[1] * 12)
-    t1 = (tmid[0] + te[0] * 12, tmid[1] + te[1] * 12)
-    u0 = (t0[0] + to[0] * NICHE_DEEP, t0[1] + to[1] * NICHE_DEEP)
-    u1 = (t1[0] + to[0] * NICHE_DEEP, t1[1] + to[1] * NICHE_DEEP)
-    tniche = m.sector("vestibule.torch_niche", floor=floor, ceiling=floor + NICHE_HIGH, light=VESTIBULE_LIGHT + 72,
-                      floor_tex=PASSAGE_TEXTURE, ceiling_tex=PASSAGE_TEXTURE)
-    m.sectors[tniche.index]["user_scenery"] = True
-    fog(m, tniche)
+    # Note #126 (2026-11-24): a second lit torch, in the wall beside the way out to the passage
+    # (VESTIBULE_TORCH_WALLS), and both niches are rough hollows now, like the passage's (note #79).
+    niches = {}
+    for i in VESTIBULE_TORCH_WALLS:
+        ta, tb = VESTIBULE_OUTLINE[i], VESTIBULE_OUTLINE[i + 1]
+        tn = math.hypot(tb[0] - ta[0], tb[1] - ta[1])
+        te = ((tb[0] - ta[0]) / tn, (tb[1] - ta[1]) / tn)
+        to = (-te[1], te[0])                             # out of the room: away from its middle
+        tmid = ((ta[0] + tb[0]) / 2, (ta[1] + tb[1]) / 2)
+        if to[0] * (0 - tmid[0]) + to[1] * (100 - tmid[1]) > 0:
+            to = (-to[0], -to[1])
+        name = "vestibule.torch_niche" if i == VESTIBULE_TORCH_WALL else f"vestibule.torch_niche_{i + 1}"
+        wide, deep, rough = rough_niche(name)
+        t0 = (tmid[0] - te[0] * wide / 2, tmid[1] - te[1] * wide / 2)
+        t1 = (tmid[0] + te[0] * wide / 2, tmid[1] + te[1] * wide / 2)
+        back = [(t0[0] + te[0] * t2 + to[0] * s2, t0[1] + te[1] * t2 + to[1] * s2) for t2, s2 in rough]
+        sec = m.sector(name, floor=floor, ceiling=floor + NICHE_HIGH, light=VESTIBULE_LIGHT + 72,
+                       floor_tex=PASSAGE_TEXTURE, ceiling_tex=PASSAGE_TEXTURE)
+        m.sectors[sec.index]["user_scenery"] = True
+        fog(m, sec)
+        niches[i] = (t0, t1, back, sec, tmid, to, name)
+
+    # The side passage's entrance: SIDE_MOUTH wide, in the middle of the wall the first torch niche was in.
+    side_sectors(m, floor)
+    sa, sb = VESTIBULE_OUTLINE[VESTIBULE_SIDE_WALL], VESTIBULE_OUTLINE[VESTIBULE_SIDE_WALL + 1]
+    sn = math.hypot(sb[0] - sa[0], sb[1] - sa[1])
+    se = ((sb[0] - sa[0]) / sn, (sb[1] - sa[1]) / sn)
+    smid = ((sa[0] + sb[0]) / 2, (sa[1] + sb[1]) / 2)
+    side_in = (P(smid[0] - se[0] * SIDE_MOUTH / 2, smid[1] - se[1] * SIDE_MOUTH / 2),
+               P(smid[0] + se[0] * SIDE_MOUTH / 2, smid[1] + se[1] * SIDE_MOUTH / 2))
+    # Note #127: its wooden frame, out through the wall (away from the room's middle); the passage starts behind it.
+    so = (-se[1], se[0])
+    if so[0] * (0 - smid[0]) + so[1] * (100 - smid[1]) > 0:
+        so = (-so[0], -so[1])
+    side_in2 = (P(smid[0] - se[0] * SIDE_MOUTH / 2 + so[0] * FRAME_DEEP, smid[1] - se[1] * SIDE_MOUTH / 2 + so[1] * FRAME_DEEP),
+                P(smid[0] + se[0] * SIDE_MOUTH / 2 + so[0] * FRAME_DEEP, smid[1] + se[1] * SIDE_MOUTH / 2 + so[1] * FRAME_DEEP))
+    side_frame = timber_frame(m, side_in[0], side_in[1], side_in2[0], side_in2[1], vest, SIDE["sectors"][0],
+                              "side_passage.frame_in")
+    SIDE["entrance"] = side_in2
 
     def outline_edge(i):
         a2, b2 = P(*VESTIBULE_OUTLINE[i]), P(*VESTIBULE_OUTLINE[i + 1])
-        if i != VESTIBULE_TORCH_WALL:
+        if i == VESTIBULE_SIDE_WALL:
+            return [(a2, side_in[0], None, f"vestibule.wall_{i + 1}_a"),
+                    (side_in[0], side_in[1], "skip", ""),      # (timber_frame builds the opening: note #130)
+                    (side_in[1], b2, None, f"vestibule.wall_{i + 1}_b")]
+        if i not in niches:
             return [(a2, b2, None, f"vestibule.wall_{i + 1}")]
+        t0, t1, _, sec, _, _, name = niches[i]
         return [(a2, P(*t0), None, f"vestibule.wall_{i + 1}_a"),
-                (P(*t0), P(*t1), tniche, "vestibule.torch_niche.mouth"),
+                (P(*t0), P(*t1), sec, f"{name}.mouth"),
                 (P(*t1), b2, None, f"vestibule.wall_{i + 1}_b")]
     _edges(m, vest, [
         (P(half, 0), P(-half, 0), "skip", ""),
@@ -1134,20 +1478,39 @@ def great_door(m: MapBuilder, room, a, b) -> None:
     # Note #3 (2026-11-23): the vestibule in the passage's style: mossy stone on its walls, floor and
     # ceiling (the jambs, in the thickness of the hall's wall, stay the hall's).
     m.sectors[vest.index].fields.update(texturefloor=PASSAGE_TEXTURE, textureceiling=PASSAGE_TEXTURE)
-    _edges(m, tniche, [(P(*t0), P(*t1), "skip", ""), (P(*t1), P(*u1), None, "vestibule.wall_torch.side_b"),
-                       (P(*u1), P(*u0), None, "vestibule.wall_torch.back"),
-                       (P(*u0), P(*t0), None, "vestibule.wall_torch.side_a")])
+    for i, (t0, t1, back, sec, tmid, to, name) in niches.items():
+        ring = [t1] + back[::-1] + [t0]
+        _edges(m, sec, [(P(*t0), P(*t1), "skip", "")]
+               + [(P(*c0), P(*c1), None, f"vestibule.wall_torch_{i + 1}.rock_{n + 1}") for n, (c0, c1) in enumerate(zip(ring, ring[1:]))])
+        m.thing(TORCH, *P(tmid[0] + to[0] * NICHE_TORCH_IN, tmid[1] + to[1] * NICHE_TORCH_IN),
+                "vestibule.torch" if i == VESTIBULE_TORCH_WALL else f"vestibule.torch_{i + 1}")
     for ld in m.linedefs:
         if ld["user_gid"].startswith("vestibule.wall_"):
             m.sidedefs[ld["sidefront"]]["texturemiddle"] = PASSAGE_TEXTURE
-        elif ld["user_gid"] == "vestibule.torch_niche.mouth":
+        elif ld["user_gid"].startswith("vestibule.torch_niche") and ld["user_gid"].endswith(".mouth"):
             for side in ("sidefront", "sideback"):
                 m.sidedefs[ld[side]].fields.update(texturetop=PASSAGE_TEXTURE, texturebottom=PASSAGE_TEXTURE)
-    m.thing(TORCH, *P(tmid[0] + to[0] * NICHE_TORCH_IN, tmid[1] + to[1] * NICHE_TORCH_IN), "vestibule.torch")
+        elif ld["user_gid"] == "side_passage.entrance":
+            for side in ("sidefront", "sideback"):
+                m.sidedefs[ld[side]].fields.update(texturetop=FRAME_WOOD, texturebottom=FRAME_WOOD)
+    tmid, to = niches[VESTIBULE_TORCH_WALL][4], niches[VESTIBULE_TORCH_WALL][5]      # the first torch: the red glow's
     passage(m, vest, P, floor)
+    side_passage(m)                                            # needs both its openings (the vestibule's, the passage's)
+    for k, (bu0, bd0, bu1, bd1, bh) in enumerate(VESTIBULE_BOXES):                 # note #121
+        box = m.sector(f"vestibule.box_{k + 1}", floor=floor + bh, ceiling=top, light=VESTIBULE_LIGHT,
+                       floor_tex=VESTIBULE_BOX_TOP, ceiling_tex=PASSAGE_TEXTURE)
+        fog(m, box)
+        m.sectors[box.index]["user_scenery"] = True
+        corners = [P(bu0, bd0), P(bu1, bd0), P(bu1, bd1), P(bu0, bd1)]
+        for ln in _edges(m, box, [(c0, c1, vest, f"vestibule.box_{k + 1}.side_{j + 1}")
+                                  for j, (c0, c1) in enumerate(zip(corners, corners[1:] + corners[:1]))]):
+            for sd in ("sidefront", "sideback"):
+                m.sidedefs[m.linedefs[ln][sd]]["texturebottom"] = VESTIBULE_BOX_SIDE
     for k, (iu, idd) in enumerate(VESTIBULE_IMPS):
+        # Facing the doors; note #140: the one behind the gap (the first) has his back to them, so he doesn't
+        # spot the player through the crack at once (he still hears: not deaf).
         imp = m.thing(IMP, *P(iu, idd), f"vestibule.imp_{k + 1}",
-                      angle=round(math.degrees(math.atan2(-ux, uy))) % 360)      # facing the doors
+                      angle=(round(math.degrees(math.atan2(-ux, uy))) + (180 if k == 0 else 0)) % 360)
     imp = m.thing(IMP, *P(*VESTIBULE_AMBUSH_IMP), "vestibule.imp_ambush",
                   angle=round(math.degrees(math.atan2(-ux, uy))) % 360)
     m.things[imp]["ambush"] = True
@@ -1316,11 +1679,50 @@ def cistern_door(m: MapBuilder, stair, a, b) -> None:
     # The chamber behind it.
     # Note #53: an irregular outline (CISTERN_DOOR_OUTLINE), from one side of the door round to the other.
     ring = [P(half, thick)] + [P(u, d) for u, d in CISTERN_DOOR_OUTLINE] + [P(-half, thick)]
+    tu0, tu1, td = TECH_DOOR
+    far = (P(tu1 + TECH_DOOR_POST, td), P(tu0 - TECH_DOOR_POST, td))                # the far wall, as the ring runs: the tech door is in it
+    assert far[0] in ring and ring[ring.index(far[0]) + 1] == far[1], "TECH_DOOR must sit in the outline's far wall"
     _edges(m, room, [(P(-half, thick), P(half, thick), "skip", "")]
-           + [(a2, b2, None, f"{gid}.room.wall_{i + 1}") for i, (a2, b2) in enumerate(zip(ring, ring[1:]))])
-    for ld in m.linedefs:
+           + [(a2, b2, "skip" if (a2, b2) == far else None, f"{gid}.room.wall_{i + 1}")
+              for i, (a2, b2) in enumerate(zip(ring, ring[1:]))])
+    for ld in m.linedefs:                                  # the room's own walls: the passage's mossy rock
         if ld["user_gid"].startswith(f"{gid}.room.wall_"):
             m.sidedefs[ld["sidefront"]]["texturemiddle"] = PASSAGE_TEXTURE
+    tech_door(m, room, P, floor)
+    crates, edges = [], {}
+    for i, (u0, d0, u1, d1, high, side, top) in enumerate(CISTERN_DOOR_CRATES):
+        crate = m.sector(f"{gid}.crate_{i + 1}", floor=floor + high, ceiling=floor + CISTERN_DOOR_ROOM_HIGH,
+                         light=CISTERN_DOOR_LIGHT, floor_tex=top, ceiling_tex=PASSAGE_TEXTURE)
+        m.sectors[crate.index].fields.update(lightcolor=CISTERN_DOOR_TINT, user_scenery=True)
+        corners = [P(u0, d0), P(u1, d0), P(u1, d1), P(u0, d1)]
+        crates.append((crate, list(zip(corners, corners[1:] + corners[:1])), side))
+        for c0, c1 in crates[-1][1]:
+            edges.setdefault(frozenset((c0, c1)), []).append(i)
+    for i, (crate, sides, side) in enumerate(crates):
+        outline = []
+        for j, (c0, c1) in enumerate(sides):
+            # A side two crates share (one stacked against the other) is one line between them, built by the later one.
+            sharing = [k for k in edges[frozenset((c0, c1))] if k != i]
+            other = "skip" if sharing and sharing[0] > i else crates[sharing[0]][0] if sharing else room
+            outline.append((c0, c1, other, f"{gid}.crate_{i + 1}.side_{j + 1}"))
+        for ln in _edges(m, crate, outline):
+            for sd in ("sidefront", "sideback"):               # seen from whichever side is lower
+                m.sidedefs[m.linedefs[ln][sd]]["texturebottom"] = side
+    m.thing(MEDIKIT, *P(*CISTERN_DOOR_MEDIKIT), f"{gid}.medikit")          # note #89
+    # Note #87: the switch post, the room on the right of each of its lines (the front: where it's used from).
+    su0, sd0, su1, sd1 = CISTERN_DOOR_SWITCH
+    post = m.sector(f"{gid}.switch", floor=floor + 48, ceiling=floor + CISTERN_DOOR_ROOM_HIGH, light=CISTERN_DOOR_LIGHT,
+                    floor_tex=PASSAGE_TEXTURE, ceiling_tex=PASSAGE_TEXTURE)
+    m.sectors[post.index].fields.update(lightcolor=CISTERN_DOOR_TINT, id=CISTERN_DOOR_SWITCH_TAG, user_scenery=True)
+    pts = [P(su0, sd0), P(su1, sd0), P(su1, sd1), P(su0, sd1)]
+    if sum(p[0] * q[1] - q[0] * p[1] for p, q in zip(pts, pts[1:] + pts[:1])) < 0:      # clockwise: turn it round
+        pts.reverse()
+    face = {P(su1, sd0), P(su1, sd1)}
+    for j, (p, q) in enumerate(zip(pts, pts[1:] + pts[:1])):
+        ln = m.two_sided(p, q, room, post, f"{gid}.switch.side_{j + 1}", texture=CISTERN_WOOD)
+        if {p, q} == face:
+            m.sidedefs[m.linedefs[ln]["sidefront"]].fields.update(texturebottom=CISTERN_SWITCH, offsety_bottom=64)
+            m.linedefs[ln].fields.update(special=11, arg0=CISTERN_DOOR_TAG, arg1=4, playeruse=True)
     out = round(math.degrees(math.atan2(-ux, uy))) % 360       # facing the door (towards the stairs)
     for i, (u, d, kind) in enumerate(CISTERN_DOOR_GUARDS):
         t = m.thing(SHOTGUNNER, *P(u, thick + d), f"{gid}.guard_{i + 1}", angle=out)
@@ -1335,6 +1737,462 @@ def cistern_door(m: MapBuilder, stair, a, b) -> None:
     m.things[glow].fields.update(height=56, arg0=r, arg1=g, arg2=bl, arg3=rad, id=CISTERN_DOOR_GLOW_TID, dormant=True)
 
 
+def tech_door(m: MapBuilder, room, P, floor) -> None:
+    """Note #77: the tech door in the shotgunner room's far wall, and the corridor behind it, in the room's
+    frame P(u along the stairs' wall, d away from the stairs). Along d: the far wall, a recess 8 deep
+    (TECH_DOOR_HIGH high: the door's own height shows, under a metal lintel), the door 16 thick, then the
+    corridor, 128 wide about the door's middle and TECH_HALL_LONG long, like the start closet."""
+    u0, u1, d = TECH_DOOR
+    I = lambda u, dd: tuple(round(v) for v in P(u, dd))        # whole numbers: the channel walls round theirs
+    A, B = P(u0 - TECH_DOOR_POST, d), P(u1 + TECH_DOOR_POST, d)    # the far wall's ends
+    R0, R1, S0, S1 = P(u0, d), P(u1, d), P(u0, d + 8), P(u1, d + 8)
+    T0, T1 = I(u0, d + 24), I(u1, d + 24)
+    mid = (u0 + u1) / 2
+    half = TECH_HALL_WIDE / 2
+    # Note #84: with the room twice as high, the door needs a recess on this side too (TECH_DOOR_HIGH high,
+    # 8 deep), or its face would run up the whole wall.
+    U0, U1 = I(u0, d + 32), I(u1, d + 32)
+    C0, C1 = I(mid - half, d + 32), I(mid + half, d + 32)
+    C2, C3 = I(mid + half, d + 32 + TECH_HALL_LONG), I(mid - half, d + 32 + TECH_HALL_LONG)
+    light = m.sectors[room.index]["lightlevel"]
+    recess = m.sector("tech_door.recess", floor=floor, ceiling=floor + TECH_DOOR_HIGH, light=light,
+                      floor_tex=PASSAGE_TEXTURE, ceiling_tex=TRACK)
+    m.sectors[recess.index]["lightcolor"] = CISTERN_DOOR_TINT
+    door = m.sector("tech_door", floor=floor, ceiling=floor, light=CLOSET_LIGHT)
+    m.sectors[door.index]["id"] = TECH_DOOR_TAG
+    hall = m.sector("tech_hall", floor=floor, ceiling=floor + TECH_HALL_HIGH, light=TECH_HALL_LIGHT)
+    recess2 = m.sector("tech_door.recess_e", floor=floor, ceiling=floor + TECH_DOOR_HIGH, light=TECH_HALL_LIGHT,
+                       ceiling_tex=TRACK)
+    use = dict(special=12, arg0=TECH_DOOR_TAG, arg1=16, arg2=105, playeruse=True, monsteruse=True, repeatspecial=True)
+    # The room's far wall, the room on the right (u rising), with the recess's mouth in it.
+    # Note #88: a metal frame round the door: the 16 of wall either side of it and the wall above it (the
+    # room's rock in note #81, a METAL4 lintel alone before that), announcing the base beyond.
+    # Note #122: the red bar runs across the whole frame, post to post, 128 long: the red tube from end to end,
+    # nothing cut off (over the door alone, 64 wide, only its middle fitted). Each post's texture carries its
+    # end of the bar at the same height (textures.txt CACOBARL, CACOBARR); all three a little brighter than
+    # the room, alike (the panel alone was full bright).
+    # Note #124: "there should just be one small red lit element above the door. leave the sides alone": the posts
+    # are plain frame metal again, and the light is a small lamp in the middle of the panel over the door
+    # (CACOBAR: a 32 x 12 piece of the tube), the panel full bright as in note #108.
+    post_n = m.wall(A, R0, room, "tech_door.wall_n", texture=TECH_DOOR_FRAME)
+    mouth = m.two_sided(R0, R1, room, recess, "tech_door.mouth", texture=TECH_DOOR_FRAME)
+    # Note #108: a red bar light over the door (CACOBAR: the frame's metal with the red tube across it), full
+    # bright, and a pulsing red light in front of it: to catch the eye on the way back from the cistern's
+    # switch. (The room had no fixture: its light is the sector's, tinted red, and the red glow by the big
+    # door that comes on when it opens.)
+    m.sidedefs[m.linedefs[mouth]["sidefront"]].fields.update(texturetop=TECH_DOOR_LAMP, light=255, lightabsolute=True)
+    r, g, bl = TECH_DOOR_LAMP_RGB
+    lamp = m.thing(9831, *P((u0 + u1) / 2, d - 16), "tech_door.lamp", angle=TECH_DOOR_LAMP_PERIOD)
+    m.things[lamp].fields.update(height=TECH_DOOR_HIGH + 24, arg0=r, arg1=g, arg2=bl,
+                                 arg3=TECH_DOOR_LAMP_RADIUS[0], arg4=TECH_DOOR_LAMP_RADIUS[1])
+    post_s = m.wall(R1, B, room, "tech_door.wall_s", texture=TECH_DOOR_FRAME)
+    made = _edges(m, recess, [(R0, R1, "skip", ""), (R1, S1, None, "tech_door.recess.side_s"),
+                              (S1, S0, door, "tech_door.face"), (S0, R0, None, "tech_door.recess.side_n")])
+    for ln in made:
+        ld = m.linedefs[ln]
+        if "sideback" in ld.fields:                            # the door's face, hung from its underside
+            m.sidedefs[ld["sidefront"]]["texturetop"] = TECH_DOOR_TEXTURE
+            ld.fields.update(use)
+        else:
+            m.sidedefs[ld["sidefront"]]["texturemiddle"] = TRACK
+    for ln in _edges(m, door, [(S0, S1, "skip", ""), (S1, T1, None, "tech_door.jamb_s"), (T1, T0, "skip", ""),
+                               (T0, S0, None, "tech_door.jamb_n")]):
+        m.sidedefs[m.linedefs[ln]["sidefront"]]["texturemiddle"] = "DOORTRAK"
+        m.linedefs[ln]["dontpegbottom"] = True                 # the track stays put as the door rises
+    # The corridor, on the right of each line: the door's wall (u falling), the north wall out, the end
+    # wall, the south wall back.
+    for ln in _edges(m, recess2, [(T0, T1, door, "tech_door.back"), (T1, U1, None, "tech_door.recess_e.side_s"),
+                                  (U1, U0, "skip", ""), (U0, T0, None, "tech_door.recess_e.side_n")]):
+        ld = m.linedefs[ln]
+        if "sideback" in ld.fields:
+            m.sidedefs[ld["sidefront"]]["texturetop"] = TECH_DOOR_TEXTURE
+            ld.fields.update(use)
+        else:
+            m.sidedefs[ld["sidefront"]]["texturemiddle"] = TRACK
+    before = len(m.linedefs)
+    m.wall(C1, U1, hall, "tech_hall.wall_door_s")
+    m.two_sided(U1, U0, hall, recess2, "tech_door.mouth_e", texture=CLOSET_SKIN)   # above the door: the wall's metal
+    m.wall(U0, C0, hall, "tech_hall.wall_door_n")
+    wall_with_channels(m, hall, C0, C3, "tech_hall.wall_n", floor=floor, channels=TECH_HALL_CHANNELS, high=TECH_HALL_HIGH)
+    station(m, hall, C3, C2, floor)                            # note #92: the way on, through the end wall
+    wall_with_channels(m, hall, C2, C1, "tech_hall.wall_s", floor=floor, channels=TECH_HALL_CHANNELS, high=TECH_HALL_HIGH)
+    for ld in m.linedefs[before:]:                             # the closet's wall: METAL4 over the track strip
+        sd = m.sidedefs[ld["sidefront"]]
+        if "sideback" not in ld.fields and sd["sector"] == hall.index and sd.get("texturemiddle") == CLOSET_WALL:
+            sd["texturemiddle"] = BASE_TEXTURE
+            ld["dontpegbottom"] = True
+
+
+# ---- Note #92 (2026-11-24): the pumping station ---------------------------------------------------
+# Past the tech room: "a small complex of a hydro power pumping station - pipes, big computer and machinery
+# rigs, lots of little nooks and crannies for items and enemy ambushes, access doors to back stairways up
+# to catwalks... a big cavernous main room with pump machinery ringed / crossed by catwalks - and the
+# ancillary rooms and hallways that surround and interconnect it. no monster or items yet, just plotting out
+# the layout", kept fairly light so it can be seen (mood lighting later).
+#
+# Drawn on a grid (station_zones: rectangles, x east and y north from STATION's origin, heights from the
+# tech room's floor) and turned into sectors and lines by raster(). Textures are first picks, to be
+# chosen properly in the asset browser.
+STATION_CATWALK_TAG = 700       # every sector with catwalk over it (one 3D floor)
+STATION_CATWALK = (88, 96)      # its underside and top, above the ground floor
+STATION_DOOR_TAG = 710          # the doors' tags count up from here
+STATION_DOOR, STATION_FRAME, STATION_TRACK = "BIGDOOR2", "SUPPORT3", "DOORTRAK"
+STATION_LIGHT = 176
+
+
+def station_zones() -> list[dict]:
+    """The station's plan, in order (a later zone covers an earlier one)."""
+    Z: list[dict] = []
+    doors = [0]
+
+    def base(key, x0, y0, x1, y1, **a):
+        a = {"floor": 0, "ceil": 128, "light": STATION_LIGHT, "wall": "STARG3", "floor_tex": "FLAT5_4",
+             "ceil_tex": "CEIL3_5", **a}
+        a["ceil"] = a["ceil"] + (a["floor"] if a.pop("above", False) else 0)
+        Z.append({"box": (x0, y0, x1, y1), "base": {"key": key, **a}})
+
+    def void(x0, y0, x1, y1):
+        Z.append({"box": (x0, y0, x1, y1), "void": True})
+
+    def catwalk(x0, y0, x1, y1):
+        Z.append({"box": (x0, y0, x1, y1), "over": {"tag": STATION_CATWALK_TAG}, "suffix": "_cw"})
+
+    def door(key, x0, y0, x1, y1, floor=0, **a):
+        """A door across a wall 48 thick: a recess, the door (16), a recess. The wall is thin along x
+        when x1 - x0 == 48, else along y."""
+        tag = STATION_DOOR_TAG + doors[0]
+        doors[0] += 1
+        frame = {"floor": floor, "ceil": floor + 128, "wall": STATION_FRAME, "side": STATION_FRAME, **a}
+        leaf = {"floor": floor, "ceil": floor, "wall": STATION_TRACK, "side": STATION_DOOR, "door": tag, **a}
+        if x1 - x0 == 48:
+            base(f"{key}_a", x0, y0, x0 + 16, y1, **frame)
+            base(key, x0 + 16, y0, x0 + 32, y1, **leaf)
+            base(f"{key}_b", x0 + 32, y0, x1, y1, **frame)
+        else:
+            base(f"{key}_a", x0, y0, x1, y0 + 16, **frame)
+            base(key, x0, y0 + 16, x1, y0 + 32, **leaf)
+            base(f"{key}_b", x0, y0 + 32, x1, y1, **frame)
+
+    hall = {"ceil": 320, "light": 192, "wall": "ICKWALL3", "floor_tex": "FLOOR0_3", "ceil_tex": "CEIL5_1"}
+    pit = {**hall, "wall": "PIPEWAL1", "side": "PIPEWAL1", "floor_tex": "FLAT1"}
+    machine = {**hall, "side": "PIPE2", "floor_tex": "CEIL5_1", "scenery": True}
+    pipes = {"ceil": 96, "wall": "PIPEWAL1", "floor_tex": "FLAT1", "ceil_tex": "CEIL5_1"}
+    comp = {"ceil": 144, "wall": "SILVER1", "floor_tex": "FLAT14", "ceil_tex": "CEIL3_5", "light": 192}
+    gen = {"ceil": 224, "wall": "TEKGREN2", "floor_tex": "FLOOR0_3", "ceil_tex": "CEIL5_1", "light": 192}
+    store = {"wall": "BROWN96", "floor_tex": "FLAT5_4"}
+
+    # The way in from the tech room, and the service passages north and south off it (one space).
+    base("service", 0, -64, 112, 64)
+    base("service", 16, 64, 112, 496)
+    base("service", 16, -432, 112, -64)
+    door("door_hall_w", 112, -64, 160, 64)
+
+    # The main pump hall: 1024 x 896, 320 high. A sunken pit in its middle (steps down on the west and
+    # the east), four pumps in the pit, pipe columns at the pit's corners.
+    base("hall", 160, -448, 1184, 448, **hall)
+    base("pit_step_w1", 352, -256, 376, 256, **{**pit, "floor": -16})
+    base("pit_step_w2", 376, -256, 400, 256, **{**pit, "floor": -32})
+    base("pit", 400, -256, 944, 256, **{**pit, "floor": -48})
+    base("pit_step_e2", 944, -256, 968, 256, **{**pit, "floor": -32})
+    base("pit_step_e1", 968, -256, 992, 256, **{**pit, "floor": -16})
+    base("pump_1", 448, 96, 576, 208, **{**machine, "floor": 144})
+    base("pump_2", 768, 96, 896, 208, **{**machine, "floor": 144})
+    base("pump_3", 448, -208, 576, -96, **{**machine, "floor": 144})
+    base("pump_4", 752, -224, 912, -96, **{**machine, "floor": 176, "side": "PIPE4"})
+    for x, y in ((304, 272), (1008, 272), (304, -304), (1008, -304)):
+        void(x, y, x + 32, y + 32)
+    # Catwalks 96 up: a ring round the walls (96 wide) and a cross over the pit.
+    catwalk(160, 352, 1184, 448)
+    catwalk(160, -448, 1184, -352)
+    catwalk(160, -448, 256, 448)
+    catwalk(1088, -448, 1184, 448)
+    catwalk(624, -448, 720, 448)
+    catwalk(160, -48, 1184, 48)
+
+    # North: a corridor behind the hall's north wall, a door into the hall, the control room off it, and
+    # at its east end a back stairway up to the catwalk's north-east corner.
+    base("corridor_n", 16, 496, 896, 624)
+    door("door_hall_n", 400, 448, 528, 496)
+    for k in range(6):
+        base(f"stair_n_{k + 1}", 896 + 32 * k, 496, 928 + 32 * k, 624, floor=16 * (k + 1), above=True)
+    base("landing_n", 1088, 496, 1184, 624, floor=96, above=True)
+    base("landing_n_door", 1104, 448, 1168, 496, floor=96, ceil=112, above=True, wall=STATION_FRAME, side=STATION_FRAME)
+    base("nook_n1", 608, 624, 672, 672, ceil=96)
+    base("nook_n2", 752, 624, 848, 656, ceil=96)
+    base("control", 160, 672, 544, 928, **comp)
+    door("door_control", 288, 624, 416, 672)
+    base("control_console", 224, 832, 480, 880, **{**comp, "floor": 48, "side": "COMPSTA1", "floor_tex": "FLAT23", "scenery": True})
+    void(496, 704, 528, 800)                                   # a bank of machines standing in the room
+
+    # South: a low pipe gallery behind the hall's south wall with nooks off it, a door into the hall, and
+    # at its west end the other back stairway, up to the catwalk's south-west corner.
+    base("tunnel", 448, -624, 1360, -496, **pipes)
+    door("door_hall_s", 800, -496, 928, -448)
+    for k in range(6):
+        base(f"stair_s_{k + 1}", 416 - 32 * k, -624, 448 - 32 * k, -496, **{**pipes, "floor": 16 * (k + 1), "ceil": 128, "above": True})
+    base("landing_s", 160, -624, 256, -496, **{**pipes, "floor": 96, "ceil": 128, "above": True})
+    base("landing_s_door", 176, -496, 240, -448, floor=96, ceil=112, above=True, wall=STATION_FRAME, side=STATION_FRAME)
+    base("nook_s1", 560, -672, 624, -624, **{**pipes, "ceil": 72})
+    base("nook_s2", 704, -688, 800, -624, **{**pipes, "ceil": 72})
+    base("nook_s3", 1040, -672, 1104, -624, **{**pipes, "ceil": 72})
+
+    # East: the generator room (two turbines, a nook), a door from the hall, and a link down to the gallery.
+    base("generator", 1232, -320, 1616, 320, **gen)
+    door("door_hall_e", 1184, -64, 1232, 64)
+    base("turbine_1", 1328, 96, 1520, 224, **{**gen, "floor": 112, "side": "COMPSTA2", "floor_tex": "CEIL5_1", "scenery": True})
+    base("turbine_2", 1328, -224, 1456, -64, **{**gen, "floor": 112, "side": "COMPSTA2", "floor_tex": "CEIL5_1", "scenery": True})
+    base("gen_link", 1264, -496, 1360, -320)
+    base("nook_g1", 1616, -32, 1664, 64, **{**gen, "ceil": 96})
+
+    # South-west: a storage room at the end of the south service passage, crates in it.
+    base("storage", -176, -656, 112, -432, **store)
+    base("storage_crate_1", -144, -624, -80, -560, **{**store, "floor": 64, "side": "CRATE1", "floor_tex": "CRATOP2", "scenery": True})
+    base("storage_crate_2", -80, -624, -16, -560, **{**store, "floor": 96, "side": "CRATE2", "floor_tex": "CRATOP1", "scenery": True})
+    base("storage_crate_3", -48, -496, 16, -432, **{**store, "floor": 64, "side": "CRATE3", "floor_tex": "CRATOP2", "scenery": True})
+    return Z
+
+
+def raster(m: MapBuilder, prefix: str, origin, z0: int, zones: list[dict], links=()) -> dict:
+    """Sectors and lines from a plan of rectangles (zones, in order: "base" sets a cell, "over" changes the
+    cell under it and adds "suffix" to its key, "void" empties it; coordinates from `origin`, heights from
+    z0). Cells with the same key that touch are one sector. Between two sectors: a passable line, each
+    side showing the other's "side" texture where it stands higher or hangs lower; against nothing: a
+    wall in the cell's "wall" texture. A "door" cell's faces get Door_Raise (its tag), the other sector in
+    front. links: ((x0, y0, x1, y1), sector): a stretch of the outline that opens onto a sector built
+    elsewhere. Returns the sectors by name."""
+    ox, oy = origin
+    xs = sorted({v for z in zones for v in (z["box"][0], z["box"][2])})
+    ys = sorted({v for z in zones for v in (z["box"][1], z["box"][3])})
+    nx, ny = len(xs) - 1, len(ys) - 1
+    cell = [[None] * ny for _ in range(nx)]
+    for z in zones:
+        x0, y0, x1, y1 = z["box"]
+        for i in range(xs.index(x0), xs.index(x1)):
+            for j in range(ys.index(y0), ys.index(y1)):
+                if z.get("void"):
+                    cell[i][j] = None
+                elif "base" in z:
+                    cell[i][j] = dict(z["base"])
+                elif cell[i][j] is not None:
+                    key = cell[i][j]["key"]                    # (two overlapping "over" zones add the suffix once)
+                    cell[i][j] = {**cell[i][j], **z["over"], "key": key if key.endswith(z["suffix"]) else key + z["suffix"]}
+    # Sectors: touching cells with the same key.
+    owner = [[None] * ny for _ in range(nx)]
+    sectors, attrs, count = {}, {}, {}
+    for i in range(nx):
+        for j in range(ny):
+            if cell[i][j] is None or owner[i][j] is not None:
+                continue
+            a = cell[i][j]
+            count[a["key"]] = count.get(a["key"], 0) + 1
+            name = f"{prefix}.{a['key']}" + (f"_{count[a['key']]}" if count[a["key"]] > 1 else "")
+            s = m.sector(name, floor=z0 + a["floor"], ceiling=z0 + a["ceil"], light=a["light"],
+                         floor_tex=a["floor_tex"], ceiling_tex=a["ceil_tex"])
+            if a.get("tag") or a.get("door"):
+                m.sectors[s.index]["id"] = a.get("door") or a["tag"]
+            if a.get("scenery"):
+                m.sectors[s.index]["user_scenery"] = True
+            sectors[name], attrs[s.index] = s, a
+            todo = [(i, j)]
+            owner[i][j] = s
+            while todo:
+                ci, cj = todo.pop()
+                for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    ni, nj = ci + di, cj + dj
+                    if 0 <= ni < nx and 0 <= nj < ny and owner[ni][nj] is None and cell[ni][nj] is not None \
+                            and cell[ni][nj]["key"] == a["key"]:
+                        owner[ni][nj] = s
+                        todo.append((ni, nj))
+    at = lambda i, j: owner[i][j] if 0 <= i < nx and 0 <= j < ny else None
+    pair = lambda a, b: None if a is b else (a.index if a else None, b.index if b else None)
+    # The elementary edges that are lines: vert[i][j] at xs[i] from ys[j] up (west, east), horiz[i][j] at
+    # ys[j] from xs[i] east (south, north).
+    vert = {(i, j): (at(i - 1, j), at(i, j)) for i in range(nx + 1) for j in range(ny) if pair(at(i - 1, j), at(i, j))}
+    horiz = {(i, j): (at(i, j - 1), at(i, j)) for i in range(nx) for j in range(ny + 1) if pair(at(i, j - 1), at(i, j))}
+    world = lambda x, y: (ox + x, oy + y)
+
+    def link_for(x0, y0, x1, y1):
+        for (lx0, ly0, lx1, ly1), sec in links:
+            if lx0 <= min(x0, x1) and max(x0, x1) <= lx1 and ly0 <= min(y0, y1) and max(y0, y1) <= ly1:
+                return sec
+        return None
+
+    def line(p, q, first, second, tagname):
+        """The line between `first` (west or south of it) and `second`, along p -> q (north or east)."""
+        gid = f"{prefix}.{tagname}.{p[0]}_{p[1]}"
+        if first is None or second is None:
+            sec = first or second
+            a, b = (q, p) if first is not None else (p, q)     # the sector on the right
+            if p[0] != q[0]:                                   # horizontal lines turn the other way
+                a, b = b, a
+            other = link_for(*p, *q)
+            if other is not None:
+                m.two_sided(world(*a), world(*b), sec, other, gid, texture=attrs[sec.index].get("side", attrs[sec.index]["wall"]))
+                return
+            ln = m.wall(world(*a), world(*b), sec, gid, texture=attrs[sec.index]["wall"])
+            if attrs[sec.index].get("door"):
+                m.linedefs[ln]["dontpegbottom"] = True         # the track stays put as the door rises
+            return
+        fa, sa = attrs[first.index], attrs[second.index]
+        front, back = (second, first) if fa.get("door") else (first, second)
+        a, b = (q, p) if front is first else (p, q)
+        if p[0] != q[0]:
+            a, b = b, a
+        ln = m.two_sided(world(*a), world(*b), front, back, gid)
+        fa, ba = attrs[front.index], attrs[back.index]
+        f, k = m.sidedefs[m.linedefs[ln]["sidefront"]], m.sidedefs[m.linedefs[ln]["sideback"]]
+        f.fields.update(texturetop=ba.get("side", ba["wall"]), texturebottom=ba.get("side", ba["wall"]))
+        k.fields.update(texturetop=fa.get("side", fa["wall"]), texturebottom=fa.get("side", fa["wall"]))
+        door = ba.get("door")
+        if door:
+            m.linedefs[ln].fields.update(special=12, arg0=door, arg1=16, arg2=150, playeruse=True, monsteruse=True,
+                                         repeatspecial=True)
+
+    # Runs of edges between the same two sectors are one line, broken wherever a crossing line ends.
+    for i in range(nx + 1):
+        j = 0
+        while j < ny:
+            if (i, j) not in vert:
+                j += 1
+                continue
+            start, who = j, pair(*vert[(i, j)])
+            j += 1
+            while j < ny and (i, j) in vert and pair(*vert[(i, j)]) == who \
+                    and (i - 1, j) not in horiz and (i, j) not in horiz:
+                j += 1
+            line((xs[i], ys[start]), (xs[i], ys[j]), *vert[(i, start)], "v")
+    for j in range(ny + 1):
+        i = 0
+        while i < nx:
+            if (i, j) not in horiz:
+                i += 1
+                continue
+            start, who = i, pair(*horiz[(i, j)])
+            i += 1
+            while i < nx and (i, j) in horiz and pair(*horiz[(i, j)]) == who \
+                    and (i, j - 1) not in vert and (i, j) not in vert:
+                i += 1
+            line((xs[start], ys[j]), (xs[i], ys[j]), *horiz[(start, j)], "h")
+    return sectors
+
+
+def station(m: MapBuilder, hall, C3, C2, floor: int) -> None:
+    """Note #92: the pumping station past the tech room, through the middle of its end wall C3 -> C2 (the
+    room on that wall's right). The station's grid is square to the map; the tech room is turned a few
+    degrees, so a short link joins the two: from an opening 128 wide in the end wall to the grid's edge."""
+    import math
+    length = math.hypot(C2[0] - C3[0], C2[1] - C3[1])
+    ux, uy = (C2[0] - C3[0]) / length, (C2[1] - C3[1]) / length
+    mid = ((C3[0] + C2[0]) / 2, (C3[1] + C2[1]) / 2)
+    en = (round(mid[0] - ux * 64), round(mid[1] - uy * 64))    # the opening's ends, north then south
+    es = (round(mid[0] + ux * 64), round(mid[1] + uy * 64))
+    ox = (max(C3[0], C2[0]) + 48 + 15) // 16 * 16
+    origin = (ox, round(mid[1]))
+    ne, se = (origin[0], origin[1] + 64), (origin[0], origin[1] - 64)
+    link = m.sector("station.entry_link", floor=floor, ceiling=floor + 128, light=STATION_LIGHT,
+                    floor_tex="FLAT5_4", ceiling_tex="CEIL3_5")
+    m.wall(C3, en, hall, "tech_hall.wall_end_n")
+    m.two_sided(en, es, hall, link, "station.entry_link.mouth", texture=CLOSET_SKIN)
+    m.wall(es, C2, hall, "tech_hall.wall_end_s")
+    m.wall(en, ne, link, "station.entry_link.wall_n", texture="STARG3")
+    m.wall(se, es, link, "station.entry_link.wall_s", texture="STARG3")
+    raster(m, "station", origin, floor, station_zones(), links=(((0, -64, 0, 64), link),))
+    # The catwalks: one 3D floor over every sector tagged for it; its control sector stands outside the map.
+    lo, hi = STATION_CATWALK
+    cx, cy = origin[0] + 700, origin[1] - 900
+    control = m.room("station_catwalk_control", cx, cy, 32, 32, floor=floor + lo, ceiling=floor + hi,
+                     floor_tex="FLAT23", ceiling_tex="FLAT23", light=192)
+    m.sectors[control.index]["user_scenery"] = True
+    ln = next(i for i, l in enumerate(m.linedefs) if l["user_gid"] == "station_catwalk_control.wall_s")
+    m.linedefs[ln].fields.update(special=160, arg0=STATION_CATWALK_TAG, arg1=1, arg2=0, arg3=255)
+    m.sidedefs[m.linedefs[ln]["sidefront"]]["texturemiddle"] = "SUPPORT2"
+
+# Note #74 (2026-11-24): the stairs down to the cistern have the passage's torch niches, but their torches
+# are out (the unlit torch, DEAD_TORCH_TID), which is why it is dark down here: (stair, side), sides as
+# the walls are named (l = east, r = west), alternating like the passage's; the 3rd's east wall is the door.
+STAIR_TORCHES = {(1, "l"), (2, "r"), (3, "r"), (4, "l")}
+
+
+# Note #97 (2026-11-24): a carved alcove like the passage's (the satyr's face in plain stone, a marble shelf)
+# in the west wall of the stairs' first flight, two packs of shells on its shelf. A little narrower than
+# the passage's (112, not 128: the wall is 134 long).
+STAIR_CARVING = (1, "r")
+STAIR_CARVING_WIDE = 112
+STAIR_CARVING_ITEMS = (SHELLS, SHELLS)
+
+
+def _stair_carving(m: MapBuilder, s, a, b, gid: str, items=None, texture: str = PASSAGE_TEXTURE) -> None:
+    """A wall of the stairs a -> b (the stair on its right) with the carved alcove in its middle
+    (PASSAGE_CARVINGS' design: CARVING_SILL up, CARVING_DEEP deep, 128 high, the face in the middle of
+    its back wall), the items along its shelf."""
+    import math
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    n = math.hypot(dx, dy)
+    ex, ey = dx / n, dy / n
+    wide, deep = STAIR_CARVING_WIDE, CARVING_DEEP
+    at = lambda along, into=0.0: (round(a[0] + ex * along - ey * into, 2), round(a[1] + ey * along + ex * into, 2))
+    lo, hi = n / 2 - wide / 2, n / 2 + wide / 2
+    p0, p1, q0, q1 = at(lo), at(hi), at(lo, deep), at(hi, deep)
+    fl = (wide - CARVING_WIDE) / 2                         # the plain stone either side of the face
+    c0, c1 = at(lo + fl, deep), at(hi - fl, deep)
+    piece = m.sectors[s.index].fields
+    f = piece["heightfloor"] + CARVING_SILL
+    # Note #135: no higher than the passage it is in (the side passage is 112 high: the alcove ran up past its
+    # ceiling). The carving hangs from the alcove's top, so it comes down with it, whole.
+    alcove = m.sector(f"{gid}.carving", floor=f, ceiling=min(f + 128, piece["heightceiling"]), light=CARVING_LIGHT,
+                      floor_tex="FLOOR7_2", ceiling_tex="FLOOR7_2")
+    m.sectors[alcove.index].fields.update(user_scenery=True, **{k: piece[k] for k in ("fadecolor", "fogdensity") if k in piece})
+    m.wall(a, p0, s, f"{gid}_a", texture=texture)
+    m.two_sided(p0, p1, s, alcove, f"{gid}.carving.mouth", texture=texture)
+    m.wall(p1, b, s, f"{gid}_b", texture=texture)
+    m.wall(p0, q0, alcove, f"{gid}.carving.side_a", texture=CARVING_STONE)
+    left = m.wall(q0, c0, alcove, f"{gid}.carving.back_a", texture=CARVING_STONE)
+    m.wall(c0, c1, alcove, f"{gid}.carving.back", texture=CARVING_TEXTURE)
+    right = m.wall(c1, q1, alcove, f"{gid}.carving.back_b", texture=CARVING_STONE)
+    m.wall(q1, p1, alcove, f"{gid}.carving.side_b", texture=CARVING_STONE)
+    m.sidedefs[m.linedefs[left]["sidefront"]]["offsetx"] = round(-fl) % 256
+    m.sidedefs[m.linedefs[right]["sidefront"]]["offsetx"] = CARVING_WIDE
+    things = STAIR_CARVING_ITEMS if items is None else items
+    # Along the shelf: two as the passage's (a little off-centre); more, spread evenly across it.
+    spots = (-22, 18) if len(things) == 2 else [round(-wide / 2 + 16 + k * (wide - 32) / max(1, len(things) - 1)) for k in range(len(things))]
+    for j, (thing, along) in enumerate(zip(things, spots)):
+        m.thing(thing, *at(n / 2 + along, 12), f"{gid}.item_{j + 1}", angle=90)
+
+
+def _stair_wall(m: MapBuilder, s, a, b, gid: str, torch: bool, lit: bool = False, texture: str = PASSAGE_TEXTURE) -> None:
+    """A wall of the stairs a -> b (the stair on its right); with `torch`, a niche like the passage's in
+    its middle (24 wide, NICHE_DEEP deep, from the floor, NICHE_HIGH high) holding an unlit torch, as dark
+    and as foggy as the stair."""
+    if not torch:
+        m.wall(a, b, s, gid, texture=texture)
+        return
+    import math
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    n = math.hypot(dx, dy)
+    ex, ey = dx / n, dy / n
+    wide, deep, rough = rough_niche(gid)                  # note #79: a rough hollow, each a little different
+    ox, oy = -ey * deep, ex * deep                        # left of a -> b: into the rock
+    p0 = (round(a[0] + ex * (n / 2 - wide / 2), 2), round(a[1] + ey * (n / 2 - wide / 2), 2))
+    p1 = (round(a[0] + ex * (n / 2 + wide / 2), 2), round(a[1] + ey * (n / 2 + wide / 2), 2))
+    pts = [p0] + [(round(p0[0] + ex * t2 - ey * s2, 2), round(p0[1] + ey * t2 + ex * s2, 2)) for t2, s2 in rough] + [p1]
+    piece = m.sectors[s.index].fields
+    f = piece["heightfloor"]
+    niche = m.sector(f"{gid}.niche", floor=f, ceiling=f + NICHE_HIGH, light=piece["lightlevel"],
+                     floor_tex=texture, ceiling_tex=texture)
+    m.sectors[niche.index].fields.update(user_scenery=True, **{k: piece[k] for k in ("fadecolor", "fogdensity") if k in piece})
+    m.wall(a, p0, s, f"{gid}_a", texture=texture)
+    m.two_sided(p0, p1, s, niche, f"{gid}.niche.mouth", texture=texture)
+    m.wall(p1, b, s, f"{gid}_b", texture=texture)
+    for n2, (c0, c1) in enumerate(zip(pts, pts[1:])):
+        m.wall(c0, c1, niche, f"{gid}.niche.rock_{n2 + 1}", texture=texture)
+    k_in = NICHE_TORCH_IN / deep
+    ti = m.thing(TORCH, round((p0[0] + p1[0]) / 2 + ox * k_in, 2), round((p0[1] + p1[1]) / 2 + oy * k_in, 2), f"{gid}.torch")
+    if lit:                                                # (the side passage's: burning, the niche brighter for it)
+        m.sectors[niche.index]["lightlevel"] = piece["lightlevel"] + 64
+    else:
+        m.things[ti].fields["id"] = DEAD_TORCH_TID
+
+
 def cistern(m: MapBuilder, drain, west) -> None:
     """Note #77, editor save 22:36: the stairs down from the passage's end (PASSAGE_END) to the cistern, and
     the cistern: `west` is the drain's far side, north to south (the cistern's west wall, shared with
@@ -1343,10 +2201,13 @@ def cistern(m: MapBuilder, drain, west) -> None:
     ne, se = CISTERN_EAST
     nw = west[0]
     top = m.sectors[end["sector"].index]["heightfloor"]
+    # Note #73 (2026-11-24): the stairs keep the headroom of the passage's last piece (they had the
+    # passage's first, low one: PASSAGE_HIGH), their ceiling stepping down with them.
+    high = m.sectors[end["sector"].index]["heightceiling"] - top
     secs = []
     for k in range(CISTERN_STEPS):
         f = top - (top - CISTERN_FLOOR) * (k + 1) // (CISTERN_STEPS + 1)
-        s = m.sector(f"cistern_stair_{k + 1}", floor=f, ceiling=f + PASSAGE_HIGH, light=PASSAGE_LIGHT - 8 * (k + 1),
+        s = m.sector(f"cistern_stair_{k + 1}", floor=f, ceiling=f + high, light=PASSAGE_LIGHT - 8 * (k + 1),
                      floor_tex=PASSAGE_TEXTURE, ceiling_tex=PASSAGE_TEXTURE)
         m.sectors[s.index].fields.update(fadecolor=CISTERN_DARK_FOG[0],
                                          fogdensity=CISTERN_DARK_FOG[1] * (k + 1) // (CISTERN_STEPS + 1))
@@ -1370,17 +2231,28 @@ def cistern(m: MapBuilder, drain, west) -> None:
         if k + 1 == CISTERN_DOOR_STAIR:
             cistern_door(m, s, la, lb)
         else:
-            m.wall(la, lb, s, f"cistern_stair_{k + 1}.wall_l", texture=PASSAGE_TEXTURE)
-        m.wall(rb, ra, s, f"cistern_stair_{k + 1}.wall_r", texture=PASSAGE_TEXTURE)
+            _stair_wall(m, s, la, lb, f"cistern_stair_{k + 1}.wall_l", (k + 1, "l") in STAIR_TORCHES)
+        if (k + 1, "r") == STAIR_CARVING:
+            _stair_carving(m, s, rb, ra, f"cistern_stair_{k + 1}.wall_r")
+        else:
+            _stair_wall(m, s, rb, ra, f"cistern_stair_{k + 1}.wall_r", (k + 1, "r") in STAIR_TORCHES)
     for k, (x, y) in CISTERN_SPECTRES.items():
         sp = m.thing(SPECTRE, x, y, f"cistern.spectre_{k}", angle=90)
         m.things[sp].fields.update(ambush=True, id=SLEEPER_TID)
     y, n = ne[1] - 110, 0
+    glows = []                                             # where each meets the east wall (note #76: a torch niche there)
     while y > se[1] + 60:                                  # note #7: the lights along the east wall
-        x = ne[0] + (se[0] - ne[0]) * (ne[1] - y) / (ne[1] - se[1]) - 20
+        wx = ne[0] + (se[0] - ne[0]) * (ne[1] - y) / (ne[1] - se[1])
+        glows.append((wx, y))
         (r, g, bl), rad = CISTERN_GLOWS[n % len(CISTERN_GLOWS)]
-        t = m.thing(9830, round(x), y, f"cistern.glow_{n + 1}")
-        m.things[t].fields.update(height=40, arg0=r, arg1=g, arg2=bl, arg3=rad)
+        # Note #83 (2026-11-24): one light straight in front of an outcrop (note #78) left the outcrop's flanks
+        # black: they face along the wall, away from it. Two smaller lights now, one either side of the
+        # outcrop (CISTERN_GLOW_SIDE along the wall, CISTERN_GLOW_OUT from it), each on its own flank,
+        # both on the face and the hollow; a little dimmer each, so the pair is about as bright as the one.
+        for name, side in (("", 1), ("b", -1)):
+            t = m.thing(9830, round(wx - CISTERN_GLOW_OUT), round(y + side * CISTERN_GLOW_SIDE), f"cistern.glow_{n + 1}{name}")
+            m.things[t].fields.update(height=40, arg0=round(r * 0.75), arg1=round(g * 0.75), arg2=round(bl * 0.75),
+                                      arg3=rad - 16)
         y, n = y - CISTERN_GLOW_GAP, n + 1
     # The cistern: east and south walls as drawn, the west wall the drain's far side.
     # Note #18: the east wall stands on a low slot (CISTERN_OUT) the water runs out through, into a dark
@@ -1389,11 +2261,63 @@ def cistern(m: MapBuilder, drain, west) -> None:
     out = m.sector("cistern.out", floor=CISTERN_FLOOR, ceiling=CISTERN_FLOOR + oh, light=24, floor_tex=GUTTER_FLAT,
                    ceiling_tex=PASSAGE_TEXTURE)
     m.sectors[out.index].fields.update(fadecolor=CISTERN_DARK_FOG[0], fogdensity=CISTERN_DARK_FOG[1], user_scenery=True)
-    east_line = m.two_sided(ne, se, cis, out, "cistern.wall_e", texture=PASSAGE_TEXTURE)
-    m.linedefs[east_line].fields.update(blocking=True, dontpegtop=True)
-    # Note #23 (2026-11-23): the same hanging vines as the hall's drains (DRAIN_GRATE), on both sides.
-    for sd in ("sidefront", "sideback"):
-        m.sidedefs[m.linedefs[east_line][sd]]["texturemiddle"] = DRAIN_GRATE
+    # Note #76 (2026-11-24): an unlit torch at each of the east wall's glows. Note #78: not set into the wall
+    # above the slot (that broke the vine grate with a pier under each), but in an outcrop: the wall pulled
+    # forward into the cistern as a buttress (CISTERN_OUTCROP wide and deep, solid, floor to ceiling, down
+    # into the water), a hollow in its face for the torch (24 wide, NICHE_DEEP deep, NICHE_HIGH high, its
+    # shelf CISTERN_TORCH_SILL above the water: one step). The slot and its vines run on behind, level with
+    # the back wall. So the wall is built in pieces, ne -> se, their textures carried on by x offsets.
+    import math
+    length = math.hypot(se[0] - ne[0], se[1] - ne[1])
+    ex, ey = (se[0] - ne[0]) / length, (se[1] - ne[1]) / length
+    ix, iy = -ey, ex                                       # left of ne -> se: east, into the wall
+    along = lambda d, into=0.0: (round(ne[0] + ex * d + ix * into, 2), round(ne[1] + ey * d + iy * into, 2))
+    ow, od2 = CISTERN_OUTCROP
+
+    def east_piece(a, b, d, gid):
+        line = m.two_sided(a, b, cis, out, gid, texture=PASSAGE_TEXTURE)
+        m.linedefs[line].fields.update(blocking=True, dontpegtop=True)
+        m.sidedefs[m.linedefs[line]["sidefront"]]["offsetx"] = round(d)
+        # Note #23 (2026-11-23): the same hanging vines as the hall's drains (DRAIN_GRATE), on both sides.
+        for sd in ("sidefront", "sideback"):
+            m.sidedefs[m.linedefs[line][sd]]["texturemiddle"] = DRAIN_GRATE
+
+    prev, prev_d = ne, 0.0
+    for k, (gx, gy) in enumerate(glows):
+        d = math.hypot(gx - ne[0], gy - ne[1])
+        gid = f"cistern.torch_{k + 1}"
+        # Note #79: no two alike, and no square corners: the hollow a rough one (rough_niche), the outcrop
+        # as deep as its hollow needs plus a little, its two flanks each a different width, out from the
+        # wall on a slant with a knee in it.
+        import hashlib
+        import random
+        rnd = random.Random(int(hashlib.md5((gid + ".outcrop").encode()).hexdigest()[:8], 16))
+        wide, deep, rough = rough_niche(gid, undercut=False)
+        od3 = deep + rnd.choice((6, 8, 10, 12))
+        hn, hs = wide / 2 + rnd.uniform(14, 24), wide / 2 + rnd.uniform(14, 24)      # half widths at the wall
+        a0, a1 = along(d - hn), along(d + hs)
+        kn = along(d - hn + rnd.uniform(3, 8), -od3 * rnd.uniform(0.45, 0.7))        # the flanks' knees
+        ks = along(d + hs - rnd.uniform(3, 8), -od3 * rnd.uniform(0.45, 0.7))
+        n0, n1 = along(d - wide / 2, -od3), along(d + wide / 2, -od3)
+        east_piece(prev, a0, prev_d, "cistern.wall_e" if k == 0 else f"cistern.wall_e_{k + 1}")
+        m.wall(a1, a0, out, f"{gid}.behind", texture=PASSAGE_TEXTURE)     # the channel's own wall behind the outcrop
+        sill = CISTERN_FLOOR + CISTERN_TORCH_SILL
+        niche = m.sector(gid, floor=sill, ceiling=sill + NICHE_HIGH, light=CISTERN_DARK_LIGHT,
+                         floor_tex=PASSAGE_TEXTURE, ceiling_tex=PASSAGE_TEXTURE)
+        m.sectors[niche.index].fields.update(fadecolor=CISTERN_DARK_FOG[0], fogdensity=CISTERN_DARK_FOG[1], user_scenery=True)
+        # The outcrop, the cistern on the right of each line: out from the wall, to the hollow's mouth, and
+        # back to the wall.
+        for a, b, name in ((a0, kn, "side_n"), (kn, n0, "face_n"), (n1, ks, "face_s"), (ks, a1, "side_s")):
+            m.wall(a, b, cis, f"{gid}.{name}", texture=PASSAGE_TEXTURE)
+        mouth = m.two_sided(n0, n1, cis, niche, f"{gid}.mouth", texture=PASSAGE_TEXTURE)
+        m.linedefs[mouth].fields.update(blocking=True, dontpegtop=True)
+        pts = [n0] + [along(d - wide / 2 + t2, -od3 + s2) for t2, s2 in rough] + [n1]
+        for n2, (c0, c1) in enumerate(zip(pts, pts[1:])):
+            m.wall(c0, c1, niche, f"{gid}.rock_{n2 + 1}", texture=PASSAGE_TEXTURE)
+        ti = m.thing(TORCH, *along(d, -od3 + NICHE_TORCH_IN), f"{gid}.torch")
+        m.things[ti].fields["id"] = DEAD_TORCH_TID
+        prev, prev_d = a1, d + hs
+    east_piece(prev, se, prev_d, f"cistern.wall_e_{len(glows) + 1}")
     _edges(m, out, [(ne, se, "skip", ""), (se, (se[0] + od, se[1]), None, "cistern.out.end_s"),
                     ((se[0] + od, se[1]), (ne[0] + od, ne[1]), None, "cistern.out.back"),
                     ((ne[0] + od, ne[1]), ne, None, "cistern.out.end_n")])
@@ -1459,7 +2383,152 @@ def cistern(m: MapBuilder, drain, west) -> None:
         m.sidedefs[m.linedefs[ln]["sideback"]]["texturetop"] = PASSAGE_TEXTURE
 
 
-def hall_walls(m: MapBuilder, room, walls) -> dict:
+# Note #119 (2026-11-24): the hall's plain outer walls (its north side: the apse and the great door's wall) have a
+# crown along the top, where the wall meets the sky, and along the foot a baseboard with a shoe moulding in
+# front of it: big plain courses of the wall's own stone, standing out from it.
+MOULD_OUT, MOULD_SHOE_OUT = 12, 6       # how far the crown and baseboard stand out; the shoe, in front of them
+MOULD_BASE, MOULD_SHOE, MOULD_CROWN = 32, 12, 32     # their heights
+
+
+def moulded_wall(m: MapBuilder, room, a, b, gid: str, *, before=None, after=None, skip_start=0, skip_end=0,
+                 line=None) -> int:
+    """The wall a -> b (the room on its right) with its mouldings. before / after: the far end of the wall
+    that meets this one at a / at b, when that wall has mouldings too: the two then meet in a mitre.
+    Without one, the mouldings end square, skip_start / skip_end short of the wall's end (plain wall
+    there). Two strips of sector along the wall: the trim (MOULD_OUT deep: its floor is the baseboard's
+    top, its ceiling the crown's underside) and in front of it the shoe (MOULD_SHOE_OUT deep). Returns
+    the wall's line (the middle one). line: the whole straight wall (its two ends) when a -> b is only a
+    piece of it, so that the mitres are worked out from the same points as the neighbouring walls' are."""
+    length = ((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2) ** 0.5
+    ux, uy = (b[0] - a[0]) / length, (b[1] - a[1]) / length
+    start = a if before is not None or not skip_start else (round(a[0] + ux * skip_start, 2), round(a[1] + uy * skip_start, 2))
+    end = b if after is not None or not skip_end else (round(b[0] - ux * skip_end, 2), round(b[1] - uy * skip_end, 2))
+    if start != a:
+        m.wall(a, start, room, f"{gid}_a")
+    if end != b:
+        m.wall(end, b, room, f"{gid}_b")
+
+    def inner(dist):                                       # the wall's line moved `dist` into the room
+        whole = line or (start, end)
+        chain = ([before] if before is not None else []) + list(whole) + ([after] if after is not None else [])
+        moved = _shifted_polyline(chain, -dist)            # (it shifts to the left: the room is on the right)
+        i = 1 if before is not None else 0
+        square = lambda pt: (round(pt[0] + uy * dist, 2), round(pt[1] - ux * dist, 2))
+        s = tuple(round(v, 2) for v in moved[i]) if before is not None else square(start)
+        e = tuple(round(v, 2) for v in moved[i + 1]) if after is not None else square(end)
+        return s, e
+
+    s1, e1 = inner(MOULD_OUT)
+    s2, e2 = inner(MOULD_OUT + MOULD_SHOE_OUT)
+    floor = -DROP
+    trim = m.sector(f"{gid}.trim", floor=floor + MOULD_BASE, ceiling=HALL_SKY - MOULD_CROWN, light=HALL_LIGHT,
+                    floor_tex=HALL_WALL, ceiling_tex=HALL_WALL)
+    shoe = m.sector(f"{gid}.shoe", floor=floor + MOULD_SHOE, ceiling=-64, light=HALL_LIGHT, floor_tex=HALL_WALL)
+    for sec in (trim, shoe):
+        fog(m, sec)
+        m.sectors[sec.index]["user_scenery"] = True
+    line = m.wall(start, end, trim, gid)
+    m.two_sided(s1, e1, shoe, trim, f"{gid}.trim.face")
+    # The mouldings are walls to walk along, not steps to stand on (the shoe is only MOULD_SHOE high): their
+    # outer lines block, like the wall did.
+    blocks = [m.two_sided(s2, e2, room, shoe, f"{gid}.shoe.face")]
+    # The ends: where the next wall's mouldings carry on, a line between the two walls' strips is built by
+    # neither (they are different sectors with the same heights: one line each, built here for the start
+    # only when nothing comes before); otherwise an end face towards the room.
+    if before is None:
+        blocks.append(m.two_sided(s1, start, trim, room, f"{gid}.trim.end_a"))   # (each strip on the right of its end lines)
+        blocks.append(m.two_sided(s2, s1, shoe, room, f"{gid}.shoe.end_a"))
+    else:
+        MOULD_JOINTS[(gid, "a")] = (start, s1, s2, trim, shoe)
+    if after is None:
+        blocks.append(m.two_sided(end, e1, trim, room, f"{gid}.trim.end_b"))
+        blocks.append(m.two_sided(e1, e2, shoe, room, f"{gid}.shoe.end_b"))
+    else:
+        MOULD_JOINTS[(gid, "b")] = (end, e1, e2, trim, shoe)
+    for ln in blocks:
+        m.linedefs[ln]["blocking"] = True
+    return line
+
+
+MOULD_JOINTS: dict = {}
+
+
+def mould_joint(m: MapBuilder, first: str, second: str) -> None:
+    """The mitre where wall `first` ends and wall `second` starts: one line between their trims and one
+    between their shoes (call once both are built)."""
+    corner, p1, p2, trim_a, shoe_a = MOULD_JOINTS[(first, "b")]
+    corner2, q1, q2, trim_b, shoe_b = MOULD_JOINTS[(second, "a")]
+    assert corner == corner2 and p1 == q1 and p2 == q2, f"mouldings of {first} and {second} don't meet"
+    m.two_sided(corner, p1, trim_a, trim_b, f"{first}.trim.joint")    # (the first wall's strips on the right)
+    m.two_sided(p1, p2, shoe_a, shoe_b, f"{first}.shoe.joint")
+
+
+def _crowned_run(m: MapBuilder, run, drain) -> list:
+    """Note #123 (2026-11-24): the crown of the north walls (note #119) carried along the east wall, which stands on
+    its vine grate over the gutter: no baseboard there, but the crown can run above the water. For each
+    gutter sector along the run, a strip MOULD_OUT deep along the wall: the gutter's own water and light,
+    its ceiling the crown's underside. Where two gutter pieces meet at the wall, the line between them is
+    cut MOULD_OUT from the wall and its first part becomes the line between their two strips. The crown
+    stops 16 short of the run's two ends. Returns the stretches for hall_walls to build the wall's own
+    lines from: the same, with the strips in front in place of the gutters."""
+    import math
+    unit = lambda p, q: ((q[0] - p[0]) / math.dist(p, q), (q[1] - p[1]) / math.dist(p, q))
+    pts = [run[0][0]] + [s[1] for s in run]
+    mitre = [tuple(round(v, 2) for v in q) for q in _shifted_polyline(pts, -MOULD_OUT)]
+    strips: dict = {}
+
+    def strip_of(sector, gid):
+        if sector.index not in strips:
+            src = m.sectors[sector.index].fields
+            s = m.sector(f"{src['user_gid']}.crown", floor=src["heightfloor"], ceiling=HALL_SKY - MOULD_CROWN,
+                         light=src["lightlevel"], floor_tex=src["texturefloor"], ceiling_tex=HALL_WALL)
+            m.sectors[s.index].fields.update({k: src[k] for k in ("fadecolor", "fogdensity", "desaturation", "color_floor",
+                                                                  "lightcolor") if k in src})
+            strips[sector.index] = s
+        return strips[sector.index]
+
+    out, last = [], len(run) - 1
+    inner_prev = None
+    for k, (a, b, sector, gid, along) in enumerate(run):
+        ux, uy = unit(a, b)
+        square = lambda pt: (round(pt[0] + uy * MOULD_OUT, 2), round(pt[1] - ux * MOULD_OUT, 2))
+        strip = strip_of(sector, gid)
+        s, e = a, b
+        if k == 0:                                         # the crown starts 16 into the run
+            s = (round(a[0] + ux * 16, 2), round(a[1] + uy * 16, 2))
+            out.append((a, s, sector, f"{gid}_a", along))
+            i_s = square(s)
+            m.two_sided(i_s, s, strip, sector, f"{gid}.crown.end_a")
+        else:
+            i_s = inner_prev
+        if k == last:
+            e = (round(b[0] - ux * 16, 2), round(b[1] - uy * 16, 2))
+            i_e = square(e)
+            m.two_sided(e, i_e, strip, sector, f"{gid}.crown.end_b")
+        elif run[k + 1][2] is sector:                      # the same gutter goes on round a bend: the strip does too
+            i_e = mitre[k + 1]
+        else:
+            # The line between this gutter piece and the next starts at b: cut it MOULD_OUT from the wall.
+            nxt = run[k + 1][2]
+            vb = m.vertex(*b)
+            cut = next(ld for ld in m.linedefs if "sideback" in ld.fields and vb in (ld["v1"], ld["v2"])
+                       and {m.sidedefs[ld["sidefront"]]["sector"], m.sidedefs[ld["sideback"]]["sector"]} == {sector.index, nxt.index})
+            far = cut["v2"] if cut["v1"] == vb else cut["v1"]
+            q = (m.vertices[far]["x"], m.vertices[far]["y"])
+            wx, wy = unit(b, q)
+            reach = MOULD_OUT / abs(wx * uy - wy * ux)     # along that line, to be MOULD_OUT from the wall
+            i_e = (round(b[0] + wx * reach, 2), round(b[1] + wy * reach, 2))
+            cut["v1" if cut["v1"] == vb else "v2"] = m.vertex(*i_e)
+            m.two_sided(b, i_e, strip, strip_of(nxt, run[k + 1][3]), f"{gid}.crown.joint")
+        m.two_sided(i_s, i_e, sector, strip, f"{gid}.crown")
+        out.append((s, e, strip, gid, along + (16 if k == 0 else 0)))
+        if k == last:
+            out.append((e, b, sector, f"{gid}_b", along + round(math.dist(a, e))))
+        inner_prev = i_e
+    return out
+
+
+def hall_walls(m: MapBuilder, room, walls, mould=None) -> dict:
     """Note #36: the hall's outer walls. `walls`: the walls in order, clockwise from the mouth's west
     corner round to its east corner, each (start, stretches), a stretch being (end, the sector in front,
     gid). Note #44: only where a gutter meets the wall is it lifted off the floor over a drain (a
@@ -1472,7 +2541,10 @@ def hall_walls(m: MapBuilder, room, walls) -> dict:
         for end, sector, gid in stretches:
             along = round(((a[0] - start[0]) ** 2 + (a[1] - start[1]) ** 2) ** 0.5)
             if sector is room:
-                ln = m.wall(a, end, room, gid)
+                if mould and gid in mould:                 # note #119: crown, baseboard and shoe
+                    ln = moulded_wall(m, room, a, end, gid, **mould[gid])
+                else:
+                    ln = m.wall(a, end, room, gid)
                 if along:
                     m.sidedefs[m.linedefs[ln]["sidefront"]]["offsetx"] = along
                 if run:
@@ -1487,14 +2559,56 @@ def hall_walls(m: MapBuilder, room, walls) -> dict:
     for k, run in enumerate(runs):
         name = "drain" if k == 0 else f"drain_{k + 1}"
         cistern = k == 1                                     # the east run: the cistern behind it (note #77)
+        cliff = k == 0                                       # the west run: the cliff's edge (note #96)
         drain = m.sector(name, floor=DRAIN_FLOOR, ceiling=DRAIN_TOP, light=CISTERN_LIGHT, floor_tex=GUTTER_FLAT)
+        if cliff:
+            # Note #99: the hall's fog too, so the walls at the cliff's ends are the colour of the hall's walls
+            # (without it they stood out; the sky takes no fog).
+            m.sectors[drain.index].fields.update(heightfloor=CLIFF_FLOOR, heightceiling=HALL_SKY, texturefloor=SKY_FLAT,
+                                                 textureceiling=SKY_FLAT, lightlevel=HALL_LIGHT,
+                                                 fadecolor=HALL_FOG, fogdensity=HALL_FOG_DENSITY)
+        if cistern:                                          # note #94: seen from the cistern, looking up into the slot: its mossy stone
+            m.sectors[drain.index]["textureceiling"] = PASSAGE_TEXTURE
         # Note #78: seen from the hall through the vines, the water should fade uniformly into darkness:
         # the drains get the cistern's light and its dark fog (they had the hall's grey fog, then the
         # cistern's dark one showed beyond: a seam).
-        m.sectors[drain.index].fields.update(fadecolor=CISTERN_FOG[0], fogdensity=CISTERN_FOG[1])
+        if cliff:
+            # Note #98 (2026-11-24): the cliff is the west side only. The run's south stretch (along the
+            # south wall, west of the landing) is the stone wall again, and it turns the corner: the first
+            # CLIFF_PIER of the west side is wall too, a pier that ends the wall; its flank (the cliff
+            # sector's end wall, DRAIN_DEPTH long) stands out past the railing at the cliff's edge.
+            kept = []
+            for a, b, sector, gid, along in run:
+                if abs(b[0] - a[0]) >= abs(b[1] - a[1]):       # along the south wall
+                    ln = m.wall(a, b, sector, gid)
+                elif not kept:                                 # the first stretch up the west side: the pier, then the edge
+                    n = ((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2) ** 0.5
+                    c = (round(a[0] + (b[0] - a[0]) * CLIFF_PIER / n, 2), round(a[1] + (b[1] - a[1]) * CLIFF_PIER / n, 2))
+                    ln = m.wall(a, c, sector, f"{gid}_pier")
+                    kept.append((c, b, sector, gid, along + CLIFF_PIER))
+                else:
+                    kept.append((a, b, sector, gid, along))
+                    continue
+                if along:
+                    m.sidedefs[m.linedefs[ln]["sidefront"]]["offsetx"] = along
+            run = kept
+        else:
+            m.sectors[drain.index].fields.update(fadecolor=CISTERN_FOG[0], fogdensity=CISTERN_FOG[1])
         m.sectors[drain.index]["user_scenery"] = True
-        for a, b, sector, gid, along in run:
+        if cistern:                                          # note #123: a crown along the top of the wall over the drain
+            run_lines = _crowned_run(m, run, drain)
+        else:
+            run_lines = [(a, b, sector, gid, along) for a, b, sector, gid, along in run]
+        for a, b, sector, gid, along in run_lines:
             ln = m.two_sided(a, b, sector, drain, gid, texture=WALL)
+            if cliff:                                        # the edge: a railing standing in the water, nothing above it
+                m.linedefs[ln].fields.update(blocking=True, dontpegbottom=True)
+                for sd in ("sidefront", "sideback"):
+                    # Note #100: sunk CLIFF_RAIL_SUNK into the water, so half of it shows: its top rail 28 above
+                    # the hall's floor (it was 64: too high).
+                    m.sidedefs[m.linedefs[ln][sd]].fields.update(texturemiddle=CLIFF_RAIL, offsety_mid=-CLIFF_RAIL_SUNK)
+                m.sidedefs[m.linedefs[ln]["sideback"]]["texturebottom"] = CLIFF_FALL
+                continue
             # Note #56: the wall above the gap pegged to the ceiling, as the plain walls beside it are.
             # Note #83: blocksight: monsters (the cistern's spectres) can't see through the vines.
             m.linedefs[ln].fields.update(blocking=True, dontpegtop=True, blocksight=True, blocksound=True)
@@ -1512,13 +2626,28 @@ def hall_walls(m: MapBuilder, room, walls) -> dict:
         # The cistern's run: its far side from the north end to the south-east corner (the hall's corner
         # se, the 7th point of the run) is the cistern's west wall (built by cistern()).
         shared = len(inner) - 2 if cistern else 0
+        horizon = far = None
+        if cliff:
+            horizon = m.sector("cliff_horizon", floor=CLIFF_FLOOR, ceiling=CLIFF_FLOOR, light=HALL_LIGHT,
+                               floor_tex=SKY_FLAT, ceiling_tex=SKY_FLAT)
+            far = _shifted_polyline(inner, DRAIN_DEPTH + CLIFF_HORIZON)
         for i, (a, b) in enumerate(zip(outer, outer[1:])):
             if a != b and i >= shared:
-                m.wall(a, b, drain, f"{name}.back_{i + 1}")
+                if cliff:
+                    m.two_sided(a, b, drain, horizon, f"{name}.back_{i + 1}")
+                    m.wall(far[i], far[i + 1], horizon, f"cliff_horizon.back_{i + 1}")
+                else:
+                    m.wall(a, b, drain, f"{name}.back_{i + 1}")
+        if cliff:
+            m.wall(outer[0], far[0], horizon, "cliff_horizon.end_a")
+            m.wall(far[-1], outer[-1], horizon, "cliff_horizon.end_b")
         if cistern:
             out["cistern"] = (drain, outer[:shared + 1])
-        m.wall(inner[0], outer[0], drain, f"{name}.end_a")
-        m.wall(outer[-1], inner[-1], drain, f"{name}.end_b")
+        ends = (m.wall(inner[0], outer[0], drain, f"{name}.end_a"), m.wall(outer[-1], inner[-1], drain, f"{name}.end_b"))
+        if cliff:                                            # the hall's walls carried out to the cliff's face: its great stone
+            for ln in ends:
+                m.sidedefs[m.linedefs[ln]["sidefront"]].fields.update(
+                    texturemiddle=HALL_WALL, scalex_mid=HALL_WALL_SCALE, scaley_mid=HALL_WALL_SCALE)
     return out
 
 
@@ -1584,18 +2713,38 @@ def slit_edges(m: MapBuilder, room, base, sleeve, gid: str, x0: float, y0: float
     # Note #31: the strip was far brighter than the liquid round it: FLAT19 is three times as light as the
     # green liquid once that is desaturated (104 against 35 of 255), so its violet is scaled down to match.
     m.sectors[lip.index].fields.update(lightcolor=SWITCH_GLOW_TINT, user_scenery=True, color_floor=VIOLET)
-    m.two_sided((lx, yn), (lx, ys), lip, spill, f"{gid}.lip.edge_e", texture=STONE)
-    m.two_sided((sx, yn), (lx, yn), lip, base, f"{gid}.lip.side_n", texture=STONE)
-    m.two_sided((lx, ys), (sx, ys), lip, base, f"{gid}.lip.side_s", texture=STONE)
+    # Note #103 (2026-11-24): the lip's sky sits at the sleeve's top, 16 under the hall's (note #101), and the
+    # lines round it showed that 16 as a scrap of marble above the obelisk's top: no upper texture on their
+    # outer sides, so nothing is drawn there.
+    for name, p0, p1, other in (("edge_e", (lx, yn), (lx, ys), spill), ("side_n", (sx, yn), (lx, yn), base),
+                                ("side_s", (lx, ys), (sx, ys), base)):
+        ln = m.two_sided(p0, p1, lip, other, f"{gid}.lip.{name}", texture=STONE)
+        m.sidedefs[m.linedefs[ln]["sideback"]]["texturetop"] = "-"
     m.two_sided((lx, yn), (bx, yn), spill, base, f"{gid}.spill.side_n", texture=STONE)
     m.two_sided((bx, ys), (lx, ys), spill, base, f"{gid}.spill.side_s", texture=STONE)
-    slit = m.sector(f"{gid}.slit", floor=floor, ceiling=floor + high, light=BASE_LIGHT, floor_tex=GUTTER_FLAT)
+    # Note #107 (2026-11-24): the slit built again, without ceiling tricks (under an open sky they left a
+    # see-through slice, then scraps on the obelisk's top: notes #101, #103, #106). The slit is open to the
+    # sky like everything round it, and the piece of sleeve above the hollow is a 3D floor in it: a solid
+    # block from the hollow's top (floor + high) to the sleeve's top, the sleeve's marble on its sides
+    # (its control sector stands outside the map, SLIT_CONTROL). zscript.zs lowers the block's top with the
+    # sinking sleeve until nothing of it is left (SLIT_CONTROL_TAG).
+    slit = m.sector(f"{gid}.slit", floor=floor, ceiling=-64, light=BASE_LIGHT, floor_tex=GUTTER_FLAT)
+    # (Note #111: not named "monolith_...": the pass that opens the hall to the sky takes every monolith_ sector
+    # whose ceiling is at the sleeve's top for a pillar and lifts it to the sky: the block stood 16 too tall.)
+    cx, cy = SLIT_CONTROL
+    control = m.room("slit_control", cx, cy, 32, 32, floor=floor + high, ceiling=SLEEVE_TOP,
+                     floor_tex=STONE, ceiling_tex=STONE, light=BASE_LIGHT)
+    m.sectors[control.index].fields.update(id=SLIT_CONTROL_TAG, soundsequence="Silence", user_scenery=True)
+    cl = next(i for i, l in enumerate(m.linedefs) if l["user_gid"] == "slit_control.wall_s")
+    # arg2 = 1 (note #117): the block doesn't light what is under it. Without it the hollow's liquid took the
+    # control sector's plain light: bright, not the slit's own deep violet.
+    m.linedefs[cl].fields.update(special=160, arg0=SLIT_TAG, arg1=1, arg2=1, arg3=255)
+    m.sidedefs[m.linedefs[cl]["sidefront"]]["texturemiddle"] = STONE
     fog(m, slit)
     # Note #42: once the sleeve has sunk, the slit is part of the ceiling's slot above the slab: its
     # ceiling, and its walls' upper parts, are the slot's (marble, as dark), not liquid.
     m.sectors[slit.index].fields.update(id=SLIT_TAG, soundsequence="Silence", user_scenery=True,
-                                        desaturation=1.0, color_floor=VIOLET, color_wallbottom=VIOLET,
-                                        textureceiling=STONE, lightceiling=SLOT_DARK)
+                                        desaturation=1.0, color_floor=VIOLET, color_wallbottom=VIOLET)
     for name, p, q in (("edge_e", (sx, y0 + 88), (sx, yn)), ("edge_e_2", (sx, ys), (sx, y0 - 8))):
         ln = m.two_sided(p, q, sleeve, base, f"{gid}.sleeve.{name}", texture=STONE)
         m.sidedefs[m.linedefs[ln]["sidefront"]]["light"] = SLOT_DARK
@@ -1607,12 +2756,18 @@ def slit_edges(m: MapBuilder, room, base, sleeve, gid: str, x0: float, y0: float
     # the sleeve's lower parts beside it (their texture's top is at the sleeve's top, SLEEVE_TOP; this
     # one's at the spill's ceiling).
     m.linedefs[mouth]["dontpegtop"] = True
-    m.sidedefs[m.linedefs[mouth]["sideback"]].fields.update(offsetx=ys - (y0 - 8), offsety=SLEEVE_TOP - (-64))
+    # Note #101: the lip's ceiling is at the sleeve's top now, so the texture needs no moving down.
+    m.sidedefs[m.linedefs[mouth]["sideback"]].fields.update(offsetx=ys - (y0 - 8))
     back = m.two_sided((sx - depth, ys), (sx - depth, yn), slit, sleeve, f"{gid}.slit.back", texture=STONE)
     m.sidedefs[m.linedefs[back]["sidefront"]].fields.update(texturebottom=VIOLET_FALL, light=SLOT_DARK)
+    # Note #106 (2026-11-24): with the slit's ceiling stone again (note #101), the sleeve's side of the slit's
+    # three inner lines drew the 16 between the sleeve's top and the sky as wall: a small block standing on
+    # the obelisk. No upper texture there: nothing is drawn.
+    m.sidedefs[m.linedefs[back]["sideback"]]["texturetop"] = "-"
     for name, p, q in (("side_n", (sx - depth, yn), (sx, yn)), ("side_s", (sx, ys), (sx - depth, ys))):
         ln = m.two_sided(p, q, slit, sleeve, f"{gid}.slit.{name}", texture=STONE)
         m.sidedefs[m.linedefs[ln]["sidefront"]]["light"] = SLOT_DARK
+        m.sidedefs[m.linedefs[ln]["sideback"]]["texturetop"] = "-"          # note #106
 
 
 def hall_ceiling(m: MapBuilder, sector) -> None:
@@ -1763,6 +2918,12 @@ def altar(m: MapBuilder, room, gid: str, x0: float, y0: float, facing: str) -> N
     a = ((ax0, ay0), (ax0, ay1), (ax1, ay1), (ax1, ay0))
     for name, p, q in zip("wnes", a, a[1:] + a[:1]):
         m.two_sided(p, q, top, room, f"{gid}.altar.edge_{name}", texture=STONE)
+    # Note #109 (2026-11-24): a snuffed torch for every altar. zscript.zs
+    # swaps it for the unlit torch (thing id ALTAR_TORCH_TID; not solid, so the pickups stay in reach) and
+    # lights it as its obelisk is revealed: a green torch, the switch obelisk's a violet one.
+    # Note #115: not on the altar: on the floor just behind it, in the 16 between the altar and the obelisk's base.
+    torch = m.thing(TORCH, ax0 - 8 if facing == "e" else ax1 + 8, (ay0 + ay1) / 2, f"{gid}.altar.torch")
+    m.things[torch]["id"] = ALTAR_TORCH_TID
     # Scattered (the mapper, 2026-11-22: "each feels uniquely scattered"): each item at its own spot and
     # facing on the altar, picked from a hash of its gid, so it's the same on every build. Kept 4 in from
     # the edges and at least 10 from the altar's other items (up to five on an altar now).
@@ -1818,7 +2979,8 @@ def shaft_side(m: MapBuilder, car, closet, gid: str, *, x_wall: float, x_out: fl
     return s
 
 
-def wall_with_channels(m: MapBuilder, closet, a, b, gid: str, *, start=None, end=None, panel=None) -> None:
+def wall_with_channels(m: MapBuilder, closet, a, b, gid: str, *, start=None, end=None, panel=None, floor=0,
+                       channels=CHANNEL_AT, high=LOW) -> None:
     """A straight closet wall a -> b (the closet on its right) with emergency light channels in it
     (note #6): at CHANNEL_AT along the wall from a, each 16 wide, 8 deep, floor to ceiling, a red
     light tube (LITERED) at the back, DOORTRAK sides, a little brighter and tinted red, and a dim red
@@ -1837,12 +2999,12 @@ def wall_with_channels(m: MapBuilder, closet, a, b, gid: str, *, start=None, end
     if start:
         m.wall(start[0], start[1], closet, f"{gid}_0")
     start = start[1] if start else a
-    for i, d in enumerate(CHANNEL_AT):
+    for i, d in enumerate(channels):
         p0, p1 = at(d - 8), at(d + 8)
         q0, q1 = at(d - 8, 8), at(d + 8, 8)
         name = f"{gid}.channel_{i + 1}"
         dim = (gid, i + 1) in CHANNEL_DIM
-        ch = m.sector(name, floor=0, ceiling=LOW, light=CHANNEL_DIM_LIGHT if dim else CHANNEL_LIGHT)
+        ch = m.sector(name, floor=floor, ceiling=floor + high, light=CHANNEL_DIM_LIGHT if dim else CHANNEL_LIGHT)
         m.sectors[ch.index]["user_scenery"] = True   # too narrow to enter: decoration (movement check)
         m.sectors[ch.index]["lightcolor"] = CHANNEL_TINT
         if panel and panel[0] == i + 1:
@@ -1858,7 +3020,7 @@ def wall_with_channels(m: MapBuilder, closet, a, b, gid: str, *, start=None, end
         rgb = CHANNEL_DIM_RGB if dim else CHANNEL_RGB
         m.things[t].fields.update(height=32, arg0=rgb[0], arg1=rgb[1], arg2=rgb[2], arg3=CHANNEL_RADIUS)
         start = p1
-    last = len(CHANNEL_AT) + 1
+    last = len(channels) + 1
     if end:
         m.wall(start, end[0], closet, f"{gid}_{last}")
         m.wall(end[0], end[1], closet, f"{gid}_{last}b")

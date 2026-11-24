@@ -511,6 +511,24 @@ def make_handler(root: Path, announce: bool = False):
                     from dms import resources
 
                     self._json(resources.progress())
+                elif parts == ["api", "assets", "custom"]:
+                    # The maps' own assets (textures.txt, zscript.zs), marked with their map (mapassets.py).
+                    from dms import mapassets
+
+                    self._json(mapassets.custom(root))
+                elif parts == ["api", "assets", "usage"]:
+                    # What each map uses, and how often: the page puts those first.
+                    from dms import mapassets
+
+                    self._json(mapassets.usage(root))
+                elif len(parts) == 3 and parts[0] == "asset-custom":
+                    # /asset-custom/<map>/<NAME>.png: one of a map's own pictures (the URL carries ?v=<mtime>).
+                    from dms import mapassets
+
+                    got = mapassets.picture_file(root, parts[1], parts[2])
+                    if got is None:
+                        return self._missing()
+                    self._send(HTTPStatus.OK, got[0], got[1], "max-age=31536000, immutable")
                 elif len(parts) == 3 and parts[:2] == ["api", "assets"]:
                     from dms import resources
 
@@ -579,10 +597,9 @@ def _page_url(root: Path, url: str) -> str:
 
 
 def open_pages(board_url: str) -> None:
-    """Opens the asset browser and the board, each in a tab of its own, the board last (in front)."""
-    base = board_url.split("#", 1)[0].rstrip("/")
-    webbrowser.open_new_tab(base + "/assets")
-    time.sleep(1)  # keeps the order, and lets a browser that was closed finish starting
+    """Opens the board in the browser. Only the board: its banner links to the other pages (the asset
+    browser, and whatever tools come later), which the mapper opens when wanted (mapper, 2026-11-24;
+    the asset browser used to open in a tab of its own every time)."""
     webbrowser.open_new_tab(board_url)
 
 

@@ -5,7 +5,10 @@
 addkeysection "doom-map-stack" dms_keys
 addmenukey "Note for Claude" dms_note
 addmenukey "Reload the map in place" dms_reload
+addmenukey "Peaceful monsters (on/off)" dms_peaceful_key
 alias dms_note "netevent dms_mark"
 alias dms_reload "netevent dms_reload"
 defaultbind n dms_note
 defaultbind h dms_reload
+alias dms_peaceful_key "netevent dms_peaceful"
+defaultbind p dms_peaceful_key

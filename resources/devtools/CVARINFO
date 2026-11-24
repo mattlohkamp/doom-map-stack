@@ -4,3 +4,6 @@
 // message once stopped UZDoom at startup ("User info descriptor too big").
 nosave string dms_spawn = "";     // "x y z angle pitch": where to put the player on arrival
 nosave string dms_message = "";   // Claude's replies, shown on arrival ("|" separates lines)
+// Peaceful monsters (key P, zscript.zs DmsPeaceful): how the game starts. dms play sets it from what the
+// last game on the map was left at.
+nosave bool dms_peaceful = false;

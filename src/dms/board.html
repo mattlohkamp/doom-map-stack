@@ -128,7 +128,7 @@
 </style>
 </head>
 <body>
-<nav class="dms-nav"><b>DMS</b><a href="/" target="dms-board" aria-current="page">board</a><a href="/assets" target="dms-assets">asset browser</a></nav>
+<nav class="dms-nav"><b>DMS</b><a href="/" target="dms-board" aria-current="page">board</a><a href="/assets" target="dms-assets" onclick="this.href = '/assets' + (current ? '?map=' + encodeURIComponent(current) : '')" title="opens on the map shown here: what it uses comes first">asset browser</a></nav>
 <aside>
   <h1>dms board</h1>
   <nav id="maplist"></nav>

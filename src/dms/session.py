@@ -36,7 +36,8 @@ def agents(settings: dict) -> dict[str, dict]:
 
 def defaults(settings: dict) -> dict:
     s = settings.get("session", {})
-    return {**{p: bool(s.get(p, True)) for p in PARTS}, "agent": str(s.get("agent", ""))}
+    return {**{p: bool(s.get(p, True)) for p in PARTS}, "nomonsters": bool(s.get("nomonsters", False)),
+            "agent": str(s.get("agent", ""))}
 
 
 def launcher(root: Path, agent: dict) -> str:
@@ -101,7 +102,7 @@ def start(root: Path, info: maps.MapInfo, choices: dict, board_here: bool = Fals
     if choices.get("browser"):
         if board_up:
             board.open_pages(f"http://127.0.0.1:{port}/#{info.name}")
-            print("    browser: the board, on this map, and the asset browser")
+            print("    browser: the board, on this map")
         elif board_here:
             lines.append("browser=1")  # the board opens it once it's listening
         else:
@@ -116,6 +117,10 @@ def start(root: Path, info: maps.MapInfo, choices: dict, board_here: bool = Fals
             print(f"    game: already running{f' (process {pid})' if pid else ''}; bringing it to the front")
             if pid:
                 launch.focus_process_window(pid)
+            if choices.get("nomonsters"):
+                print("          (it keeps the monsters it was started with; close it first for a game without)")
+        elif choices.get("nomonsters"):
+            launch.play(root, info, nomonsters=True)
         else:
             launch.play(root, info)
 

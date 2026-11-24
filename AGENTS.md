@@ -114,6 +114,12 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
 - `dms play [<map>] [--skill N] [--nomonsters]` (**`launchers\Play Map.cmd`**): builds if the sources changed, starts UZDoom.
   Console log: `build/<map>/log-play.txt` (read it after a play session; UZDoom 5 names logs `log-<name>.txt`
   in its working directory, so play runs UZDoom from `build/<map>/`). Saves: `.tools/uzdoom/saves/<map>/`.
+  **A quiet look round:** key **P** in the game (`dms_peaceful_key`, rebindable; the devtools mod's `DmsPeaceful`)
+  turns peaceful monsters on and off: they don't notice the player, and any after the player anyway are sent
+  back to idling; "Peaceful (P)" shows in the corner. It sticks through H and restarts: each change is logged
+  (`[DMS-PEACEFUL] 0|1`) and the next `dms play` on the map starts the same way (`launch.last_peaceful`,
+  `+set dms_peaceful`). `--nomonsters` starts with none at all (things a map's script spawns still appear);
+  Start Session and the Play Map window have a "No monsters" tick for it (`[session] nomonsters`, `dms session <map> --nomonsters`).
 - `dms edit [<map>]` (**`launchers\Edit Map.cmd`**): packs `build/<map>/edit.wad` from `TEXTMAP` and opens it in the editor,
   so Save writes there. If the mapper already saved changes in it, it is reopened as it is, not overwritten.
 - **Live reload in the editor:** `dms setup` compiles `src/udb-plugin/DmsBridge.cs` (Windows' own C# compiler,
@@ -277,7 +283,14 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   UZDoom reads them only at startup: a change marks the running game for a restart, like a script change.
   Where a wall needs two things one texture can't give (a strip along its foot, a turned texture), compose
   it here rather than cutting the map into more sectors.
-- **Asset browser** (`/assets` on the board's server, each page links to the other in a thin banner at the top; opened in a tab of its own next to the board whenever dms opens the browser; `src/dms/resources.py`,
+  **Pictures of a map's own** (2026-11-24): `maps/<map>/textures/NAME.png` (8 characters at most) are packed between
+  `TX_START` and `TX_END` and work on walls and as flats; the validator and the asset browser know them. Use one
+  when composing can't do it (scaling, soft edges, the mapper's own artwork: sources go in `maps/<map>/art/`).
+  These are graphics in the repo: one made from Freedoom's must have Freedoom's licence beside it
+  (`maps/<map>/textures/NOTICE.txt`, see Licensing). Lessons for the text way: one change per `Patch` (the
+  engine kept only the Blend of a Translation + Blend); a patch can't be scaled or feathered; a scratch load
+  only proves the engine accepts a definition, not how it looks.
+- **Asset browser** (`/assets` on the board's server, each page links to the other in a thin banner at the top, the place for further tools' pages too; dms opens only the board, the mapper clicks over; `src/dms/resources.py`,
   `src/dms/assets.html`; plan and status: `docs/asset-browser.md`): every texture, flat, decal, item, monster,
   decoration, sound and song the IWAD and `uzdoom.pk3` provide, as a list or grid with search, filter
   chips and sort; textures auditioned side by side on a 2D plane and on 3D boxes (offsets and scale as UDMF);
@@ -288,6 +301,14 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   cached in `build/assets/<key>/` (the key changes with the resource files or `resources.VERSION`); the first
   load indexes for about 20 s, with a loading screen (a turning sigil drawn in the page, and a bar fed by
   `/api/assets/progress`: `resources.progress()`, the stage and its count, never waiting for the index). Changes to `resources.py` need the board restarted; `assets.html` is read per request.
+  **The maps' own assets and what the maps use** (`src/dms/mapassets.py`; read from the maps' files when asked, not part
+  of the cached index): each map's `textures.txt` textures and flats (put together here the way the engine does:
+  patches placed, flipped, turned, blended, recoloured; a definition using something it doesn't know is shown with
+  a `~`: the game is the judge) and the actors in its `zscript.zs` (with their Spawn picture) are listed in their
+  tabs with a violet tag naming the map, and a `custom` chip. Use counts come from every map's `TEXTMAP`,
+  `map.toml` (sky, music) and `zscript.zs` (sounds, decals, spawned classes): a green `xN` on each asset,
+  an `in use` chip, and **in use first** (on by default): what the maps use comes first, most used first, under a
+  divider, counted over every map or one (the `use:` menu; `/assets?map=<name>`, which the board's banner link passes for the map it shows). **For consistency, look there (or call `mapassets.usage`) before picking a new texture or sound.**
 - `dms catalog`: lists the IWAD's wall textures (with sizes) and flats into `catalog/` (committed; names only).
   Re-run after changing the Freedoom pin.
 - `dms validate <map> [--edit]`: checks `TEXTMAP` (or the mapper's `edit.wad`) and writes `build/<map>/validate.txt`
@@ -345,7 +366,7 @@ Code: `src/dms/udmf.py` (TEXTMAP read/write, keeps every field), `wad.py`, `cata
   mapper's usual way in; `src/dms/session.py`): `git pull`, then the session window (`picker.pick_session`): the map
   list (focused, last map selected), **New map...**, and toggles for the browser, editor, game and agent
   (defaults: `[session]` in `config\dms.toml`, not remembered). Choosing a map (Start, Enter, double-click) or creating one
-  starts it: builds if needed, then opens what was ticked and isn't open: the browser on the map's page (`/#<map>`, plus the asset browser in a second tab),
+  starts it: builds if needed, then opens what was ticked and isn't open: the browser on the map's page (`/#<map>`),
   the editor (`launch.edit`) and the game (`launch.play`), or brings them to the front. A dropped map skips the
   window and uses the defaults. **The board isn't a choice: a session always has one** (auto-pull and the game's
   restart need it). A board already running is used as it is; a port taken by something else stops the session

@@ -48,11 +48,28 @@ def test_window_choices_are_followed(repo, calls, monkeypatch):
 
     monkeypatch.setattr(picker, "pick_session", fake_window)
     assert cli.main(["session"]) == 0
-    assert seen["defaults"] == {"browser": True, "editor": True, "game": True, "agent": "claude"}
+    assert seen["defaults"] == {"browser": True, "editor": True, "game": True, "nomonsters": False, "agent": "claude"}
     assert seen["agents"] == {"claude": "Claude Code"}
     # The board isn't a choice: it's started either way.
     assert calls == [("board", 8765), ("browser", "http://127.0.0.1:8765/#a"), ("play", "a")]
     assert _session(repo) == {"map": "a"}  # no agent
+
+
+def test_no_monsters_reaches_the_game(repo, calls, monkeypatch):
+    maps.new(repo, "a")
+    got = []
+    monkeypatch.setattr(launch, "play", lambda root, info, nomonsters=False: got.append(nomonsters) or 0)
+    assert cli.main(["session", "a", "--no-editor", "--no-agent"]) == 0
+    assert cli.main(["session", "a", "--no-editor", "--no-agent", "--nomonsters"]) == 0
+    assert got == [False, True]
+
+
+def test_peaceful_sticks_from_the_last_game(tmp_path):
+    assert launch.last_peaceful(tmp_path) is False
+    (tmp_path / "play.json").write_text('{"pid": 1, "peaceful": true}')
+    assert launch.last_peaceful(tmp_path) is True          # started peaceful, never changed
+    (tmp_path / "log-play.txt").write_text("x\n[DMS-PEACEFUL] 1\ny\n[DMS-PEACEFUL] 0\n")
+    assert launch.last_peaceful(tmp_path) is False         # turned off in that game: the log wins
 
 
 def test_start_session_cmd_runs_the_board_itself(repo, calls):
@@ -128,9 +145,10 @@ def test_board_on_a_foreign_port_stops_the_session(repo, calls, monkeypatch):
     assert calls == []  # checked before anything opens
 
 
-def test_open_pages_opens_the_asset_browser_then_the_board(monkeypatch):
+def test_open_pages_opens_only_the_board(monkeypatch):
     opened = []
     monkeypatch.setattr(board.webbrowser, "open_new_tab", opened.append)
     monkeypatch.setattr(board.time, "sleep", lambda s: None)
     board.open_pages("http://127.0.0.1:8765/#a")
-    assert opened == ["http://127.0.0.1:8765/assets", "http://127.0.0.1:8765/#a"]  # the board in front
+    # The other pages (the asset browser) are a click away in the board's banner, not opened for the mapper.
+    assert opened == ["http://127.0.0.1:8765/#a"]

@@ -6,6 +6,11 @@ they animate. Only text is committed: the pictures are put together by the engin
 has, so no graphics enter the repo. They go into the game's WAD, the live copy the game runs
 (live.py) and edit.wad (the editor shows them). UZDoom reads them only at startup, so a change means a
 restart of the running game, like a script change. The validator learns the names from textures.txt.
+
+A map may also bring pictures of its own: maps/<map>/textures/NAME.png (NAME: 8 characters at most, letters,
+digits, _ and -). They are packed between TX_START and TX_END, UZDoom's namespace for whole textures, and
+can be used on walls and as flats. Unlike the text lumps these are graphics in the repo: a picture made
+from the game's own (Freedoom's) must have Freedoom's licence notice beside it (AGENTS.md, Licensing).
 """
 
 from __future__ import annotations
@@ -28,6 +33,24 @@ def folder(info: MapInfo) -> Path:
     return info.textmap.parent
 
 
+PICTURE_NAME = re.compile(r"[A-Za-z0-9_\-]{1,8}")
+
+
+def pictures(info: MapInfo) -> list[tuple[str, Path]]:
+    """The map's own pictures: (NAME, file) for each maps/<map>/textures/NAME.png, in name order."""
+    d = folder(info) / "textures"
+    if not d.is_dir():
+        return []
+    return [(f.stem.upper(), f) for f in sorted(d.glob("*.png")) if PICTURE_NAME.fullmatch(f.stem)]
+
+
+def picture_size(data: bytes) -> tuple[int, int]:
+    """A PNG's width and height (from its header)."""
+    import struct
+
+    return struct.unpack(">II", data[16:24]) if data[:8] == b"\x89PNG\r\n\x1a\n" else (64, 64)
+
+
 def lumps(info: MapInfo) -> list[wad.Lump]:
     """The map's extra lumps, in a fixed order; none when it has no such files."""
     out = []
@@ -35,6 +58,9 @@ def lumps(info: MapInfo) -> list[wad.Lump]:
         f = folder(info) / fname
         if f.is_file():
             out.append(wad.Lump(lump, f.read_bytes()))
+    own = pictures(info)
+    if own:
+        out += [wad.Lump("TX_START")] + [wad.Lump(name, f.read_bytes()) for name, f in own] + [wad.Lump("TX_END")]
     return out
 
 
@@ -51,6 +77,9 @@ def textures(info: MapInfo) -> tuple[dict[str, tuple[int, int]], set[str]]:
     f = folder(info) / "textures.txt"
     walls: dict[str, tuple[int, int]] = {}
     flats: set[str] = set()
+    for name, pic in pictures(info):                 # a picture of the map's own: a wall texture, and a flat
+        walls[name] = picture_size(pic.read_bytes())
+        flats.add(name)
     if not f.is_file():
         return walls, flats
     text = re.sub(r"//[^\n]*", "", f.read_text(encoding="utf-8"))

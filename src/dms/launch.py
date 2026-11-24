@@ -116,7 +116,7 @@ def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False,
     from dms import extras
 
     out_wad = live.pack(info, root, by_name.get("MAPINFO", b""), by_name["TEXTMAP"], latest["seq"] if latest else 0,
-                        zscript=by_name.get("ZSCRIPT", b""), extra=[l for l in lumps if l.name in extras.LUMPS])
+                        zscript=by_name.get("ZSCRIPT", b""), extra=extras.lumps(info))
     log = build_dir / "log-play.txt"
     saves = uzdoom.parent / "saves" / info.name
     saves.mkdir(parents=True, exist_ok=True)
@@ -144,19 +144,42 @@ def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False,
     args += play_args(project_settings(root))
     if nomonsters:
         args.append("-nomonsters")
+    peaceful = last_peaceful(build_dir)
+    if peaceful:
+        args += ["+set", "dms_peaceful", "1"]
     if spawn:
         args += ["+set", "dms_spawn", " ".join(f"{v:g}" for v in spawn)]
     if message:
         # One command-line argument: no quotes or line breaks (UZDoom re-quotes it as a whole).
         message = message.replace('"', "'").replace("\n", " ").replace("\r", "")
         args += ["+set", "dms_message", fit_message(message)]
-    print(f"dms play: {info.name} (skill {skill}{', no monsters' if nomonsters else ''})")
+    print(f"dms play: {info.name} (skill {skill}{', no monsters' if nomonsters else ''}"
+          f"{', peaceful: P in the game turns it off' if peaceful else ''})")
     print(f"    log: {log}")
     proc = subprocess.Popen(args, cwd=build_dir, env=repo_env(root), close_fds=True)
     (build_dir / "play.json").write_text(json.dumps({
-        "pid": proc.pid, "started": time.time(), "skill": skill, "nomonsters": nomonsters,
+        "pid": proc.pid, "started": time.time(), "skill": skill, "nomonsters": nomonsters, "peaceful": peaceful,
     }) + "\n", encoding="utf-8")
     return 0
+
+
+def last_peaceful(build_dir: Path) -> bool:
+    """Whether the last game on this map was left with peaceful monsters on (key P, the devtools mod's
+    DmsPeaceful): the last `[DMS-PEACEFUL] 0|1` line in its log, or, if it never changed, what that
+    game was started with (play.json). So the setting sticks through restarts until it's turned off."""
+    import re
+
+    try:
+        text = (build_dir / "log-play.txt").read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        text = ""
+    marks = re.findall(r"\[DMS-PEACEFUL\] ([01])", text)
+    if marks:
+        return marks[-1] == "1"
+    try:
+        return bool(json.loads((build_dir / "play.json").read_text(encoding="utf-8")).get("peaceful"))
+    except (OSError, ValueError, AttributeError):
+        return False
 
 
 # The arrival message is kept short so the box at the top of the screen stays readable (it used to be

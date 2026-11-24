@@ -1,5 +1,10 @@
 # Asset browser (plan, building)
 
+*2026-11-24: the maps' own assets (a violet tag with the map's name, a `custom` chip) and what the maps use
+(a count on each asset, an `in use` chip, `in use first` with a divider, per map or over all) are built:
+`src/dms/mapassets.py`, `/api/assets/custom`, `/api/assets/usage`, `/asset-custom/<map>/<NAME>.png`. That covers
+milestone 6's "used in" and the "Later" item about per-map TEXTURES. Not yet seen in a browser by Claude.*
+
 *Status (2026-11-22): milestones 1-5 built in a first form and served at `/assets` (not yet tried by the
 mapper); milestone 6 open: Send to Claude, "used in", `dms assets`. Music first went through UZDoom's `writewave`
 (works as `+writewave <song> +quit` on a hidden normal start; `-norun` quits before console commands run; it

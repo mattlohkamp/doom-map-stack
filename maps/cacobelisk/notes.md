@@ -690,3 +690,362 @@ light and pickups tuned by ear and eye from the game.*
 - 2026-11-23, note #72 (game, screenshot): the wooden step under the small door was askew to the door: its
   boards are turned to the leaf's angle (rotationfloor, about 11 degrees) in the frame, the door's floor
   and the recess behind. Unchecked: the direction of the turn.
+- 2026-11-24, chat: unlit torches. The game has none, so the map has its own (textures.txt CACTA0, CACSA0-D0;
+  zscript.zs CacobeliskDeadTorch): the short red torch's bowl and stem, darkened and not full bright, with
+  the flame's own four frames turned grey and see-through as smoke over it (the mapper's idea: rework the
+  baked-in flame, no particles); no light. Torches with thing id 320 (DEAD_TORCH_TID) are swapped for it
+  when the level loads; their niches are as dark as the passage. A sample pair for now: the passage's 6th
+  and 12th pieces, left wall (PASSAGE_TORCHES_UNLIT). **Open:** which torches should be out, and whether
+  any should light later. Unchecked in the game: the smoke's grey and strength (Alpha 0.35), the bowl's
+  darkness (Blend 0.3), the skull's red eyes (still red).
+- 2026-11-24, chat: the unlit torch "looks perfect"; its skull's red eyes are purple, with a subtle flicker
+  (three frames: 0x9030E0, brighter 0xD060FF, dimmer 0x501888, at random lengths) and a very small
+  flickering purple light on the bowl (radius 10-16, A_AttachLight). Unchecked in the game: that the
+  eyes are really purple (Blend at 1.0 on a red pixel) and the light's strength.
+- 2026-11-24, chat: the eyes' flicker was too much, and a snuffed torch gives no light: the eyes are one dim,
+  still purple (0x501888), and the small purple light is gone.
+- 2026-11-24, note #73 (game): the stairs down to the cistern had a low ceiling (88, the passage's first
+  pieces'): they keep the headroom of the passage's last piece now, the ceiling stepping down with them.
+- 2026-11-24, note #74 (game): the cistern stairs have the passage's torch niches, but with the unlit torch
+  (STAIR_TORCHES: one a flight, alternating sides, the 3rd's opposite the door; niches as dark and foggy as
+  their stair): that is why it is dark down there.
+- 2026-11-24, note #75 (game): every torch in the vestibule and the passage is lit again (the sample unlit
+  pair is gone): light until the cistern stairs, then dark. This answers "which torches are out": the
+  stairs' four. Still open: whether any should light later.
+- 2026-11-24, note #76 (game): an unlit torch in a niche in the cistern's east wall at each of its six glows
+  (cistern.torch_1..6: 24 wide, 24 deep, 72 high, sill 28 above the water, over the outflow slot, which is
+  closed under each niche: a pier 24 wide). The glows themselves stay (pale green, 20 out from the wall, 40
+  up): they now sit in front of dead torches. **To check with the mapper:** whether the glows should stay,
+  dim, or go, now that the torches there are out; and how the piers in the slot read.
+- 2026-11-24, note #77 (game): the shotgunner room is where the mossy rock ends and the start's rusty tech
+  comes back. The room a little bigger (about 350 x 340, a straight far wall); three wooden crates in it
+  (CISTERN_DOOR_CRATES: two against each other, 64 and 96 high, on the south side, one 64 high towards the
+  far door; clear of the guards and of the way through); a tech door in the far wall (DOOR1, 64 x 72, in a
+  recess of track metal under a METAL4 lintel; Door_Raise tag 8, both sides, monsters too); behind it a
+  corridor like the start closet (tech_hall: 128 wide, 64 high, 256 long, CACOBASE walls, three red light
+  channels a side, light 80), a dead end for now. Unchecked in the game: everything about how it looks;
+  whether the crates want to be more or bigger; where the corridor goes is still open.
+- 2026-11-24, note #78 (game): the cistern's torches are not set into the wall above the slot any more: at each
+  the east wall is pulled forward into an outcrop (a buttress 56 wide, 32 out, solid, floor to ceiling, down
+  into the water) with a hollow in its face for the torch (24 wide, 24 deep, 72 high), its shelf one step
+  (8) above the water. The outflow slot and its vines run on unbroken behind the outcrops, level with the
+  back wall. The glows moved out with them (20 in front of each outcrop's face). Unchecked in the game;
+  note #76's question about the glows still stands.
+- 2026-11-24, note #79 (game): the torch niches "more natural": every torch niche of the passage, the cistern
+  stairs and the cistern's outcrops is a rough hollow (map.py rough_niche: mouth 22-30 wide, 22-30 deep, its
+  back four slanted stretches, drawn from the niche's gid so it is the same every build); the outcrops'
+  flanks come out from the wall on a slant with a knee, each side its own width. Not changed: the
+  vestibule's torch niche (still square), the shell shelf, the carving's alcove. Unchecked in the game.
+- 2026-11-24, note #80 (game): the shotgunner room keeps its mossy stone walls (no change: they were).
+- 2026-11-24, note #81 (game): the wall above the tech door is the room's rock like the walls round it (it
+  was a METAL4 lintel).
+- 2026-11-24, note #82 (game): the room past the tech door three times the size and brighter: 256 x 384 (was
+  the closet's 128 x 256), light 128 (was 80), five light channels a side. The mapper: "the part of the base
+  that's actually in use, as opposed to the start closet, which was like sneaking in the back through a
+  forgotten access elevator": a design intent for everything past this door. Claude read "3x the size" as
+  three times the floor area; its ceiling is still the closet's 64, low for a room this size: to ask.
+- 2026-11-24, note #83 (game): the green glow in front of each outcrop left its flanks black (they face along
+  the wall, away from a light straight in front). Each glow is now a pair, 48 either side of its torch along
+  the wall and 40 out from it, smaller (radius 88 / 72) and three quarters as bright each. Unchecked in the
+  game: that the flanks are lit, and that the pairs don't make the cistern brighter overall.
+- 2026-11-24, note #84 (game): the tech room's ceiling twice as high (128), its light channels with it. The
+  tech door got a recess on this side too (72 high, track metal, METAL4 above it), so its face stays the
+  door's own height. Unchecked: how the 128-high red tubes and the wall texture (CACOBASE, exactly 128)
+  look at this height.
+- 2026-11-24, note #85 (game, screenshot): the wall above each hollow was still black: the pair of lights sat 40
+  out from the wall, level with the outcrops' faces (28-42 out), and a light in a wall's own plane doesn't
+  light it. Now 72 out, so they are 30 or more in front of every face. Claude's reading of the cause, from
+  the picture; unchecked in the game.
+- 2026-11-24, note #86 (game): the shotgunner room's walls were grey concrete: Claude's mistake in note #77's
+  build (the step that gives them the passage's mossy rock was cut out with the crate code), there since
+  build #83; note #80 was the mapper pointing at it, and Claude's reply ("nothing changed") was wrong.
+  Restored: A-MOSRK2 on every wall of the room, as in the vestibule.
+- 2026-11-24, note #87 (game): the twin of the cistern's switch inside the shotgunner room (cistern_door.switch: the
+  same wooden post and skull switch, on the room's north side, its face to the room's middle; Door_Open on
+  the big door). One use: zscript.zs snaps the post into the floor (tag 9, Floor_LowerToLowest) when either
+  switch is used; its top is the room's rock. Using it does everything the cistern's switch does (the water
+  turns, the two guards are roused, the glow): one mechanism. Unchecked in the game.
+- 2026-11-24, note #88 (game): the tech door framed in metal: the thin wall either side and the wall above are
+  SUPPORT3 (the track's rusty metal, as round the small door in the great door). The door darker: CACODOOR
+  (textures.txt), DOOR1 blended 45% towards black. Other dark 64-wide doors looked at: DOOR3 (the start
+  door, a little darker than DOOR1), SPCDOOR0-2 (dark, but 128 high: cropped on a 72 door).
+- 2026-11-24, note #89 (game): a medikit stashed behind the tall crate, in the gap between it and the south
+  wall (Claude's reading of "this box": the pair of crates the mapper was facing). Unchecked: that it can
+  be picked up from the gap's mouth.
+- 2026-11-24, note #90 (game): the big door's two switches share one state: when either is used, zscript.zs
+  clears the other's special and shows it flipped (SW2WOOD), as the elevator's two switches do. (The room's
+  post sinks as well, note #87.) Compiles; unchecked in the game.
+- 2026-11-24, note #91 (game): the medikit was out of reach (the gap behind the crates was 18 wide, and Claude's
+  sum that it could be touched from the gap's mouth was wrong). The room's south side is out by about 40:
+  a way 56 wide round behind the two crates, the medikit in the middle of it.
+- 2026-11-24, note #92 (game): **the pumping station**, a first layout (no monsters or items, lit brightly so it
+  can be seen; mood lighting later). The mapper: "a small complex of a hydro power pumping station - pipes,
+  big computer and machinery rigs, lots of little nooks and crannies for items and enemy ambushes, access
+  doors to back stairways up to catwalks... a big cavernous main room with pump machinery ringed / crossed
+  by catwalks - and the ancillary rooms and hallways that surround and interconnect it."
+  Built on a grid square to the map (map.py station_zones: rectangles; raster() turns them into sectors
+  and lines), joined to the tech room's end wall by a short link. What is there:
+  - the way in (station.service): a corridor from the tech room, a door into the hall's west side, and
+    service passages north (to the north corridor) and south (to the storage room): a way round the hall;
+  - the main pump hall (1024 x 896, 320 high): a pit 48 deep in its middle with steps down on the west and
+    east, four pumps standing in it (blocks 144-176 high in pipe textures), four pipe columns at the pit's
+    corners; catwalks 96 up (one 3D floor, tag 700): a ring 96 wide round the walls and a cross over the
+    pit. You come in under the catwalk;
+  - north: a corridor behind the hall's north wall, a door into the hall, two nooks, the control room off
+    it (a console bench, a machine bank) and at its east end a back stairway up to the catwalk's
+    north-east corner;
+  - south: a low pipe gallery behind the south wall, a door into the hall, three nooks, and at its west
+    end the other back stairway, up to the catwalk's south-west corner;
+  - east: the generator room (two turbines, a nook), a door from the hall, a link down to the pipe gallery;
+  - south-west: a storage room with three crates.
+  Doors are BIGDOOR2 in SUPPORT3 frames, Door_Raise, monsters too (tags from 710). Loops: hall - generator -
+  gallery - hall; tech room - north corridor - hall; both stairways onto the one catwalk.
+  Not there yet, for the mapper to steer: railings on the catwalks (you can step off; steps and stairs
+  lead back up), supports under them, windows (control room onto the hall), water in the pit, real
+  machine shapes (the pumps and turbines are plain blocks), textures (first picks: ICKWALL3 hall, PIPEWAL1
+  pit and gallery, STARG3 corridors, SILVER1 control, TEKGREN2 generator, BROWN96 storage), an exit.
+  The first build of it (#96) was broken (unclosed sectors: a mistake in raster's line directions) and
+  reached the game's copy for a minute; #97 is right. Unchecked in the game: everything.
+- 2026-11-24, note #93 (game): the room's twin switch moved next to the door: its post stands by the slanted wall
+  segment beside the door now (it was one segment further along the north side), its face still towards
+  the room's middle. The deaf guard of that corner moved about 25 towards the door to make room.
+- 2026-11-24, note #94 (game): the east drain's ceiling (drain_2: the underside seen from the cistern, looking
+  up into the slot) is the mossy stone (A-MOSRK2; it was the default ceiling). The west drain, seen only
+  from the hall, is unchanged.
+- 2026-11-24, note #95 (game): when the big door opens (either switch), the unlit torches flare up one after
+  another, a second apart, from the cistern's south end north and on up the stairs (zscript.zs
+  CacobeliskTorches: each dead torch becomes a real short red torch, with the engine's light, a whoosh
+  (vile/firestrt), and its hollow 64 brighter). Compiles; unchecked in the game: the order, the pace, the
+  sound, and how bright the cistern gets with ten torches and its green glows together.
+- 2026-11-24, note #96 (game): the mapper liked an accident: build #99 had lost the hall's west drain (Claude's
+  slip, fixed in #100), so the west side showed open sky. The idea: the hall on the edge of a huge cliff,
+  scenery beyond, the water rushing down the cliffside, falling off an instant death. **Open, asked:** it
+  runs against docs/map-design-notes.md (no bottomless pits, traps not autokills, no inescapable pits):
+  which way to build it (a view only, a survivable fall with a way back, or a deadly edge as an exception).
+- 2026-11-24, note #97 (game): a second carved alcove, like the passage's (satyr face in plain stone, marble
+  shelf), in the west wall of the cistern stairs' first flight, two packs of 4 shells on its shelf. 112
+  wide (the passage's is 128; this wall is 134 long). Unchecked in the game: that the shells can be taken
+  from the stairs, and how the face sits with the flight's higher ceiling.
+- 2026-11-24, chat (the answer to note #96): the cliff edge on purpose, fenced: "some fencing or grating to prevent
+  the user from falling over the edge so no pit to worry about". Built: where the west gutter met the wall
+  (the hall's west side, and its south side west of the landing) there is no wall, drain or vine grate
+  now: the water runs to the edge, a railing stands along it (MIDBARS3, 72 high, the line impassable), and
+  beyond is sky above and below (the old drain sector with a sky floor 1024 down, and a strip of no height
+  round its far side so no wall shows; a fall of SFALL1 on the cliff's face, out of sight from the hall).
+  The hall's north and south walls run out 96 to the cliff's face at either end. Unchecked in the game:
+  everything about how it looks (the sky under the horizon, the railing's height, the wall ends); the
+  scenery beyond is only the sky texture. docs/map-design-notes.md is kept: no way to fall.
+- 2026-11-24, note #98 (game): the cliff is the west side only: the south side west of the landing is stone wall
+  again, and it turns the corner 64 up the west side as a pier ("an outcrop column device as an end piece"),
+  whose flank stands out past the railing at the cliff's edge. Claude's reading of the end piece; it does
+  not stand out into the hall.
+- 2026-11-24, note #99 (game): the wall at the cliff's end was the wrong colour: the cliff sector had no fog, the
+  hall has. It has the hall's fog now. Claude's reading of the cause; unchecked.
+- 2026-11-24, note #100 (game): the railing half as high: sunk 36 into the water (offsety_mid -36), its top rail
+  28 above the hall's floor; still impassable. Unchecked: the direction (if it got taller, the sign is wrong).
+- 2026-11-24, note #101 (game, screenshot): a see-through slice up the switch obelisk's back, above its slit, before
+  the sleeve sinks. There since note #59 (the hall open to the sky): the strip is the upper part of the line
+  between the slit and the lip in front of it, both then with sky ceilings, and the engine draws no wall
+  between two skies. Now the slit's ceiling is stone and the lip's sky sits at the sleeve's top until the
+  sleeve starts down; then zscript.zs turns the slit's ceiling to sky and lifts the lip's (tag 401), as
+  before. So the slice is closed while the obelisk stands; while it sinks (13 s) the strip is still not
+  drawn, as it wasn't yesterday. Compiles; unchecked in the game.
+- 2026-11-24, note #102 (game): the switch obelisk wakes when a player comes within reach of the shotgun on its
+  altar (the pickup's own touch range plus 8), whether or not it is picked up: with a shotgun and full shells
+  it stays on the altar, and the obelisk never woke. Taking it still works too. Compiles; unchecked.
+- 2026-11-24, note #103 (game): a scrap of marble showed on top of the switch obelisk's back before the reveal:
+  note #101's fix put the lip's sky 16 under the hall's, and the lines round the lip drew that 16 as wall.
+  Those sides have no upper texture now. Unchecked: that nothing shows there (if a sliver of sky or a
+  smear does, the next thing to try is a different shape for the slit).
+- 2026-11-24, notes #104, #105 (game, screenshots): the sky as dark as the walls, so the two nearly blend: CACOSKY
+  (the green clouds) blended 80% towards the hall's fog colour (0x0A160E, what the far walls fade to); its
+  average is now 0x08170B, the clouds faint. Tried on a scratch load first (the engine takes it). One number
+  in textures.txt to make it lighter or darker. Unchecked in the game.
+- 2026-11-24, note #106 (game): still a little block on top of the switch obelisk: the sleeve's side of the slit's
+  three inner lines, which drew the 16 between the sleeve's top and the sky as wall once the slit's ceiling
+  was stone again (note #101). No upper texture there now. (Note #103 took the lip's; this is the slit's.)
+  If the engine still fills it, the slit wants a different build: to see in the game.
+- 2026-11-24, note #107 (game, screenshot): the scraps on the switch obelisk's top were still there from some
+  angles: the slit is built again without ceiling tricks. It is open to the sky like everything round it, and
+  the piece of sleeve above its hollow is a 3D floor (control sector monolith_slit_control, tag 402, outside
+  the map at (848, -96)); zscript.zs lowers that block's top with the sinking sleeve until nothing is left
+  (it used to raise the slit's ceiling). Notes #101, #103 and #106's patches are no longer in play. The
+  block's marble may not line up exactly with the sleeve's round it. Compiles; unchecked in the game.
+  **The same screenshot showed the sky dark RED:** notes #104/#105's sky had Translation and Blend on one
+  patch, and the engine kept only the Blend (Claude's own preview drew both: it is not the engine). Now two
+  layers: the green clouds, and over them the same picture as one flat colour (the hall's fog), 80% opaque.
+  Lesson: one change per patch in TEXTURES; a scratch load only proves the engine accepts a definition.
+- 2026-11-24, note #108 (game): "what's the light source in this room?": none you can see: the sector's own light
+  (144, tinted red) and the red glow by the big door that comes on when it opens. Now a red bar light over
+  the tech door: the wall above it is CACOBAR (textures.txt: the frame's metal with the red tube LITERED
+  turned on its side across it), full bright, with a pulsing red light in front (radius 40 to 104 every 50
+  tics), to catch the eye on the way back from the cistern's switch. Unchecked in the game: where the
+  turned tube lands in the texture (if the bar is cut off or missing, the patch's place wants adjusting).
+- 2026-11-24, note #110 (game, screenshot): the sky still wasn't it: "the goal is to have the dark walls look like
+  the grey clouds". Notes #104/#105's dark layer was a flat colour at 80%: it wiped the clouds out and left
+  the sky twice as light as the walls (measured in the shot: sky (15, 25, 15), far walls (7, 11, 8)). Now the
+  layer is near black at 70%, which only darkens: the clouds keep their light and dark, and the walls'
+  colour falls inside their range. Unchecked; the mapper offered to point at the spot in the sky texture
+  or give a colour: the next step if this misses.
+- 2026-11-24, note #111 (game, screenshot): the strip on the switch obelisk's top was still there after note #107's
+  rebuild: the new control sector was named monolith_..., and the pass that opens the hall to the sky lifts
+  every such sector with its ceiling at the sleeve's top: the block stood 16 too tall. Renamed (slit_control).
+- 2026-11-24, note #109 (game): a snuffed torch on every altar (the unlit torch, not solid, at the middle of the
+  altar's obelisk side; thing id 321). As each obelisk is revealed its altar's torch flares to life: a green
+  torch (the game's short green one); the switch obelisk's is violet: the map's own (textures.txt CACP: the
+  blue and red torches' flames mixed; zscript.zs CacobeliskVioletTorch, with a violet light). Compiles;
+  unchecked in the game: the violet's look, the torch among the pickups, the moment it lights (as the
+  sleeve starts down).
+- 2026-11-24, note #112 (game, screenshot): the red bar over the tech door sat at the very top of its panel, its upper
+  edge cut off: the turned patch lands about 16 higher than its y says. Moved down (y 36): across the middle.
+  No geometry changed (the mapper offered to move the door frame). Unchecked.
+- 2026-11-24, note #113 (game, screenshot): "better on the skybox, but the sky is olive drab and the wall almost a dark
+  cyan green". Measured: sky (12, 17, 11), far wall (6, 12, 8). The dark layer is now 85% of a dark cyan-green
+  (0x000604), worked out so the sky there comes to the wall's colour; the clouds are fainter. Unchecked.
+- 2026-11-24, note #114 (game): "why doesn't the entry elevator make any running sounds?": Claude doesn't know: nothing
+  in the map or the script silences it, and the engine's floor sound should play. The ride's sound is now
+  the script's own (zscript.zs CacobeliskElevator: a clunk at the start, plats/pt1_mid looping at pitch 0.75
+  from a spot that goes down with the car, a clunk on landing), and the car's sectors have soundsequence
+  Silence so the engine's can't double it. Compiles; unchecked in the game (volume, pitch).
+- 2026-11-24, note #115 (game): the altars' torches stand on the floor just behind each altar, between it and the
+  obelisk's base (they were on the altar). Still not solid.
+- 2026-11-24, note #116 (game): when the switch obelisk wakes, the sky turns from its dark green to a dark red-violet,
+  "a prelude to what the obelisk will do": zscript.zs swaps the sky (Level.ChangeSky) a second after the
+  reveal starts, to CACOSKY1 (half way) and a second later to CACOSKY2 (the red clouds under a dark violet
+  layer; brighter than the green sky on purpose). The engine can't fade a sky, hence the step between.
+  Compiles; unchecked in the game: the colours (worked out, not seen) and whether two steps read as a turn.
+  What the obelisk will do is still open.
+- 2026-11-24, chat: a bit more of a pause between the elevator landing and the first obelisk (and its torch):
+  5 s (SHOW_DELAY 175 tics; it was 3 s). The 2 s between obelisks is unchanged.
+- 2026-11-24, note #117 (game): after the switch obelisk's reveal, a little floor floated over the leak, and the
+  liquid under it was bright: both from note #107's 3D floor. Sunk to no thickness, the block still drew its
+  faces: zscript.zs now drops it under the floor once it has closed up (HideSlitBlock). And a 3D floor
+  lights what is under it from its control sector: the hollow's liquid lost the slit's violet; the block is
+  flagged not to (Sector_Set3DFloor flags 1). Compiles; unchecked in the game. If the ceiling won't follow
+  its floor down (the plate still there), the block wants hiding another way.
+- 2026-11-24, note #118 (game): **the switch obelisk goes in three steps** (the mapper's plan; this answers part of
+  "what the switch obelisk does"):
+  1. the player takes (or reaches) the shotgun: the obelisk is revealed. Built: its sleeve sinks, its
+     cacodemon and leak appear; its torch stays out, no violet paint, no change in the sky;
+  2. the player hits a switch: its torch lights (violet), the paint appears, and a niche to place an item in
+     is revealed. Not built: zscript.zs has SwitchObeliskStep2 (torch and paint) ready, nothing calls it;
+     the switch and the niche don't exist yet;
+  3. the player finds an item ("purple skull key?") and places it in the niche: the pillar activates, the
+     sky turns, and "whatever is next". Not built: SwitchObeliskStep3 turns the sky (note #116); the item,
+     its placing and what follows don't exist yet.
+  **To decide with the mapper:** where step 2's switch is; where the niche is (on the obelisk, its altar?);
+  what the item is and where it is found (the game has no violet key: it would be the map's own, like the
+  violet torch); what happens after.
+- 2026-11-24, note #119 (game): mouldings on the hall's north walls (the apse's two slanted walls and the great
+  door's wall either side of the doorway; map.py moulded_wall): a crown along the top where the wall meets
+  the sky (32 high, standing out 12), a baseboard along the foot (32 high, out 12) and a shoe moulding in
+  front of it (12 high, 6 further out), all in the wall's big stone (STONE3 at twice its size), mitred where
+  the walls meet, ending square 16 short of the doorway and short of the corners where the cliff and the
+  east gutter begin. You can't walk onto them (their outer lines block). Only the north side: the east
+  wall stands on its vine grate over the gutter, the west is the cliff, the south mostly gutter. Two
+  builds of it were broken (unclosed sectors, #124 reached the game's copy): line directions at the
+  mouldings' ends. Unchecked in the game: everything about how it looks, the stone's courses on the
+  mouldings especially.
+- 2026-11-24, note #122 (game, screenshot): the red bar over the tech door was only the tube's middle (64 of its 128):
+  the door's frame is 128 wide now (posts 32, were 16; the room's far wall with them) and the bar runs across
+  all of it, the tube end to end (textures.txt CACOBARL / CACOBARR on the posts, CACOBAR over the door, the
+  same turned tube at the same height); the three pieces 80 brighter than the room (the panel alone was full
+  bright). (Note #112's "cut off at the top" was Claude misreading the shot: the bar was where it was put.)
+  Unchecked: that the three pieces line up.
+- 2026-11-24, note #120 (game): the ordinary obelisks carry a star, not the eye: CACOSTAR (textures.txt), MARBFAC2 with
+  its pupil covered by a piece of its own surface and the dark gaps between its lobes carried inwards as
+  eight rays that meet in the middle, drawn from 2 x 2 pieces of its dark ring (a generated list of 191
+  patches: text only, no graphic committed). The switch obelisk keeps the eye. Claude's preview of it:
+  build/scratch/sky/star.png. Unchecked in the game.
+- 2026-11-24, note #124 (game): note #122's wide frame with the bar right across "looks worse": taken back. The door's
+  frame is as before (posts 16, plain SUPPORT3, the room's far wall 96), and the light is "one small red lit
+  element above the door": a lamp 32 x 12 in the middle of the panel (textures.txt CACOLAMP in CACOBAR), the
+  panel full bright, the pulsing red light in front as before. Unchecked.
+- 2026-11-24, note #121 (game): the vestibule behind the great door bloated out to the west and the back (about
+  340 x 245; it was about 265 x 190) with three wooden boxes in it: "strictly wooden, no tech boxes": the
+  map's own wood (WOOD1 sides, FLAT5_2 tops; not the game's crate textures), two along the back wall (64
+  and 48 high) and a small one out in the room (32). Its torch niche and the deaf imp moved with the west
+  wall. (The note named a hall moulding sector: the game's sector numbers were from an older build; taken
+  by where the mapper stood.) Unchecked in the game: that the pinkies still get through to the small door.
+- 2026-11-24, note #123 (game): the crown carried along the east wall (and the south wall east of the landing), over
+  the drain's vine grate: no baseboard there (the water runs under the wall), "but we can have the crown".
+  A strip 12 deep of each gutter piece along the wall, the gutter's own water, its ceiling the crown's
+  underside (map.py _crowned_run; the lines between gutter pieces are cut 12 from the wall). It stops 16
+  short of the run's ends. Unchecked in the game: the crown's look over the water, and that the water in
+  the strips still flows with the gutter's.
+- 2026-11-24, chat: "I'll hit H and see a message that the board has to be running, but it is running, and a little
+  later it catches up": not a fault: that is the restart path (a script or texture changed, which the
+  game only reads at startup); the board sees the request in the log, closes the game and starts it again,
+  a few seconds. The message read like an error; reworded in resources/devtools/zscript.zs ("A script or
+  texture changed: the game has to restart...").
+- 2026-11-24, note #126 (game): a second lit torch in the vestibule, in a niche in the wall beside the way out to
+  the passage (vestibule.wall_6). Both vestibule niches are rough hollows now, like the passage's (the first
+  was still square). The red glow light stays with the first torch only.
+- 2026-11-24, chat: the star (note #120) from the mapper's own artwork: "something a bit more finished": their image
+  (art/Gemini_Generated_Image_23fctc23fctc23fc.jpg, 2048 x 2048, made with an image generator from MARBFAC2)
+  scaled down to 128 x 128 as textures/CACOSTAR.png. The 191-patch text version is gone. This needed dms to
+  pack a map's own PNG textures (src/dms/extras.py; AGENTS.md): **the board must be restarted** before the
+  game shows them (the board starts the game, with its old code until then).
+- 2026-11-24, note #125 (game): the carved alcoves (the passage's and the stairs') show the obelisks' eye, not the
+  satyr: textures/CACOFACE.png: GSTSATYR with MARBFAC2's carving scaled down (to 50 x 52) and blended over
+  the satyr's face with a soft edge, the stone round it the satyr's own. Made with Pillow from the two
+  Freedoom textures (the text way could only paste a hard-edged square at full size). Both pictures are
+  derived from Freedoom's: its licence is in textures/NOTICE.txt. Unchecked in the game.
+- 2026-11-24, chat: **a side passage**, an alternative way round (map.py SIDE_PATH, side_sectors, side_passage). Its
+  entrance is where the vestibule's first torch niche was (the west wall, 72 wide); it runs west, then north
+  up the outside of the main passage, round its top, curls east and south, and comes out where the torch
+  niche of the main passage's 12th piece was (its outer wall, 72 wide). 12 pieces, 128 wide (wider at the
+  bends: room for pinkies), 112 high, the passage's mossy stone, six lit torches in rough niches; it climbs
+  8 every third piece (-256 to -232) and a last 8 into the main passage (-224). No monsters or items in it.
+  With the first torch gone, the vestibule's red glow comes from its second torch (note #126), and the deaf
+  imp stands beside the new entrance. Unchecked in the game: everything; the two 72-wide mouths for pinkies.
+- 2026-11-24, notes #127, #128 (board): wooden frames in the three openings between a room and a passage: the
+  vestibule's two (to the side passage and to the main passage) and the side passage's way out into the main
+  passage's 12th piece. Each a short timber-lined doorway 12 deep (map.py timber_frame): WOOD1 jambs, a
+  wooden lintel 8 under the lower of the two ceilings, boards (FLAT5_2) underfoot. Unchecked in the game.
+- 2026-11-24, note #129 (game): the side passage "even older, dirtier, more rundown": its rock a greyer, duller mossy
+  one (A-MOSROK; the main passage's is A-MOSRK2), mud underfoot (A-MUD), darker (light 56, the main passage
+  80), a thin dark brown fog (0x0E0C08, 180), and three of its six torches burnt out (the unlit torch, its
+  niche dark). First picks, by name and brightness: to choose properly in the asset browser. (That note
+  arrived in the minute the 30-minute watch had lapsed; the board said so.) Unchecked in the game.
+- 2026-11-24, note #130 (game, screenshot): the frames (notes #127, #128) rebuilt: "I want it to actually stand out from
+  the wall... the wooden frame shouldn't carry all the way to the ceiling... like the top of the entrance has
+  been carved from stone, then set with a timber frame to brace it". Each opening is now cut through the rock
+  (a throat 12 deep, rock all round, its top 8 under the lower of the two ceilings), and in front of it, in the
+  room, stands the timber: two posts 8 square and a beam 16 high across their tops, 8 out from the wall; the
+  rock wall shows above the beam. Posts and beam are 3D floors (two control sectors a frame, tags from 800,
+  outside the map from (912, -96)). The side passage's two mouths are 88 wide for it (72 clear between the
+  posts); the vestibule's west wall is a little longer for that. Unchecked in the game: everything about how
+  it looks; that pinkies pass between the posts.
+- 2026-11-24, note #131 (game): every torch in the side passage is lit (note #129 had put three out): no snuffed
+  torches there. The rest of note #129 stands (rock, mud, darker, fog).
+- 2026-11-24, note #132 (game): the torch of the side passage's 4th piece moved to the opposite (left) wall.
+- 2026-11-24, note #133 (game): the two passages' textures swapped. The side passage is the green mossy rock
+  (A-MOSRK2 on walls, floor and ceiling; it keeps its lower light and thin fog); the main passage is "more
+  bare stone and dirt": A-MOSROK on its walls, ceiling, niches and steps, A-MUD underfoot (map.py MAIN_WALL,
+  MAIN_FLOOR). The vestibule, the cistern stairs and the cistern keep the green rock: where the main passage
+  meets them the rock changes. Unchecked in the game: those two joins, and the carved alcove and shell shelf
+  in the new rock.
+- 2026-11-24, note #134 (game): a carved alcove like the passage's (the eye in the satyr's stone, a marble shelf, 112
+  wide) in the right wall of the side passage's 9th piece, five armour bonuses along its shelf. Unchecked: that
+  all five can be taken from the passage.
+- 2026-11-24, note #135 (game): the side passage's alcove ran up past the passage's ceiling (it was 128 high over a
+  32 sill, in a passage 112 high): it stops at the passage's ceiling now (80 high), and the eye, which hangs
+  from the alcove's top, comes down with it uncut. The stairs' alcove is unchanged (its flight is higher).
+- 2026-11-24, note #136 (game): two shadow imps lurk in the side passage, deaf (ambush): one in its 9th piece facing
+  west, one in its 12th (the last, by the way out) facing south. Imps drawn as dark shapes (renderstyle
+  "shadow" on the thing). Unchecked in the game: that the style shows (if they look like ordinary imps, the
+  script can set it, as it does for the cacodemon), and the one by the way out, which stands in a short piece
+  right behind the frame.
+- 2026-11-24, note #137 (game): monsters struggled through the doorway between the side passage and the main one (88
+  wide, 72 between the frame's posts): it is 113 wide now, 97 between the posts: all that the main passage's
+  wall there (129 long) allows. If they still stick, the next things are to drop that frame's posts or to
+  lengthen that piece of the main passage. The side passage's two imps are ordinary deaf imps (not shadow).
+- 2026-11-24, note #138 (game): one of the vestibule's two imps stands straight behind the gap between the great door's
+  leaves (76 in from the doorway, on its middle line), to be glimpsed through it from the hall. The gap is
+  about 7 wide: he shows from in front of the door, less from the side. Unchecked.
+- 2026-11-24, note #139 (game): another lit torch in the vestibule, in a rough niche in vestibule.wall_1 (the short wall
+  between the great door's west jamb and the side passage's entrance). The rock behind that wall is thin (the
+  hall is just beyond): the niche stops about 12 short of the hall's wall.
+- 2026-11-24, note #140 (game): the imp behind the gap spotted the player through the crack too easily: he stands with
+  his back to the doors now (not deaf: he still wakes at gunfire). The other still faces them.

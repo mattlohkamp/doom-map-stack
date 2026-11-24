@@ -40,6 +40,19 @@
   .tile .fav { position: absolute; top: 1px; left: 1px; text-shadow: 0 0 3px #000; }
   .tile:not(:hover) .fav:not(.on) { visibility: hidden; }
   .chip.favs { border-color: var(--pick); }
+  /* A map's own asset (textures.txt, zscript.zs): a violet pill with the map's name, and a violet edge. */
+  .cust { display: inline-block; background: #6a3fb0; color: #fff; border-radius: 3px; padding: 0 4px; font-size: 9px; line-height: 13px;
+          letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
+  .tile.custom { border-color: #6a3fb0; }
+  .tile .cust { position: absolute; bottom: 30px; left: 3px; box-shadow: 0 0 2px #000; pointer-events: none; }
+  .chip.custs { border-color: #8a5fd0; } .chip.custs.on { background: #8a5fd0; border-color: #8a5fd0; color: #fff; }
+  /* How often the maps use it. */
+  .used { display: inline-block; background: #1d4a2c; color: #9be7b0; border-radius: 3px; padding: 0 4px; font-size: 10px; line-height: 13px; white-space: nowrap; }
+  .tile .used { position: absolute; top: 3px; right: 3px; box-shadow: 0 0 2px #000; }
+  .tile .anim.low { top: 20px; }
+  .chip.inuse { border-color: #3f9a5c; } .chip.inuse.on { background: #3f9a5c; border-color: #3f9a5c; color: #fff; }
+  .divider { flex: 0 0 100%; color: var(--dim); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; border-bottom: 1px solid var(--line); padding: 6px 2px 2px; }
+  tr.divider-row td { color: var(--dim); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; background: var(--bg); cursor: default; padding-top: 10px; }
   .tile .img { display: flex; align-items: flex-end; justify-content: center; }
   .tile img, td img, .pix { image-rendering: pixelated; }
   .tile .nm { font-size: 11px; color: var(--text); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -111,6 +124,8 @@
   <input id="q" type="search" placeholder="search (* wildcards)   /" autocomplete="off">
   <button class="btn" id="view-grid" title="grid view">grid</button><button class="btn" id="view-list" title="list view">list</button>
   <select id="sort"></select>
+  <button class="btn" id="usedfirst" title="what the maps already use comes first (most used first), then everything else">in use first</button>
+  <select id="usemap" title="whose use counts: every map, or one"></select>
   <div class="chips" id="chips"></div>
   <span id="shown"></span>
 </div>
@@ -158,7 +173,27 @@ let cat = (location.hash.slice(1) || store.get("cat", "textures"));
 if (!TABS.some(t => t[0] === cat)) cat = "textures";
 const state = store.get("state", {}); // per category: {view, sort, rev, chips: {facet: [values]}}
 const st = () => (state[cat] ||= { view: ["sounds", "music"].includes(cat) ? "list" : "grid", sort: "name", rev: false, chips: {} });
-const assetUrl = u => `/asset/${KEY}/${u}`;
+const assetUrl = u => u.startsWith("/") ? u : `/asset/${KEY}/${u}`;   // a map's own pictures come with their whole path
+
+// ---- the maps' own assets, and what the maps use (src/dms/mapassets.py) ------------------------
+// custom: {category: [entries]}, each like the index's with `custom` = its map. usage: per name, {map: count}.
+let custom = {}, usage = { maps: [], tex: {}, things: {}, classes: {}, sounds: {}, decals: {}, music: {} };
+let useMap = new URLSearchParams(location.search).get("map") ?? store.get("usemap", "");   // "" = every map
+let usedFirst = store.get("usedfirst", true);
+function usedIn(t, c = cat) {
+  const out = {}, add = per => { for (const [m, n] of Object.entries(per || {})) out[m] = (out[m] || 0) + n; };
+  if (CONF[c].tex) add(usage.tex[t.name]);
+  else if (c === "sounds") add(usage.sounds[t.name.toLowerCase()]);
+  else if (c === "music") add(usage.music[t.name]);
+  else if (c === "decals") add(usage.decals[t.name.toLowerCase()]);
+  else { if (t.num != null) add(usage.things[t.num]); if (t.class) add(usage.classes[t.class.toLowerCase()]); }
+  return out;
+}
+const useCount = t => { const per = usedIn(t); return useMap ? (per[useMap] || 0) : Object.values(per).reduce((a, b) => a + b, 0); };
+const usedTitle = t => "used in " + Object.entries(usedIn(t)).map(([m, n]) => `${m} (${n})`).join(", ");
+const usedBadge = t => { const n = useCount(t); return n ? h("span", { class: "used", title: usedTitle(t) }, "x" + n) : null; };
+const customPill = t => t.custom ? h("span", { class: "cust", title: `custom: made by the map ${t.custom} (its textures.txt or zscript.zs)` +
+  (t.approx ? "; this preview is approximate, the game is the judge" : "") }, t.custom + (t.approx ? " ~" : "")) : null;
 
 // ---- per-category columns, facets and sorts ---------------------------------------------------
 const thingCols = [
@@ -230,6 +265,10 @@ async function init() {
   let idx;
   try { idx = await (await fetch("/api/assets/index")).json(); } finally { clearInterval(watch); }
   KEY = idx.key; counts = idx.counts;
+  try { custom = await (await fetch("/api/assets/custom")).json(); } catch { custom = {}; }   // an older board server: none
+  try { usage = { ...usage, ...await (await fetch("/api/assets/usage")).json() }; } catch { }
+  for (const [k, list] of Object.entries(custom)) counts[k] = (counts[k] || 0) + list.length;
+  if (useMap && !usage.maps.includes(useMap)) useMap = "";
   const tabs = $("#tabs");
   for (const [k, label] of TABS) tabs.append(h("button", { class: "tab", "data-cat": k, onclick: () => go(k) }, label, h("span", { class: "n" }, counts[k] ?? "")));
   go(cat);
@@ -239,7 +278,7 @@ async function go(c) {
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.dataset.cat === c));
   if (!data[c]) {
     $("#list").innerHTML = '<div class="empty loading"><svg class="sigil small" viewBox="-50 -50 100 100"><circle r="44"/><circle r="38" class="thin"/><path d="M0 -38 L22.3 30.7 L-36.1 -11.7 L36.1 -11.7 L-22.3 30.7 Z"/></svg><div>loading...</div></div>';
-    data[c] = (await (await fetch("/api/assets/" + c)).json()).items;
+    data[c] = [...(await (await fetch("/api/assets/" + c)).json()).items, ...(custom[c] || [])];
   }
   buildBar(); render(); renderSide();
 }
@@ -256,6 +295,15 @@ function buildBar() {
   const nFav = (favs[cat] || []).filter(n => data[cat].some(t => t.name === n)).length;
   chips.append(h("span", { class: "chip favs" + (s.favOnly ? " on" : ""), title: "only the favourites (click a star to mark one)",
     onclick: () => { s.favOnly = !s.favOnly; store.set("state", state); buildBar(); render(); } }, `\u2605 favourites (${nFav})`));
+  const nUsed = data[cat].filter(t => useCount(t)).length, nCust = data[cat].filter(t => t.custom).length;
+  chips.append(h("span", { class: "chip inuse" + (s.usedOnly ? " on" : ""), title: "only what " + (useMap || "the maps") + " already use",
+    onclick: () => { s.usedOnly = !s.usedOnly; store.set("state", state); buildBar(); render(); } }, `in use (${nUsed})`));
+  if (nCust) chips.append(h("span", { class: "chip custs" + (s.customOnly ? " on" : ""), title: "only the maps' own (textures.txt, zscript.zs)",
+    onclick: () => { s.customOnly = !s.customOnly; store.set("state", state); buildBar(); render(); } }, `custom (${nCust})`));
+  $("#usedfirst").classList.toggle("on", usedFirst);
+  const um = $("#usemap"); um.innerHTML = "";
+  um.append(h("option", { value: "", selected: !useMap }, "use: every map"));
+  for (const m of usage.maps) um.append(h("option", { value: m, selected: useMap === m }, "use: " + m));
   for (const [facet, fn] of Object.entries(conf.facets)) {
     const vals = new Map();
     for (const t of data[cat]) for (const v of fn(t)) vals.set(v, (vals.get(v) || 0) + 1);
@@ -270,6 +318,8 @@ function buildBar() {
 }
 $("#view-grid").onclick = () => { st().view = "grid"; store.set("state", state); buildBar(); render(); };
 $("#view-list").onclick = () => { st().view = "list"; store.set("state", state); buildBar(); render(); };
+$("#usedfirst").onclick = () => { usedFirst = !usedFirst; store.set("usedfirst", usedFirst); buildBar(); render(); };
+$("#usemap").onchange = e => { useMap = e.target.value; store.set("usemap", useMap); buildBar(); render(); };
 $("#sort").onchange = e => { const s = st(); if (e.target.value === "__rev") s.rev = !s.rev; else s.sort = e.target.value; store.set("state", state); buildBar(); render(); };
 let qTimer; $("#q").oninput = () => { clearTimeout(qTimer); qTimer = setTimeout(render, 80); };
 document.addEventListener("keydown", e => {
@@ -282,15 +332,20 @@ function matcher(q) {
   if (!q) return () => true;
   const words = q.split(/\s+/).map(w => w.includes("*") ? new RegExp("^" + w.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$") : w);
   return t => {
-    const hay = [t.name, t.title, t.class, t.category_title, t.lump, t.group, t.kind, t.pic, ...(t.sets || []), ...(t.maps || []), t.colour && t.colour.hue].filter(Boolean).map(x => String(x).toLowerCase());
+    const hay = [t.name, t.title, t.class, t.category_title, t.lump, t.group, t.kind, t.pic, ...(t.sets || []), ...(t.maps || []), t.colour && t.colour.hue, t.custom && "custom", t.custom, ...Object.keys(usedIn(t))].filter(Boolean).map(x => String(x).toLowerCase());
     return words.every(w => typeof w === "string" ? hay.some(x => x.includes(w)) : hay.some(x => w.test(x)));
   };
 }
 function visible() {
   const s = st(), conf = CONF[cat], m = matcher($("#q").value);
-  let items = data[cat].filter(t => m(t) && (!s.favOnly || isFav(t)) && Object.entries(s.chips).every(([f, vals]) => !vals.length || !conf.facets[f] || vals.every(v => conf.facets[f](t).includes(v))));
+  let items = data[cat].filter(t => m(t) && (!s.favOnly || isFav(t)) && (!s.usedOnly || useCount(t)) && (!s.customOnly || t.custom) && Object.entries(s.chips).every(([f, vals]) => !vals.length || !conf.facets[f] || vals.every(v => conf.facets[f](t).includes(v))));
   const key = conf.sorts[s.sort] || conf.sorts.name;
   items = items.slice().sort((a, b) => { const x = key(a), y = key(b); return (x < y ? -1 : x > y ? 1 : 0) * (s.rev ? -1 : 1); });
+  if (usedFirst) {   // what is in use first, most used first; the chosen sort within equal counts, and after
+    const n = new Map(items.map(t => [t, useCount(t)]));
+    items = items.map((t, i) => [t, i]).sort((a, b) => (n.get(b[0]) - n.get(a[0])) || (a[1] - b[1])).map(x => x[0]);
+    items.split = items.findIndex(t => !n.get(t));   // where "everything else" starts (-1: all in use)
+  }
   return items;
 }
 
@@ -302,19 +357,27 @@ function render() {
   if (!items.length) { list.append(h("div", { class: "empty" }, "nothing matches")); return; }
   if (s.view === "list" || (conf.list && s.view !== "grid")) {
     const table = h("table"), head = h("tr", {}, h("th", { title: "favourites" }, "\u2605"));
+    head.append(h("th", { title: "how often the maps use it; a violet tag: a map's own" }, "used"));
     for (const [k, label] of conf.cols) head.append(h("th", { class: s.sort === k ? "sorted" + (s.rev ? " rev" : "") : "",
       onclick: () => { if (!conf.sorts[k]) return; if (s.sort === k) s.rev = !s.rev; else { s.sort = k; s.rev = false; } store.set("state", state); buildBar(); render(); } }, label));
     table.append(h("thead", {}, head));
     const body = h("tbody");
-    for (const t of items) {
-      const tr = h("tr", { class: isSelected(t) ? "sel" : "", onclick: () => pick(t) }, h("td", {}, favButton(t)));
+    const span = conf.cols.length + 2;
+    items.forEach((t, i) => {
+      if (usedFirst && items.split > 0 && i === 0) body.append(h("tr", { class: "divider-row" }, h("td", { colspan: span }, `in use${useMap ? " in " + useMap : ""} (${items.split})`)));
+      if (usedFirst && items.split > 0 && i === items.split) body.append(h("tr", { class: "divider-row" }, h("td", { colspan: span }, `everything else (${items.length - items.split})`)));
+      const tr = h("tr", { class: isSelected(t) ? "sel" : "", onclick: () => pick(t) }, h("td", {}, favButton(t)), h("td", {}, usedBadge(t), " ", customPill(t)));
       for (const [, , fn] of conf.cols) tr.append(h("td", {}, fn(t)));
       body.append(tr);
-    }
+    });
     table.append(body); list.append(table);
   } else {
     const grid = h("div", { class: "grid" });
-    for (const t of items) grid.append(tile(t));
+    items.forEach((t, i) => {
+      if (usedFirst && items.split > 0 && i === 0) grid.append(h("div", { class: "divider" }, `in use${useMap ? " in " + useMap : ""} (${items.split})`));
+      if (usedFirst && items.split > 0 && i === items.split) grid.append(h("div", { class: "divider" }, `everything else (${items.length - items.split})`));
+      grid.append(tile(t));
+    });
     list.append(grid);
   }
 }
@@ -330,8 +393,10 @@ function tile(t) {
   } else img = h("span", { class: "dim" }, "(no picture)");
   const sz = CONF[cat].tex ? `${t.width} x ${t.height}` : t.num != null ? `#${t.num}` : t.length != null ? fmtLen(t.length) : "";
   const n = animFrames(t);
-  return h("div", { class: "tile" + (isSelected(t) ? " sel" : ""), title: (t.title || t.name) + (n ? ` (animated, ${n} frames)` : ""), onclick: () => pick(t) },
-    favButton(t), n ? h("span", { class: "anim" }, "▶") : null,
+  const used = usedBadge(t);
+  return h("div", { class: "tile" + (isSelected(t) ? " sel" : "") + (t.custom ? " custom" : ""), title: (t.title || t.name) + (n ? ` (animated, ${n} frames)` : "") + (t.custom ? ` - custom (${t.custom})` : "") + (used ? " - " + usedTitle(t) : ""), onclick: () => pick(t) },
+    used, customPill(t),
+    favButton(t), n ? h("span", { class: "anim" + (used ? " low" : "") }, "▶") : null,
     h("div", { class: "img" }, img), h("div", { class: "nm" }, t.title || t.name), h("div", { class: "sz" }, sz));
 }
 // How many animation frames something has (0 = not animated): a texture/flat's animation (ANIMATED /
@@ -513,7 +578,7 @@ function planView(stage) {
 // The door overlay's settings; x is the door's left edge, y its bottom (0 = the strips' floor line).
 audit.door ||= { on: false, tex: "BIGDOOR2", w: 0, h: 0, x: null, y: 0, track: true };
 async function ensureTextures() {
-  if (!data.textures) data.textures = (await (await fetch("/api/assets/textures")).json()).items;
+  if (!data.textures) data.textures = [...(await (await fetch("/api/assets/textures")).json()).items, ...(custom.textures || [])];
   return data.textures;
 }
 function doorTextures() {
@@ -659,9 +724,10 @@ let layoutCubes = () => {};
 
 // ---- things -----------------------------------------------------------------------------------
 function renderThing(side, t) {
-  side.append(h("h2", {}, t.title, h("span", { class: "dim" }, `#${t.num}`), h("span", { class: "dim" }, t.category_title)));
+  side.append(h("h2", {}, t.title, t.num != null ? h("span", { class: "dim" }, `#${t.num}`) : null, h("span", { class: "dim" }, t.category_title), customPill(t), usedBadge(t)));
   const body = h("div", { class: "body" }); side.append(body);
-  body.append(h("div", { class: "row" }, "class ", copyable(t.class || "?"), " · editor number ", copyable(String(t.num)),
+  if (t.custom) body.append(h("div", { class: "row dim" }, `A class of ${t.custom}'s own script (zscript.zs), built on ${t.parent}. It has no editor number: the script spawns it, or swaps it in for a placed thing.`));
+  body.append(h("div", { class: "row" }, "class ", copyable(t.class || "?"), " · editor number ", t.num != null ? copyable(String(t.num)) : "none",
     t.radius != null ? ` · radius ${t.radius}, height ${t.height}` : "", t.hangs ? " · hangs from the ceiling" : ""));
   if (!t.sprite_lump) { body.append(h("div", { class: "empty" }, "no sprite in this game (an editor marker)")); return; }
   // To scale: the sprite at 2x beside the player (56 tall) and a 64-unit grid, its radius as a box under it.
@@ -682,7 +748,7 @@ function renderThing(side, t) {
   let i = 0;
   const step = () => {
     const [lump, tics] = seq[i % seq.length];
-    anim.src = assetUrl(`sprite/${lump}.png`); anim.onload = () => { anim.style.width = anim.naturalWidth * Z + "px"; };
+    anim.src = assetUrl(lump.includes("/") ? lump : `sprite/${lump}.png`); anim.onload = () => { anim.style.width = anim.naturalWidth * Z + "px"; };
     i++;
     if (seq.length > 1) animTimer = setTimeout(step, Math.max(1, tics) * 1000 / 35);
   };

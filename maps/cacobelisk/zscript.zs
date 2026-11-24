@@ -79,6 +79,19 @@ class CacobeliskElevator : EventHandler
 			riding = true;
 			Console.Printf("[DMS] CacobeliskElevator: the platform is going down");
 			LockSwitches(ln);
+			// Note #114 (2026-11-24): the ride made no sound. The script plays it now (and the map silences
+			// the engine's own floor sound for these sectors, so it can't double): a clunk as it starts, a
+			// low grinding loop that rides down with the car, a clunk when it lands.
+			Sector car = FindCar();
+			if (car != null)
+			{
+				rideSound = Actor.Spawn("MapSpot", (car.centerspot.x, car.centerspot.y, car.floorplane.ZAtPoint(car.centerspot)));
+				if (rideSound != null)
+				{
+					rideSound.A_StartSound("plats/pt1_strt", CHAN_5, 0, 1.0, ATTN_NORM, 0.8);
+					rideSound.A_StartSound("plats/pt1_mid", CHAN_BODY, CHANF_LOOPING, 0.9, ATTN_NORM, 0.75);
+				}
+			}
 		}
 	}
 
@@ -97,6 +110,7 @@ class CacobeliskElevator : EventHandler
 	const PULSE_TID = 302;       // the top switch's pulsing light (map.py SWITCH_PULSE_TID)
 	Line upperSwitch;
 	int shutAt;
+	Actor rideSound;             // note #114: the spot the ride's sound plays from; it goes down with the car
 
 	void ShutSwitches()
 	{
@@ -183,11 +197,19 @@ class CacobeliskElevator : EventHandler
 		Sector car = FindCar();
 		if (car == null)
 			return;
+		if (rideSound != null)
+			rideSound.SetOrigin((car.centerspot.x, car.centerspot.y, car.floorplane.ZAtPoint(car.centerspot)), true);
 		if (!broken)
 		{
 			if (car.floorplane.ZAtPoint(car.centerspot) > LANDED_Z + 0.5)
 				return;
 			broken = true;
+			if (rideSound != null)
+			{
+				rideSound.A_StopSound(CHAN_BODY);
+				rideSound.A_StartSound("plats/pt1_stop", CHAN_6, 0, 1.0, ATTN_NORM, 0.7);
+				rideSound = null;
+			}
 			landedAt = Level.maptime;
 			// Light_Flicker (tag, upper, lower): the car's light jumps between bright and dim.
 			Level.ExecuteSpecial(Light_Flicker, null, null, false, CAR_TAG, 144, 40);
@@ -289,9 +311,10 @@ class CacobeliskObelisks : EventHandler
 	const SLEEVE_REST = -240;
 	const SINK_OTHERS = 0.25;
 	const SLIT_TAG = 400;        // the switch obelisk's slit (map.py SLIT_TAG)
+	const SLIT_CONTROL_TAG = 402; // the block of sleeve above the slit's hollow: a 3D floor's control sector (map.py)
 
 	const SHOTGUN_TID = 300;
-	const SHOW_DELAY = 105;      // tics from the landing to the first obelisk (3 s)
+	const SHOW_DELAY = 175;      // tics from the landing to the first obelisk (5 s; 3 s until 2026-11-24: "a bit more of a delay")
 	const SHOW_GAP = 70;         // tics between one obelisk and the next (2 s)
 	const HALL_Z = -200;         // a player below this is in the hall (after H, the elevator is up again)
 
@@ -380,6 +403,116 @@ class CacobeliskObelisks : EventHandler
 			pairs, order.Size(), switchSleeve >= 0 ? "found" : "missing", shotgun != null ? "found" : "missing");
 	}
 
+	// Note #109: each altar has a snuffed torch (thing id ALTAR_TORCH_TID; CacobeliskTorches makes it the
+	// unlit torch). As its obelisk is revealed it flares to life: green, the switch obelisk's violet.
+	const ALTAR_TORCH_TID = 321;
+	const ALTAR_TORCH_REACH = 120;   // from the obelisk's middle to its altar's torch
+
+	void LightAltarTorch(Vector2 obelisk, bool violet)
+	{
+		let found = Level.CreateActorIterator(ALTAR_TORCH_TID);
+		Actor a, best = null;
+		while (a = found.Next())
+		{
+			if (a is "CacobeliskDeadTorch" && (best == null || (a.pos.xy - obelisk).Length() < (best.pos.xy - obelisk).Length()))
+				best = a;
+		}
+		if (best == null || (best.pos.xy - obelisk).Length() > ALTAR_TORCH_REACH)
+			return;
+		Vector3 where = best.pos;
+		best.Destroy();
+		let lit = Actor.Spawn(violet ? "CacobeliskVioletTorch" : "ShortGreenTorch", where, NO_REPLACE);
+		if (lit)
+		{
+			lit.bSolid = false;                      // on an altar, among pickups
+			lit.A_StartSound("vile/firestrt", CHAN_BODY, 0, 0.5, ATTN_NORM);
+		}
+	}
+
+	// Note #116: when the switch obelisk wakes, the sky turns from dark green to a dark red-violet, in two
+	// steps a second apart (the map's own sky textures, textures.txt).
+	const SKY_DELAY = 35;
+	int skyStage, skyAt;
+
+	void SkyShift()
+	{
+		if (skyStage == 0 || Level.maptime < skyAt)
+			return;
+		TextureID next = TexMan.CheckForTexture(skyStage == 1 ? "CACOSKY1" : "CACOSKY2", TexMan.Type_Any);
+		if (next.IsValid())
+			Level.ChangeSky(next, next);
+		Console.Printf("[DMS] CacobeliskObelisks: the sky turns (step %d)", skyStage);
+		skyStage = skyStage == 1 ? 2 : 0;
+		skyAt = Level.maptime + SKY_DELAY;
+	}
+
+	// Note #117: once the block above the slit's hollow has sunk to nothing (its top down on its underside),
+	// its two faces still showed as a plate floating over the leak. So it is dropped out of sight, under
+	// the floor: both its planes go down, fast.
+	const SLIT_HIDE = 64;
+	bool slitSinking;
+
+	void HideSlitBlock()
+	{
+		if (!slitSinking)
+			return;
+		let blocks = Level.CreateSectorTagIterator(SLIT_CONTROL_TAG);
+		int k;
+		while ((k = blocks.Next()) >= 0)
+		{
+			Sector block = Level.Sectors[k];
+			if (block.ceilingplane.ZAtPoint(block.centerspot) - block.floorplane.ZAtPoint(block.centerspot) > 0.01)
+				return;                                  // still coming down
+			Level.CreateFloor(block, Floor.floorLowerByValue, null, 64, SLIT_HIDE);
+			Level.CreateCeiling(block, Ceiling.ceilLowerByValue, null, 64, 64, SLIT_HIDE);
+		}
+		slitSinking = false;
+	}
+
+	// Note #118: the switch obelisk's later steps, ready for whatever will set them off (nothing does yet).
+	Vector2 switchAt;            // the switch obelisk's middle and pair, kept from its reveal
+	int switchPairNow;
+	bool step2Done, step3Done;
+
+	// Step 2: its altar's torch flares up violet, and the violet paint shows on its face.
+	void SwitchObeliskStep2()
+	{
+		if (!switchShown || step2Done)
+			return;
+		step2Done = true;
+		LightAltarTorch(switchAt, true);
+		QueueSplats(switchPairNow);
+		Console.Printf("[DMS] CacobeliskObelisks: the switch obelisk, step 2 (torch and paint)");
+	}
+
+	// Step 3: the sky begins to turn (note #116); what the obelisk then does is still to be decided.
+	void SwitchObeliskStep3()
+	{
+		if (!step2Done || step3Done)
+			return;
+		step3Done = true;
+		skyStage = 1;
+		skyAt = Level.maptime + SKY_DELAY;
+		Console.Printf("[DMS] CacobeliskObelisks: the switch obelisk, step 3 (the sky turns)");
+	}
+
+	bool PlayerAtShotgun()
+	{
+		if (shotgun == null)
+			return false;
+		for (int i = 0; i < MAXPLAYERS; i++)
+		{
+			if (!playeringame[i] || !players[i].mo)
+				continue;
+			let mo = players[i].mo;
+			double reach = mo.radius + shotgun.radius + 8;
+			if (abs(mo.pos.x - shotgun.pos.x) <= reach && abs(mo.pos.y - shotgun.pos.y) <= reach
+				&& abs(mo.pos.z - shotgun.pos.z) <= 64)
+				return true;
+		}
+		return false;
+	}
+
 	// Note #11: a low rumble from inside the obelisk with the cacodemon (the one to interact with), from
 	// the start: UZDoom's earthquake rumble, looped, very quiet, heard only close by.
 	void Hum(int i)
@@ -422,7 +555,11 @@ class CacobeliskObelisks : EventHandler
 			shown++;
 		}
 		// The switch obelisk: once the shotgun is taken (it has an owner, or it's gone).
-		if (!switchShown && switchSleeve >= 0 && (shotgun == null || shotgun.Owner != null))
+		SkyShift();
+		HideSlitBlock();
+		// Note #102: or once a player is near enough to take it: with a shotgun and full shells already, it
+		// isn't picked up, and the obelisk never woke.
+		if (!switchShown && switchSleeve >= 0 && (shotgun == null || shotgun.Owner != null || PlayerAtShotgun()))
 		{
 			switchShown = true;
 			Reveal(switchSleeve, switchPair, true, p);
@@ -544,19 +681,33 @@ class CacobeliskObelisks : EventHandler
 		Vector2 sc = sec.centerspot;
 		double drop = sec.floorplane.ZAtPoint(sc) - SLEEVE_REST;
 		Level.CreateFloor(sec, Floor.floorLowerByValue, null, isSwitch ? SINK_SWITCH : SINK_OTHERS, drop);
+		// Note #118 (2026-11-24): the switch obelisk goes in three steps. Step 1 is this reveal (the shotgun): its
+		// sleeve sinks, its cacodemon and its leak appear, and no more: its torch stays out, no paint, no
+		// change in the sky. Step 2 (a switch, to come) is SwitchObeliskStep2: the torch and the paint. Step 3
+		// (an item placed in a niche, to come) is SwitchObeliskStep3: the sky turns, and what follows.
+		if (!isSwitch)
+			LightAltarTorch(sc, false);
+		else
+		{
+			switchAt = sc;
+			switchPairNow = pair;
+		}
 		if (isSwitch)
 		{
-			// Note #38: the slit the violet spills from (cut into the sleeve's back, map.py slit_edges)
-			// opens upwards as the sleeve sinks, its top rising to the sleeve's at the same speed, so
-			// nothing of it is left standing once the slab is uncovered.
-			let slits = Level.CreateSectorTagIterator(SLIT_TAG);
+			// Note #38: the slit the violet spills from (a hollow low in the sleeve's back). Note #107: the
+			// piece of sleeve above the hollow is a 3D floor (its control sector tagged SLIT_CONTROL_TAG): its
+			// top comes down with the sinking sleeve, at the same speed, until it meets its underside and
+			// nothing of it is left.
+			let blocks = Level.CreateSectorTagIterator(SLIT_CONTROL_TAG);
 			int k;
-			while ((k = slits.Next()) >= 0)
+			while ((k = blocks.Next()) >= 0)
 			{
-				Sector slit = Level.Sectors[k];
-				double rise = sec.ceilingplane.ZAtPoint(sc) - slit.ceilingplane.ZAtPoint(slit.centerspot);
-				Level.CreateCeiling(slit, Ceiling.ceilRaiseByValue, null, SINK_SWITCH, SINK_SWITCH, rise);
+				Sector block = Level.Sectors[k];
+				double thick = block.ceilingplane.ZAtPoint(block.centerspot) - block.floorplane.ZAtPoint(block.centerspot);
+				if (thick > 0)
+					Level.CreateCeiling(block, Ceiling.ceilLowerByValue, null, SINK_SWITCH, SINK_SWITCH, thick);
 			}
+			slitSinking = true;
 		}
 		int cacos = 0;
 		if (isSwitch)
@@ -576,7 +727,6 @@ class CacobeliskObelisks : EventHandler
 					cacos++;
 				}
 			}
-			QueueSplats(pair);
 		}
 		Actor r = Actor.Spawn("MapSpot", (sc.x, sc.y, player.pos.z + 48));
 		if (r != null)
@@ -721,6 +871,7 @@ class CacobeliskWater : EventHandler
 	const BIG_DOOR_TAG = 7;      // the big door on the stairs (map.py CISTERN_DOOR_TAG)
 	const DOOR_GLOW_TID = 303;   // the red light behind it (map.py CISTERN_DOOR_GLOW_TID)
 	const GUARD_TID = 304;       // the shotgunners who come at once (map.py CISTERN_DOOR_WAKE_TID)
+	const ROOM_SWITCH_TAG = 9;   // the switch's twin inside the room behind the door (map.py CISTERN_DOOR_SWITCH_TAG)
 	const LAZY = 0.12;           // map units a tic (about 4 a second)
 	const SOUTH_SPEED = 0.2;     // the cistern's, once the switch is used (not "TURNED": names ignore case)
 
@@ -824,6 +975,31 @@ class CacobeliskWater : EventHandler
 		{
 			turned = true;
 			Level.ExecuteSpecial(Light_ChangeToValue, null, null, false, SWITCH_TAG, DAIS_LIGHT);
+			// Note #87: the twin switch inside the room behind the door is for one use: whichever of the two
+			// was used, its post snaps into the floor (its top is the room's rock: nothing is left to see).
+			Level.ExecuteSpecial(Floor_LowerToLowest, null, null, false, ROOM_SWITCH_TAG, 64);
+			// Note #90: the two switches are one: whichever was used, the other shows as flipped (SW2WOOD) and
+			// does nothing more, so the door can't be "opened" a second time from the other side.
+			TextureID swOff = TexMan.CheckForTexture("SW1WOOD", TexMan.Type_Wall);
+			TextureID swOn = TexMan.CheckForTexture("SW2WOOD", TexMan.Type_Wall);
+			for (int i = 0; i < Level.Lines.Size(); i++)
+			{
+				Line other = Level.Lines[i];
+				if (other == ln || other.special != Door_Open || other.args[0] != BIG_DOOR_TAG)
+					continue;
+				other.special = 0;
+				for (int sn = 0; sn < 2; sn++)
+				{
+					Side sd = other.sidedef[sn];
+					if (sd == null)
+						continue;
+					for (int part = Side.top; part <= Side.bottom; part++)
+					{
+						if (sd.GetTexture(part) == swOff)
+							sd.SetTexture(part, swOn);
+					}
+				}
+			}
 			// Note #48: two of the shotgunners behind the door come for whoever used the switch at once.
 			let guards = Level.CreateActorIterator(GUARD_TID);
 			Actor guard;
@@ -873,5 +1049,180 @@ class CacobeliskDust : Actor
 	{
 		Super.Tick();
 		vel *= 0.96;
+	}
+}
+
+// Chat, 2026-11-24: unlit torches. The game has none, so the map makes one from the short red torch's
+// sprite (textures.txt): its bowl and stem, darkened and not full bright, with the flame's own frames in
+// grey, see-through, as smoke over it. No light. The handler swaps the map's torches with thing id
+// DEAD_TID (map.py DEAD_TORCH_TID) for it when the level loads.
+// The skull's eyes are a dim, still purple (in the sprite); the torch is snuffed and gives no light at all.
+class CacobeliskDeadTorch : Actor
+{
+	Actor smoke;
+
+	Default
+	{
+		Radius 16;
+		Height 28;
+		ProjectilePassHeight -16;
+		+SOLID
+	}
+
+	States
+	{
+	Spawn:
+		CACT A -1;
+		Stop;
+	}
+
+	override void PostBeginPlay()
+	{
+		Super.PostBeginPlay();
+		smoke = Actor.Spawn("CacobeliskTorchSmoke", pos + (0, 0, 28), NO_REPLACE);
+	}
+
+	override void OnDestroy()
+	{
+		if (smoke)
+			smoke.Destroy();
+		Super.OnDestroy();
+	}
+}
+
+class CacobeliskTorchSmoke : Actor
+{
+	Default
+	{
+		+NOGRAVITY
+		+NOBLOCKMAP
+		+NOINTERACTION
+		RenderStyle "Translucent";
+		Alpha 0.35;
+	}
+
+	States
+	{
+	Spawn:
+		CACS ABCD 7;
+		Loop;
+	}
+}
+
+class CacobeliskTorches : EventHandler
+{
+	const DEAD_TID = 320;
+	const ALTAR_TID = 321;       // the altars' torches (note #109): unlit too, not solid, lit by CacobeliskObelisks
+	// Note #95 (2026-11-24): when the big door on the stairs is opened (either of its switches), the dead
+	// torches flare up one after another, from the cistern's south end back up to the stairs: each becomes
+	// a burning torch (with its light), with a whoosh, and its hollow brightens.
+	const BIG_DOOR_TAG = 7;      // map.py CISTERN_DOOR_TAG
+	const FLARE_START = 35;      // tics after the switch
+	const FLARE_GAP = 35;        // between one torch and the next
+	const HOLLOW_GLOW = 64;      // added to the hollow's light
+
+	Array<Actor> waiting;
+	int flareAt;
+	bool flaring;
+
+	override void WorldLoaded(WorldEvent e)
+	{
+		Array<Actor> found;
+		let it = Level.CreateActorIterator(DEAD_TID);
+		Actor a;
+		while (a = it.Next())
+			if (!(a is "CacobeliskDeadTorch"))
+				found.Push(a);
+		for (int i = 0; i < found.Size(); i++)
+		{
+			let old = found[i];
+			let t = Actor.Spawn("CacobeliskDeadTorch", old.pos, NO_REPLACE);
+			if (t)
+				old.Destroy();
+		}
+		// The altars' torches: the same unlit torch, but not solid (pickups lie round it), and it keeps
+		// its thing id so the obelisks' handler finds it.
+		Array<Actor> onAltars;
+		let alt = Level.CreateActorIterator(ALTAR_TID);
+		while (a = alt.Next())
+			if (!(a is "CacobeliskDeadTorch"))
+				onAltars.Push(a);
+		for (int i = 0; i < onAltars.Size(); i++)
+		{
+			let old = onAltars[i];
+			let t = Actor.Spawn("CacobeliskDeadTorch", old.pos, NO_REPLACE);
+			if (!t)
+				continue;
+			t.bSolid = false;
+			t.ChangeTid(ALTAR_TID);
+			old.Destroy();
+		}
+		Console.Printf("[DMS] CacobeliskTorches: %d torch(es) unlit, %d on altars", found.Size(), onAltars.Size());
+	}
+
+	override void WorldLineActivated(WorldEvent e)
+	{
+		Line ln = e.ActivatedLine;
+		if (flaring || ln == null || ln.special != Door_Open || ln.args[0] != BIG_DOOR_TAG)
+			return;
+		flaring = true;
+		// South to north: up the cistern, then up the stairs.
+		let it = ThinkerIterator.Create("CacobeliskDeadTorch");
+		Actor a;
+		while (a = Actor(it.Next()))
+		{
+			if (a.tid == ALTAR_TID)                  // the altars' torches are the obelisks' to light
+				continue;
+			int at = 0;
+			while (at < waiting.Size() && waiting[at].pos.y <= a.pos.y)
+				at++;
+			waiting.Insert(at, a);
+		}
+		flareAt = Level.maptime + FLARE_START;
+		Console.Printf("[DMS] CacobeliskTorches: the big door opens; %d torch(es) will flare up", waiting.Size());
+	}
+
+	override void WorldTick()
+	{
+		if (!flaring || waiting.Size() == 0 || Level.maptime < flareAt)
+			return;
+		Actor old = waiting[0];
+		waiting.Delete(0);
+		flareAt = Level.maptime + FLARE_GAP;
+		if (!old)
+			return;
+		Vector3 where = old.pos;
+		Sector hollow = old.CurSector;
+		old.Destroy();
+		let lit = Actor.Spawn("ShortRedTorch", where, NO_REPLACE);
+		if (lit)
+			lit.A_StartSound("vile/firestrt", CHAN_BODY, 0, 0.6, ATTN_NORM);
+		if (hollow)
+			hollow.SetLightLevel(min(255, hollow.lightlevel + HOLLOW_GLOW));
+	}
+}
+
+// Note #109: the switch obelisk's altar torch burns violet (the map's own sprite, textures.txt CACP: the blue
+// and the red torch's flames mixed), with a violet light.
+class CacobeliskVioletTorch : Actor
+{
+	Default
+	{
+		Radius 16;
+		Height 37;
+		ProjectilePassHeight -16;
+	}
+
+	States
+	{
+	Spawn:
+		CACP ABCD 4 Bright;
+		Loop;
+	}
+
+	override void PostBeginPlay()
+	{
+		Super.PostBeginPlay();
+		A_AttachLight('CacobeliskViolet', DynamicLight.RandomFlickerLight, Color(170, 60, 255), 48, 60, DYNAMICLIGHT.LF_ATTENUATE, (0, 0, 40), 0.2);
 	}
 }
