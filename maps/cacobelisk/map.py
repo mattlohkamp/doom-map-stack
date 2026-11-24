@@ -63,6 +63,7 @@ TARGET_TEXTURE = "BROWNWEL"
 TARGET_TOP = 72                         # note #40: the coffer's height, 16 above the recess's 56 (was 68)
 TARGET_OFFSET = (166.0, 5.0)            # texture pixels; note #40: the wheel sat low, cut off at the bottom
 TARGET_TID = 301
+TARGET_SLOT_TAG = 5                     # note #35: the slot, shut once the target is shot (zscript.zs SLOT_TAG)
 TARGET_RGB = (200, 60, 50)              # a faint red pulse
 TARGET_RADIUS = (10, 20)
 TARGET_PERIOD = 35
@@ -88,19 +89,39 @@ NICHE_FLOOR, NICHE_TOP = 16, 48
 NICHE_LIGHT = 176
 # Note #25: the bottom call switch's niche is dark, darker than the hall (104), so it doesn't draw attention.
 CALL_NICHE_LIGHT = 72
+HALL_SKY = 0                    # note #67: the walls 256 high under the sky (384 at first, note #59); the obelisks' pillars reach -16
+SKY_FLAT = "F_SKY1"
+HALL_WALL, HALL_WALL_SCALE = "STONE3", 0.5     # note #69 (scale 0.5 = twice the size)
+# Note #71: STONE3's dark seams are at its rows 14, 46, 78, 110: hung from the sky's height (0) at twice the
+# size, the lowest was at -221, 19 above the vine grates' top (-240). Moved down 16 (8 texture pixels) so it
+# runs just above the vines. (Sign as worked out for the door's faces: a positive offset moves it up.)
+HALL_WALL_SHIFT = -8
+HALL_FLOOR = "FLAT10"           # note #58: brown dirt (a flat; on the banks it's used as a wall texture)
+# Note #54: the map's own textures (textures.txt): the closet's wall with a strip of the track metal, turned
+# on its side, along its foot; and the shaft's wall: that strip at its top, the upright track below.
+CLOSET_WALL = "GRAY1"
+CLOSET_SKIN = "METAL4"          # the mapper's pick (chat, 2026-11-23); PIPEWAL1 first (note #64), instead of cement
+BASE_TEXTURE = "CACOBASE"
+CALL_NICHE_TAG = 4              # note #34: shut by a panel once a switch is used (zscript.zs CALL_TAG)
 # Note #7: a pulse at the switch, subtle but insistent (this is the only way on): a small pale light
 # (PointLightPulseAttenuated, 9831) just in front of the plate, swelling and fading every second. Light
 # things don't fall with the floor, so it stays up with the switch when the niche drops away.
 SWITCH_PULSE_RGB = (150, 200, 170)
 SWITCH_PULSE_RADIUS = (12, 24)   # the mapper's editor save 2026-11-22 01:42 (was 24 to 56)
 SWITCH_PULSE_PERIOD = 35  # tics
+SWITCH_PULSE_TID = 302
+SHUTTER_TAG = 6           # note #36 (zscript.zs SHUTTER_TAG)
+SHUTTER_DEEP = 2
+CALL_SHUTTER_TEXTURE = "AQF074"   # note #43: the bottom niche's panel (AQF049 "isn't quite a fit" there)
+SHUTTER_TEXTURE = CALL_SHUTTER_TEXTURE   # note #44: the same panel on both (the top one was AQF049)
+SWITCH_WINDOW = 32           # note #44: both niches' width: the panel's one 32 x 32 tile, and the switch's plate   # the mapper's pick (a flat; UZDoom draws flats on walls)
 # Note #7: the elevator track shows 16 up the platform's walls before it moves, a preview of the ride: the
 # solid blocks lining the shaft are at 16, not 0, so the track (their lower texture) starts there.
 TRACK_PREVIEW = 16
 # The hall: the mouth and the big room, dim and quiet (mapper, 2026-11-22), in fog.
 HALL_LIGHT = 104          # note #4: "drop the lighting just a bit" (was 120)
-HALL_FOG = 0x50585C       # grey-green, like the stone
-HALL_FOG_DENSITY = 360    # note #26: more intense (96 at first, then 200, then 280)
+HALL_FOG = 0x0A160E       # note #66 (2026-11-23): a near-black green, so the walls fade into the night like the sky above (was 0x50585C, grey mist: flat grey walls against the black sky)
+HALL_FOG_DENSITY = 240    # note #66: thinner with the dark colour, or nothing would show (360 as grey: note #26; 96, 200, 280 before)
 # Two rows of monoliths flanking the way downrange: green marble slabs 80 long, 32 deep, corners cut
 # on the aisle side, the carved ring (MARBFAC2) wrapped round towards the aisle (note #3),
 # on a base 16 wider all round and 16 up, a little brighter than the hall. The slab stands 128 above
@@ -139,7 +160,9 @@ GUTTER_W_TOP = 1760          # its north end
 CROSSING = (270, 327)        # the crossing channel's south and north edges
 CROSSING_SW = (-56, 270)     # where its south edge turns to meet the south wall (west of the mouth)
 CROSSING_WALL_X = -72        # ... at this x on the south wall
-BRIDGE = (-40, 104)
+BRIDGE = (-40, 104)             # since note #68 the landing's stone, not a bridge: its west and east edges
+LANDING = {}                    # its sector (set in build(), used by west_water)
+LANDING_UP, LANDING_LIP, LANDING_FLAT = 8, 18, "FLOOR7_2"
 BRIDGE_TAG = 500
 BRIDGE_SLAB = (-252, -248)   # the slab's underside and top (the bases' height, 8 above the floor)
 BRIDGE_CONTROL = (720, -96)  # the control sector's corner (32 x 32, outside the map)
@@ -165,6 +188,8 @@ LEAF_TEXTURES = ("BIGDOOR5", "BIGDOOR7")
 # 64 x 72 panel (offsets in texture pixels on the lower part: columns 32-96, rows 26-98 of 128 x 112).
 WICKET_TEXTURE = "BIGDOOR6"
 WICKET_OFFSET = (32, 26)
+WICKET_TEXTURE_HIGH = 112
+WICKET_STEP, WICKET_SILL = 4, "FLAT5_2"     # note #55: a slight wooden step through the small door
 # Note #58: the small door set into the leaf, in its own rusted metal frame: a recess FRAME[0] deep in
 # the leaf's face, FRAME[1] wider than the door each side and FRAME[2] taller, lined with the elevator
 # track's rusty metal (SUPPORT3); the door at its back. Posts of the frame stand either side of the door
@@ -172,9 +197,9 @@ WICKET_OFFSET = (32, 26)
 FRAME = (4, 4, 4)
 FRAME_TEXTURE = "SUPPORT3"
 LEAF_THICK = 12
-# Note #50: the small door is human-sized (64 x 72) and the leaf goes on above it: its panel (WOODMET1)
-# sinks into the floor (Plat_DownWaitUpStay on WICKET_TAG) and comes back up; above it the leaf's
-# texture, as a lintel. Centred in the left leaf.
+# Note #50: the small door is human-sized (64 x 72) and the leaf goes on above it, as a lintel. Centred in
+# the left leaf. It slides up into the leaf and comes back down (Door_Raise on WICKET_TAG; it sank into
+# the floor until note #1 of 2026-11-23).
 WICKET = (15, 79)               # along the left leaf from its hinge
 WICKET_HIGH = 72
 WICKET_TAG = 501
@@ -186,15 +211,15 @@ VESTIBULE_OUTLINE = ((-112, 16), (-128, 112), (-88, 184), (16, 208), (104, 184),
 VESTIBULE = (224, 96)           # width, depth (from the wall); note #63: smaller (was 256 x 176), the
                                 # passage leading on from its east side
 VESTIBULE_LIGHT = 72
-VESTIBULE_GLOW = (180, 50, 24, 112)
+VESTIBULE_GLOW = (180, 50, 24, 144)   # note #13: from the torch in the wall now (was mid-room, radius 112)
+VESTIBULE_TORCH_WALL = 1              # between VESTIBULE_OUTLINE's points 1 and 2 (vestibule.wall_2)
 # Note #59: two imps waiting behind the great doors, facing them. (u, d) in the doorway's frame. Note #62:
 # not ambush (deaf) any more: shooting one through the gap left the other asleep; now gunfire wakes both.
 IMP = 3001
-# Note #61: a lost soul hidden high up behind the 2nd west obelisk (seen from the aisle at its south end,
-# its pillar hides it), revealed when that pillar sinks; it waits until it sees the player (ambush).
-LOST_SOUL = 3006
-HIDDEN_SOUL = (-160, 810, 96)      # x, y, height above the floor
 VESTIBULE_IMPS = ((-56, 64), (60, 72))
+# Note #9 (2026-11-23): a third imp, deaf (ambush), in the vestibule's back corner behind the left leaf:
+# gunfire draws the other two out, this one waits for whoever comes through the small door.
+VESTIBULE_AMBUSH_IMP = (-72, 150)
 # Note #63: through the small door, a cramped, twisting passage of mossy stone (A-MOSRK2 on walls, floor
 # and ceiling) leaves the vestibule on the right (east), bends north and gradually steps up, 8 at a
 # time; dimly lit, with torches (short red, 57) in niches in its walls. PASSAGE: its cross-sections in the
@@ -255,11 +280,30 @@ PINKY = 3002
 # passage (note #76); the item 12 in, so the player can reach it from the passage.
 SHELL_BOX = 2049
 PASSAGE_ITEMS = ()
+SHELF_FRAME = (6, 4)            # note #8: the wooden frame round a shelf's box: border, depth
 PASSAGE_SHELVES = ((1, "r", SHELL_BOX),)   # the 2nd piece: the 1st's right wall is right against the hall's
+# Note #4 (2026-11-23): a blank wall on the way down (piece, side) gets a big carving set into it: the
+# hall's green marble skull (MARBFACE, 128 x 128; kept back from the obelisks, 2026-11-22 note #4) at the
+# back of a marble alcove 128 wide, CARVING_DEEP deep, its sill CARVING_SILL up: the sill is a shelf with
+# two stimpacks. Lit a little above the passage, so the face reads in the dark.
+PASSAGE_CARVINGS = ((12, "l"),)
+# Note #5 (2026-11-23): the skull read as significant; now a patterned marble panel (MARBLE3, no face), lit
+# only a little above the passage (96, was 112), so it's plainly decoration.
+CARVING_TEXTURE, CARVING_SILL, CARVING_DEEP, CARVING_LIGHT = "GSTSATYR", 32, 24, 96
+# Note #10 (2026-11-23): the mapper's pick, GSTSATYR, once only: the texture is 64 wide (one face), so it
+# takes the middle 64 of the alcove's 128-wide back, with plain gothic stone (GSTONE1, which the face is
+# carved in) either side, its blocks carried on across the three stretches, and on the alcove's sides.
+CARVING_WIDE, CARVING_STONE = 64, "GSTONE1"
 # Note #67: spread out, one pinky a piece (two shared a piece, wedged side by side).
 # Note #80: the 2nd pinky at the passage's peak (piece 9, where it starts down), away from the others.
 PASSAGE_MONSTERS = ((11, PINKY, 0.5, 0.4), (9, PINKY, 0.5, 0.5), (13, PINKY, 0.3, 0.5),
                     (13, IMP, 0.85, 0.3), (14, IMP, 0.5, 0.7))
+# Note #9 (2026-11-23): gunfire in the obelisk hall woke every pinky in the passage (sound carries through
+# every open two-sided line, however far). Sound passes one sound-blocking line and stops at the second:
+# the two steps after the first pinky's piece (passage_10) block sound, so that pinky still comes, and
+# the pinkies and imps further on (passage_12 on) only hear shots fired past those steps. The other way
+# round, through the drain, is closed the same way (the grates and the cistern's west wall).
+PASSAGE_QUIET = (10, 11)        # the steps into passage_11 and passage_12
 DRAIN_TOP = -DROP + 16
 DRAIN_FLOOR = -DROP - 16
 DRAIN_DEPTH = 96          # note #39: deep enough that its far wall is out of sight (was 16)
@@ -272,12 +316,84 @@ DRAIN_GRATE = "MIDVINE1"
 # (32 high, 96 deep), and the floor is flooded (the player wades). From down here the player looks up
 # through the slot and the vines into the obelisk hall. Very dark, very foggy.
 CISTERN_FLOOR = -DROP - 64
-CISTERN_TOP = -128
+CISTERN_TOP = 256             # note #16 (2026-11-23): out of sight in the dark (576 above the water; was -128, 192)
 CISTERN_EAST = ((768, 1760), (832, 192))       # its north-east and south-east corners (editor save)
 # Note #82: three spectres (shadow pinkies, 58) along the cistern, ambush, facing the way the player comes
 # down (north).
 SPECTRE = 58
-CISTERN_SPECTRES = ((650, 1350), (690, 880), (660, 430))
+# Note #11 (2026-11-23): asleep until touched or hurt (they don't hear or see the player): zscript.zs swaps
+# the things with this id for CacobeliskSleeper when the level loads.
+SLEEPER_TID = 310
+# Note #7 (2026-11-23): spread further: the northmost where it was, the other two further down towards the
+# cistern's south end (were at y 880 and 430).
+# Editor save 2026-11-23 15:59: the northmost spectre (spectre_1, at (650, 1350)) removed by the mapper;
+# the other two keep their numbers.
+CISTERN_SPECTRES = {2: (690, 760), 3: (624, 436)}   # note #17: the 3rd in front of the platform (was y 270)
+# Note #17 (2026-11-23): at the cistern's south end, a waterlogged wooden platform (an island just clear of
+# the walls, its boards CISTERN_PLATFORM_UP above the water) with a dais on it carrying a switch: a wooden
+# post at the back of the dais, the switch (SW1WOOD's ring, rows 64-112 of the texture) on its north face,
+# towards the player coming down the cistern. The switch does nothing yet (the mapper to say what).
+CISTERN_PLATFORM = (590, 216, 770, 376)        # x0, y0, x1, y1
+CISTERN_PLATFORM_UP = 4         # (until note #20: the boards' height above the water)
+# Note #20 (2026-11-23): the dais sits up on a grating, like the bridge over the hall's channel: the
+# platform is a metal grate (a 3D floor: CISTERN_GRATE = its underside and top above the water, FCGRATE2,
+# its control sector outside the map at CISTERN_GRATE_CONTROL) standing on bars (MIDBARS3 squeezed into the
+# gap), the water running on beneath it. The dais (wood, 8 above the grate) and its post rise through it.
+CISTERN_GRATE = (12, 16)
+CISTERN_GRATE_TAG = 602
+CISTERN_GRATE_CONTROL = (784, -96)
+CISTERN_GRATE_FLAT, CISTERN_GRATE_SIDE = "FLAT5_2", "WOOD1"   # note #47: wooden boards (was a metal grate: FCGRATE2, SUPPORT3); the bars under it stay
+# Note #19 (2026-11-23): dim candlelight on the dais: two candles (34: the smallest flame Doom has, and it
+# doesn't block the way to the switch; UZDoom's lights.pk3 gives it its glow), either side of the post.
+CANDLE = 34
+GREEN_ARMOR = 2018
+CISTERN_ARMOR = (680, 228)      # note #50: behind the post (y 248-264) and the dais, out of sight from the north
+CISTERN_CANDLES = ((646, 288), (714, 288))   # note #24: forward of the post, lighting the switch face (were beside it, y 256)
+CISTERN_DAIS = (632, 240, 728, 336)            # 12 above the boards
+CISTERN_POST = (648, 248, 712, 264)            # 48 above the dais
+CISTERN_WOOD, CISTERN_BOARDS, CISTERN_SWITCH = "WOOD1", "FLAT5_2", "SW1WOOD"
+# Note #18 (2026-11-23): the water flows away from the obelisk hall, slow and lazy: the west gutter and its
+# drain west, the east gutter and its drain east (they part under the bridge, out of sight), and the
+# cistern's on east, out through a low drain along its east wall (CISTERN_OUT: high, deep). Using the
+# switch on the dais turns the cistern's water south and speeds it up a little. zscript.zs
+# (CacobeliskWater) moves the water's picture each tic, by sector tag; the player isn't carried.
+# (The mapper wrote "west" for the east drain and the cistern too; "away from the obelisk room" is east
+# on that side: Claude's reading.)
+CISTERN_TAG = 600
+# Note #41 (2026-11-23): the cistern's switch slowly opens a big wooden door in the west wall of the stairs
+# down (their 2nd flight), the way forward: Door_Open on the switch itself (tag, speed 4: about 5 s), so
+# the movement check follows it. Behind it a chamber (width along the wall, depth) with two shotgunners
+# and a red glow that comes on as the door starts to open. Beyond the chamber: nothing yet.
+CISTERN_DOOR_STAIR = 3          # note #53: the 3rd flight (was the 2nd)
+CISTERN_DOOR_TAG = 7
+CISTERN_DOOR_WIDE = 112
+CISTERN_DOOR_TEXTURE = "BIGDOOR6"
+# Note #53 (2026-11-23): the chamber about twice as big and less boxy: its outline (along the wall from the
+# door's middle, away from the stairs), from the door's far side round to its near side; about 330 x 280.
+# (It was a 192 x 192 box.)
+CISTERN_DOOR_OUTLINE = ((96, 16), (150, 60), (168, 150), (120, 250), (30, 296), (-70, 280), (-150, 200),
+                        (-160, 90), (-110, 24))
+CISTERN_DOOR_ROOM_HIGH = 128
+CISTERN_DOOR_LIGHT, CISTERN_DOOR_TINT = 144, 0xFF7050
+CISTERN_DOOR_GLOW = (255, 70, 30, 176)
+CISTERN_DOOR_GLOW_TID = 303
+SHOTGUNNER = 9
+# Note #48 (2026-11-23): six shotgunners (along the wall from the door's middle, behind the door, kind):
+# two that come for the player the moment the switch is used ("wake"), two ordinary ones ("idle": they
+# wake on seeing or hearing the player), two deaf ones ("deaf": ambush, in the corners beside the door,
+# out of sight from the doorway). Not mirrored.
+CISTERN_DOOR_GUARDS = ((-34, 46, "wake"), (26, 74, "wake"), (-70, 160, "idle"), (60, 210, "idle"),
+                       (-100, 40, "deaf"), (100, 54, "deaf"))
+CISTERN_DOOR_WAKE_TID = 304
+SWITCH_TAG = 601                # the platform, dais and post: the switch lights them a little (and tells the script)
+FLOW_WEST_TAG, FLOW_EAST_TAG = 610, 611
+CISTERN_OUT = (20, 96)
+SWITCH_LIGHT = 96
+# Note #7: dim lights along the east wall (PointLightAttenuated: every CISTERN_GLOW_GAP from the north,
+# 20 out from the wall, 40 above the water), pale green like the water, so a spectre crossing in front of
+# one shows as a shadow. (colour, radius), alternating a little so they don't read as a row of lamps.
+CISTERN_GLOW_GAP = 250
+CISTERN_GLOWS = (((70, 120, 90), 104), ((60, 105, 85), 88))
 CISTERN_LIGHT = 40
 # Note #79: grey, the hall's own fog (was a near-black 0x101810 at 420: from far off the black looked
 # wrong), so through the grate it all fades uniformly to grey; the drains share it (note #78).
@@ -285,7 +401,7 @@ CISTERN_FOG = (HALL_FOG, HALL_FOG_DENSITY)       # the drains (seen from the hal
 # Note #84: down in the cistern itself (and the stairs to it), less fog and darker: a near-black fog,
 # thinner, so the spectres don't stand out against grey mist. The drains keep the grey (note #79).
 CISTERN_DARK_FOG = (0x080808, 200)
-CISTERN_DARK_LIGHT = 32
+CISTERN_DARK_LIGHT = 48     # note #7 (2026-11-23): "a little too dark": slightly up (was 32)
 CISTERN_FALL = "SFALL1"
 CISTERN_STEPS = 4
 PASSAGE_END = {}   # note #37 (the mapper): hanging vines as the grate
@@ -312,6 +428,7 @@ GUTTER_E_WEST_CUTS = {1085: (240, 1088), 1220: (256, 1184)}   # where a cut meet
 # head is the 16 of the base's edge below the slit). The fall is the blue waterfall (WFALL) in sectors
 # desaturated and tinted violet, so it comes out violet (coloradd on the base's own walls didn't show).
 VIOLET_FALL = "WFALL1"
+LIP_VIOLET = 0x2E0555             # VIOLET x 35/104 (note #31)
 VIOLET = 0x8A10FF                 # note #41: saturated (was 0xB060FF, which came out a lavender grey)
 SLIT = (32, 48, 4, 32)            # along the back from the slab's y0: 32-48; 4 deep; 32 high above the base
 SLIT_TAG = 400                    # zscript.zs opens it upwards as the sleeve sinks
@@ -321,8 +438,24 @@ GUTTER_E_SHARED = {((240, 1552), (240, 1568)),   # built by monolith(): the base
                    ((138, 270), (129, 327))}     # built by west_water(): where the crossing channel joins
 # Note #41: "lose the grey-out": the colours were pale (lots of green in them), so the desaturated water
 # came out grey; now saturated violets (were 0xE8D8F0, 0xD8B8F0, 0xC890F0, 0xB060FF, 0xC080FF).
-GUTTER_E_VIOLET = ((0.0, None), (0.25, 0xD8A0FF), (0.5, 0xC070FF), (0.75, 0xA040FF), (1.0, 0x8A10FF),
-                   (0.9, 0x9A30FF))   # (desaturation, floor colour) per piece, south to north
+# Note #22 (2026-11-23): both gutters plain green again: no violet in the east one (the mapper's earlier
+# idea, withdrawn). The pieces keep their cuts and names (gutter_e.violet_N), so nothing else moves; the
+# rivulet from the switch obelisk, part of piece 4, is green with them. The obelisk's own violet leak (its
+# slit and the spill on its base) is unchanged. Was: (0.25, 0xD8A0FF), (0.5, 0xC070FF), (0.75, 0xA040FF),
+# (1.0, 0x8A10FF), (0.9, 0x9A30FF) for pieces 1-5.
+# Note #25 (2026-11-23): violet after all, but only where the leak meets the gutter. The rivulet across the
+# walkway is its own sector again, full violet, and where it runs into the gutter the violet spreads and
+# fades in concentric rings, as if rippling out into the green: round islands in the gutter's water
+# (VIOLET_RINGS: centre, then (radius, desaturation, colour) from the outside in; they must stay inside
+# the gutter, which is about 95 wide there). The rest of the gutter is green.
+# Note #30 (2026-11-23): the rings spread from the point of entry itself: half rings centred on the middle
+# of the rivulet's mouth, on the gutter's west edge (they were whole circles out in the gutter in front of
+# it). The innermost holds the whole mouth, so the little fall there is drawn by a desaturated sector and
+# comes out violet (drawn by the green gutter it stayed blue). Radii must reach past half the mouth (23)
+# and stay inside the gutter piece (66 south of the mouth's middle, about 95 across).
+VIOLET_RINGS = ((66, 0.3, 0xD8A0FF), (52, 0.6, 0xB860FF), (38, 0.85, 0x9A30FF), (26, 1.0, 0x8A10FF))
+VIOLET_RING_STEPS = 10          # lines in each half ring
+GUTTER_E_VIOLET = ((0.0, None),) * 6   # (desaturation, floor colour) per piece, south to north; None = untinted
 # And a trail of blood on the floor (Doom's pools of blood and brains drawn as silhouettes), sparse at
 # first and denser towards the obelisk's altar, where a dead marine lies. Note #30: first a glowing
 # violet (renderstyle addstencil, 0xC020FF), "too stark": now the floor's own dark grey (FLOOR4_8,
@@ -447,23 +580,60 @@ def build(m: MapBuilder) -> None:
     # upper part, pegged to the niche's top so it stays up there. Floor_LowerByValue (20: tag, speed,
     # height), once, on CAR_TAG: the platform and the niche's floor go down together, and the niche
     # becomes the way through (48 wide, a 16 step up from the platform). The niche is the front side.
-    lip = m.two_sided((NICHE_X0, 192), (NICHE_X1, 192), car, niche, "niche.mouth")
+    # Note #36 (2026-11-23): once the switch is used a panel comes down in front of it (the mapper: the
+    # plate must not just vanish). The last SHUTTER_DEEP of the niche, right in front of the switch, is a
+    # sector of its own, the shutter: its floor goes down with the niche's (CAR_TAG), and zscript.zs
+    # lowers its ceiling (its second tag, SHUTTER_TAG) from the niche's top to its sill, so the panel
+    # (SHUTTER_TEXTURE, the upper part of the line between the two, riding down with that ceiling)
+    # covers the switch's window, while the way through below stays open.
+    # Notes #44, #45: the window is SWITCH_WINDOW wide, the panel texture's one tile and the switch's
+    # plate, like the bottom niche (its twin): the rest of the niche's width, either side, is a cheek of
+    # track metal (a sector shut down to the sill: floor = ceiling there until the floor drops with the
+    # platform, after which it is part of the way through, 48 wide below as before). No cement shows.
+    ys = 200 - SHUTTER_DEEP
+    wx0 = (NICHE_X0 + NICHE_X1 - SWITCH_WINDOW) / 2
+    wx1 = wx0 + SWITCH_WINDOW
+    metal = dict(light=NICHE_LIGHT, floor_tex=LIP_TOP, ceiling_tex=TRACK)
+    shutter = m.sector("niche.shutter", floor=NICHE_FLOOR, ceiling=NICHE_TOP, **metal)
+    m.sectors[shutter.index].fields.update(id=CAR_TAG, moreids=str(SHUTTER_TAG))
+    cheeks = {}
+    for name, x0, x1, shaft in (("w", NICHE_X0, wx0, shaft_w), ("e", wx1, NICHE_X1, shaft_e)):
+        cheek = m.sector(f"niche.cheek_{name}", floor=NICHE_FLOOR, ceiling=NICHE_FLOOR, **metal)
+        # user_scenery: the movement check takes each 8-wide cheek for a gap too narrow to pass and reports
+        # it unreachable; in the game it's part of the 48-wide way through once its floor is down. (The
+        # check therefore reads the way through as 32 wide, and says imps can't follow there: they can.)
+        m.sectors[cheek.index].fields.update(id=CAR_TAG, user_scenery=True)
+        cheeks[name] = cheek
+        ln = m.two_sided((x0, 192), (x1, 192), car, cheek, f"niche.cheek_{name}.face", texture=TRACK)
+        m.sidedefs[m.linedefs[ln]["sidefront"]]["texturebottom"] = LIP_FACE
+        outer, a, b = (x0, (x0, 192), (x0, 200)) if name == "w" else (x1, (x1, 200), (x1, 192))
+        ln = m.two_sided(a, b, cheek, shaft, f"niche.side_{name}", texture=TRACK)   # against the shaft's solid block
+        m.linedefs[ln]["blocking"] = True
+        ln = m.two_sided((x0, 200), (x1, 200), cheek, mouth, f"niche.cheek_{name}.back", texture=TRACK)
+        m.sidedefs[m.linedefs[ln]["sideback"]]["texturebottom"] = LIP_FACE
+        # Its side of the window: the niche in front, the shutter behind.
+        inner = x1 if name == "w" else x0
+        for sec, y0, y1, part in ((niche, 192, ys, "niche"), (shutter, ys, 200, "shutter")):
+            a, b = ((inner, y0), (inner, y1)) if name == "w" else ((inner, y1), (inner, y0))
+            m.two_sided(a, b, sec, cheek, f"niche.cheek_{name}.{part}", texture=TRACK)
+    lip = m.two_sided((wx0, 192), (wx1, 192), car, niche, "niche.mouth")
     m.sidedefs[m.linedefs[lip]["sidefront"]]["texturebottom"] = LIP_FACE   # the lip's face, from the platform
-    for x, gid, other in ((NICHE_X0, "niche.side_w", shaft_w), (NICHE_X1, "niche.side_e", shaft_e)):
-        a, b = ((x, 192), (x, 200)) if other is shaft_w else ((x, 200), (x, 192))
-        side = m.two_sided(a, b, niche, other, gid, texture=TRACK)   # the niche's side walls (note #24)
-        m.linedefs[side]["blocking"] = True
-        m.sidedefs[m.linedefs[side]["sidefront"]]["texturebottom"] = TRACK
-    switch = m.two_sided((NICHE_X0, 200), (NICHE_X1, 200), niche, mouth, "niche.switch")
-    m.linedefs[switch].fields.update(special=20, arg0=CAR_TAG, arg1=CAR_SPEED, arg2=DROP, playeruse=True,
-                                     dontpegtop=True)
+    panel = m.two_sided((wx0, ys), (wx1, ys), niche, shutter, "niche.shutter.panel", texture=TRACK)
+    m.sidedefs[m.linedefs[panel]["sidefront"]]["texturetop"] = SHUTTER_TEXTURE
+    switch = m.two_sided((wx0, 200), (wx1, 200), shutter, mouth, "niche.switch")
+    m.linedefs[switch].fields.update(special=20, arg0=CAR_TAG, arg1=CAR_SPEED, arg2=DROP, playeruse=True)
     # The lip's other face: the passage's side of this line, below the niche's floor (16 once it's down).
     m.sidedefs[m.linedefs[switch]["sideback"]]["texturebottom"] = LIP_FACE
     front = m.sidedefs[m.linedefs[switch]["sidefront"]]
     front["texturetop"] = SWITCH_TEXTURE
-    front["offsetx"] = 8     # the 64-wide texture's plate (x ~16-47) in the middle of the 48-wide niche
-    front["offsety"] = 69    # its plate (rows ~70-102) fills the niche's 32 of height
+    front["offsetx"] = 16    # the 64-wide texture's plate (x ~16-47) fills the 32-wide window
+    # Note #42 (2026-11-23): the plate was hung from the ceiling in front of it, which is the shutter's now:
+    # it came down with the panel. It hangs from the mouth's ceiling behind it instead (an upper part's
+    # default: the texture's foot at the lower ceiling, which never moves), moved so the plate (rows
+    # ~70-102) is still in the niche's window: row 69 at the niche's top.
+    front["offsety"] = 69 - (128 - (NICHE_TOP - m.sectors[mouth.index]["heightceiling"]))
     pulse = m.thing(9831, 32, 194, "niche.pulse", angle=SWITCH_PULSE_PERIOD)
+    m.things[pulse]["id"] = SWITCH_PULSE_TID       # note #36: goes out when the shutter comes down
     m.things[pulse].fields.update(height=16, arg0=SWITCH_PULSE_RGB[0], arg1=SWITCH_PULSE_RGB[1],
                                   arg2=SWITCH_PULSE_RGB[2], arg3=SWITCH_PULSE_RADIUS[0], arg4=SWITCH_PULSE_RADIUS[1])
 
@@ -477,9 +647,16 @@ def build(m: MapBuilder) -> None:
     # it exactly, and (-5, -8) is exactly square to it, so every corner is a whole unit. Floor_MoveToValue
     # (37: tag, speed, height, 1 = negative) sends the platform (and the top niche's floor) to the
     # bottom, -256, once; already there, it does nothing.
-    lower_switch_niche(m, mouth, (0, 200), MOUTH_W, ((-16, 210), (-48, 230)), (-5, -8))
+    # Note #44: SWITCH_WINDOW (32) wide, about the same middle (it was 37.7 wide: (-16, 210) to (-48, 230)).
+    lower_switch_niche(m, mouth, (0, 200), MOUTH_W, ((-18.43, 211.52), (-45.57, 228.48)), (-5, -8))
     m.wall(MOUTH_E, (64, 200), mouth, "mouth.wall_e")
-    m.two_sided(MOUTH_W, MOUTH_E, mouth, room, "mouth.edge")
+    # Note #68: the landing's stone starts under the mouth (its floor is the stone's) and goes on out into
+    # the hall (west_water builds its edges).
+    m.sectors[mouth.index].fields.update(heightfloor=-DROP + LANDING_UP, texturefloor=LANDING_FLAT)
+    stone = m.sector("landing", floor=-DROP + LANDING_UP, ceiling=-64, light=HALL_LIGHT, floor_tex=LANDING_FLAT)
+    fog(m, stone)
+    LANDING["sector"] = stone
+    m.two_sided(MOUTH_W, MOUTH_E, mouth, stone, "mouth.edge")
 
     # The room, straight on from the mouth. Reshaped by the mapper in the editor: save 2026-11-22 01:03
     # (about 1000 deep, out of square; was 512 x 512), then 01:23 (wider and longer: about 750 x 1500).
@@ -503,12 +680,70 @@ def build(m: MapBuilder) -> None:
         (se, east[1] + [(MOUTH_E, room, "room.wall_s2")]),
     ])
     cistern(m, *drains["cistern"])  # needs the passage (great_door) and the drains
+    # Notes #54, #57 (2026-11-23): the track metal as a strip along the foot of the closet's walls, as it
+    # shows round the car (textures.txt: CACOBASE, the wall with the strip in its bottom rows; turned on
+    # its side at first, then as it is). Every plain wall of the
+    # closet and its coffer gets it, stood on the floor (dontpegbottom); the secret panel's face too, so
+    # the strip doesn't give it away. The light channels and the start door's recess interrupt it.
+    # Note #69 (2026-11-23): the hall's tall walls in huge, slightly ruined stone: STONE3 (grey blocks, cracked
+    # and mossy) drawn at twice its size (UDMF scale 0.5), so a wall 256 high is two courses of great
+    # blocks. Every surface of the hall, its gutters, the landing and the mouth that was the default grey.
+    hall = {i for i, sct in enumerate(m.sectors)
+            if sct["user_gid"].startswith(("room", "mouth", "landing", "gutter_"))}
+    for sd in m.sidedefs:
+        if sd["sector"] in hall:
+            for key, part in (("texturetop", "top"), ("texturemiddle", "mid"), ("texturebottom", "bottom")):
+                if sd.get(key) == CLOSET_WALL:
+                    sd.fields.update({key: HALL_WALL, f"scalex_{part}": HALL_WALL_SCALE, f"scaley_{part}": HALL_WALL_SCALE,
+                                      f"offsety_{part}": HALL_WALL_SHIFT})
+    # Note #58 (2026-11-23): the hall's floor is dirt (HALL_FLOOR; it was the default hexagon tiles), the
+    # landing in front of it too, and the dirt carries on down the shallow banks to the water: the bank
+    # faces are the lower part of the water's side of each line between the floor and a gutter.
+    ground = {i for i, sct in enumerate(m.sectors) if sct["user_gid"] == "room"}
+    for i in ground:
+        m.sectors[i]["texturefloor"] = HALL_FLOOR
+    wet = {i for i, sct in enumerate(m.sectors) if sct["user_gid"].startswith(("gutter_w", "gutter_e"))}
+    for ld in m.linedefs:
+        if "sideback" not in ld.fields:
+            continue
+        f, b = m.sidedefs[ld["sidefront"]], m.sidedefs[ld["sideback"]]
+        for dry, water in ((f, b), (b, f)):
+            if dry["sector"] in ground and water["sector"] in wet:
+                water["texturebottom"] = HALL_FLOOR
+    inside = {i for i, sct in enumerate(m.sectors) if sct["user_gid"] in ("closet", "closet.coffer")}
+    secret = {i for i, sct in enumerate(m.sectors) if sct.get("id") == SECRET_TAG}
+    for ld in m.linedefs:
+        front = m.sidedefs[ld["sidefront"]]
+        if "sideback" not in ld.fields:
+            if front["sector"] in inside and front.get("texturemiddle") == CLOSET_WALL:
+                front["texturemiddle"] = BASE_TEXTURE
+                ld["dontpegbottom"] = True
+            continue
+        back = m.sidedefs[ld["sideback"]]
+        for near, far in ((front, back), (back, front)):
+            if near["sector"] in inside and far["sector"] in secret and near.get("texturetop") == CLOSET_WALL:
+                near["texturetop"] = BASE_TEXTURE
+    # Note #64 (2026-11-23): no cement in the start: every other wall surface of the closet, the car and the
+    # shaft's blocks that was the default grey is the green wall of pipes and conduits (CLOSET_SKIN), as is
+    # the wall in CACOBASE above its strip (textures.txt).
+    start = {i for i, sct in enumerate(m.sectors) if sct["user_gid"].startswith(("closet", "car", "shaft_"))}
+    for sd in m.sidedefs:
+        if sd["sector"] in start:
+            for key in ("texturetop", "texturemiddle", "texturebottom"):
+                if sd.get(key) == CLOSET_WALL:
+                    sd[key] = CLOSET_SKIN
+    for sct in m.sectors:                                # note #18: which way each water runs (zscript.zs)
+        gid = sct["user_gid"]
+        if gid in ("gutter_w", "drain"):
+            sct["id"] = FLOW_WEST_TAG
+        elif gid == "gutter_e" or gid.startswith("gutter_e.violet_") or gid == "drain_2":
+            sct["id"] = FLOW_EAST_TAG
+        elif gid == "cistern.out":                       # note #23: turns with the cistern's water at the switch
+            sct["id"] = CISTERN_TAG
     for k, (x, y, type_) in enumerate(VIOLET_TRAIL):
         t = m.thing(type_, x, y, f"violet_trail_{k + 1}", angle=(k * 97) % 360)
         m.things[t].fields.update(renderstyle="stencil", fillcolor=TRAIL_COLOUR)
     m.thing(DEAD_MARINE, DEAD_MARINE_AT[0], DEAD_MARINE_AT[1], "dead_marine", angle=DEAD_MARINE_AT[2])
-    soul = m.thing(LOST_SOUL, HIDDEN_SOUL[0], HIDDEN_SOUL[1], "hidden_soul", angle=270)
-    m.things[soul].fields.update(height=HIDDEN_SOUL[2], ambush=True)
 
     # The monoliths, in two rows (west row facing east, east row facing west).
     for r, x0 in enumerate(MONOLITH_ROWS):
@@ -516,6 +751,24 @@ def build(m: MapBuilder) -> None:
             face = FACE
             monolith(m, room, f"monolith_{'we'[r]}{i + 1}", x0, y0, facing="e" if r == 0 else "w", face=face,
                      pair=i, switch=(i, "we"[r]) == SWITCH_OBELISK)
+
+    # Last, once every sector exists (the obelisks are built just above):
+    # Note #59 (2026-11-23): the hall is open to the sky (a dark, starry one: map.toml), its walls HALL_SKY
+    # high. Everything in the hall that shared its ceiling (-64: the floor, the gutters, the obelisks'
+    # bases and altars, the bridge) goes up with it and takes the sky; so do the obelisks' sleeves and
+    # slabs, whose own ceiling was the slot above them (SLEEVE_TOP): a sleeve is now a free-standing
+    # pillar, open above. The landing (mouth) keeps its ceiling: you come out from under it.
+    for sct in m.sectors:
+        gid, top = sct["user_gid"], sct["heightceiling"]
+        in_hall = top == -64 and not gid.startswith("mouth")
+        pillar = top == SLEEVE_TOP and gid.startswith("monolith_")
+        if in_hall or pillar:
+            sct.fields.update(heightceiling=HALL_SKY, textureceiling=SKY_FLAT)
+            for k in ("lightceiling", "lightceilingabsolute"):
+                sct.fields.pop(k, None)
+        elif gid.endswith(".slit"):                      # its top rises to the sleeve's (zscript.zs): sky then
+            sct["textureceiling"] = SKY_FLAT
+            sct.fields.pop("lightceiling", None)
 
 
 def on_line(a, b, y):
@@ -544,15 +797,26 @@ def violet_gutter(m: MapBuilder, room, g, ne, se, mouth_e):
             # from the plain wall beside it (the wall's GRAY1 is grey, so the desaturation alone is fine).
             m.sectors[s.index].fields.update(desaturation=desat, color_floor=colour)
         pieces.append(s)
-    RIVULET["sector"] = pieces[4]
+    # Note #25: the rivulet, a violet sector of its own between the obelisk's base and the gutter.
+    # Note #27: flush with the walkway (a film of liquid across the floor, not a channel 8 deep): the
+    # channel's marble banks were drawn by this sector, so its desaturation (which makes the green liquid
+    # take the violet) turned them grey. Where it reaches the gutter it falls the 8 into it.
+    rivulet = m.sector("gutter_e.violet_4.rivulet", floor=-DROP, ceiling=-64, light=HALL_LIGHT, floor_tex=GUTTER_FLAT)
+    fog(m, rivulet)
+    m.sectors[rivulet.index].fields.update(desaturation=1.0, color_floor=VIOLET)
+    RIVULET["sector"] = rivulet
     RIVULET["piece0"] = pieces[0]
     names = ["gutter_e" if k == 0 else f"gutter_e.violet_{k}" for k in range(len(pieces))]
     for k, s in enumerate(pieces):
         side = ((s0,) + GUTTER_E_WEST) if k == 0 else (west[k],) + GUTTER_E_WEST_EXTRA.get(k, ()) + (west[k + 1],)
-        for j, (a, b) in enumerate(zip(side, side[1:])):
-            if (a, b) in GUTTER_E_SHARED:
-                continue
-            m.two_sided(a, b, s, room, f"{names[k]}.edge_w" + (f"_{j + 1}" if j else ""), texture=STONE)
+        extra = GUTTER_E_WEST_EXTRA.get(k, ())
+        if extra:
+            _leak_side(m, room, s, rivulet, names[k], west[k], extra, west[k + 1])
+        else:
+            for j, (a, b) in enumerate(zip(side, side[1:])):
+                if (a, b) in GUTTER_E_SHARED:
+                    continue
+                m.two_sided(a, b, s, room, f"{names[k]}.edge_w" + (f"_{j + 1}" if j else ""), texture=STONE)
         if k == len(pieces) - 1:
             m.two_sided(west[k + 1], east[k + 1], s, room, f"{names[k]}.edge_n", texture=STONE)
         else:
@@ -560,6 +824,51 @@ def violet_gutter(m: MapBuilder, room, g, ne, se, mouth_e):
     east_wall = [(east[-1], room, "room.wall_e")]
     east_wall += [(east[k], pieces[k], f"{names[k]}.edge_e") for k in range(len(pieces) - 1, -1, -1)]
     return east_wall, [(s0, pieces[0], "gutter_e.edge_s")]
+
+
+def _leak_side(m: MapBuilder, room, piece, rivulet, name: str, south, extra, north) -> None:
+    """Notes #25, #30: a gutter piece's west side where the switch obelisk's rivulet runs into it (`extra`:
+    the mouth's south end, the rivulet's two corners at the obelisk's base, the mouth's north end), from
+    `south` to `north`: the rivulet's banks, its mouth, and the violet spreading from the mouth in half
+    rings (VIOLET_RINGS, outermost first), each from a point on the edge south of the mouth round to one
+    north of it."""
+    import math
+    m0, m1 = extra[0], extra[-1]
+    cx, cy = (m0[0] + m1[0]) / 2, (m0[1] + m1[1]) / 2
+    rings = []
+    for n, (radius, desat, colour) in enumerate(VIOLET_RINGS):
+        ring = m.sector(f"{name}.ring_{n + 1}", floor=-DROP - 8, ceiling=-64, light=HALL_LIGHT, floor_tex=GUTTER_FLAT)
+        fog(m, ring)
+        # Walkable, but the movement check reads a ring's short edges as gaps too narrow to pass and
+        # reports it unreachable: marked as scenery to keep that out of the warnings.
+        m.sectors[ring.index].fields.update(desaturation=desat, color_floor=colour, user_scenery=True)
+        rings.append((ring, radius))
+    r2 = lambda q: (round(q[0], 2), round(q[1], 2))
+    # The edge, south to north: who owns each stretch (the gutter's side of it), then the mouth.
+    below = [south] + [r2(on_line(south, m0, cy - radius)) for _, radius in rings] + [m0]
+    above = [m1] + [r2(on_line(m1, north, cy + radius)) for _, radius in reversed(rings)] + [north]
+    owners_below = [piece] + [ring for ring, _ in rings]
+    owners_above = [ring for ring, _ in reversed(rings)] + [piece]
+    for j, (a, b) in enumerate(zip(below, below[1:])):
+        m.two_sided(a, b, owners_below[j], room, f"{name}.edge_w_s{j + 1}", texture=STONE)
+    for j, (a, b) in enumerate(zip(above, above[1:])):
+        m.two_sided(a, b, owners_above[j], room, f"{name}.edge_w_n{j + 1}", texture=STONE)
+    for j, (a, b) in enumerate(zip(extra, extra[1:])):         # the rivulet's banks (its end is the base's edge)
+        if (a, b) not in GUTTER_E_SHARED:
+            m.two_sided(a, b, rivulet, room, f"{name}.rivulet.bank_{j + 1}", texture=STONE)
+    inner = rings[-1][0]
+    mouth = m.two_sided(m0, m1, inner, rivulet, f"{name}.rivulet_mouth", texture=STONE)
+    m.sidedefs[m.linedefs[mouth]["sidefront"]].fields.update(
+        texturebottom=VIOLET_FALL, useowncolors_bottom=True, uppercolor_bottom=VIOLET, lowercolor_bottom=VIOLET)
+    # The half rings: from the edge south of the mouth, out east and round to the edge north of it.
+    outer = piece
+    for n, (ring, radius) in enumerate(rings):
+        arc = [below[n + 1]] + [r2((cx + radius * math.cos(t), cy + radius * math.sin(t)))
+                                for t in (math.pi * (i / VIOLET_RING_STEPS - 0.5) for i in range(1, VIOLET_RING_STEPS))]
+        arc.append(above[len(rings) - n])
+        for i, (a, b) in enumerate(zip(arc, arc[1:])):
+            m.two_sided(a, b, outer, ring, f"{name}.ring_{n + 1}.arc_{i + 1}", texture=STONE)
+        outer = ring
 
 
 def _edges(m: MapBuilder, sector, edges) -> None:
@@ -586,46 +895,43 @@ def west_water(m: MapBuilder, room, wb, q):
     water = dict(floor=-DROP - 8, ceiling=-64, light=HALL_LIGHT, floor_tex=GUTTER_FLAT)
     g = m.sector("gutter_w", **water)
     fog(m, g)
-    bridge = m.sector("gutter_w.bridge", **water)
-    fog(m, bridge)
-    m.sectors[bridge.index]["id"] = BRIDGE_TAG
+    # Note #28 (2026-11-23): the rule is "east of the landing flows east": the stretch of the channel east
+    # of it is a sector of its own (it was part of the west gutter, and flowed west).
+    stub = m.sector("gutter_w.east_of_bridge", **water)
+    fog(m, stub)
+    m.sectors[stub.index]["id"] = FLOW_EAST_TAG
     east = RIVULET["piece0"]
     inner = GUTTER_W_INNER
     m.two_sided(wb, inner[-1], g, room, "gutter_w.edge_n", texture=STONE)
     for k in range(len(inner) - 1, 0, -1):          # the inner edge, north to south
         m.two_sided(inner[k], inner[k - 1], g, room, f"gutter_w.edge_e_{len(inner) - k}", texture=STONE)
     m.two_sided(inner[0], (b0, s1), g, room, "gutter_w.crossing_n", texture=STONE)
-    m.two_sided((b1, s1), (129, s1), g, room, "gutter_w.crossing_n2", texture=STONE)
-    m.two_sided((129, s1), (138, s0), g, east, "gutter_w.join", texture=STONE)
-    m.two_sided((138, s0), (b1, s0), g, room, "gutter_w.crossing_s2", texture=STONE)
+    m.two_sided((b1, s1), (129, s1), stub, room, "gutter_w.crossing_n2", texture=STONE)
+    m.two_sided((129, s1), (138, s0), stub, east, "gutter_w.join", texture=STONE)
+    m.two_sided((138, s0), (b1, s0), stub, room, "gutter_w.crossing_s2", texture=STONE)
     m.two_sided((b0, s0), CROSSING_SW, g, room, "gutter_w.crossing_s", texture=STONE)
     m.two_sided(CROSSING_SW, q, g, room, "gutter_w.crossing_sw", texture=STONE)
-    # The bridge's stretch of the channel: water under a 3D floor.
-    # Note #52: bars under the deck's open sides, from the water up to the slab (MIDBARS3, squeezed to
-    # that height and pegged to the water), so it doesn't seem to hover; the water still shows through.
-    for name, a, b in (("edge_w", (b0, s0), (b0, s1)), ("edge_e", (b1, s1), (b1, s0))):
-        ln = m.two_sided(a, b, bridge, g, f"gutter_w.bridge.{name}", texture=STONE)
-        m.linedefs[ln]["dontpegbottom"] = True
-        for side in ("sidefront", "sideback"):
-            m.sidedefs[m.linedefs[ln][side]].fields.update(texturemiddle="MIDBARS3",
-                                                           scaley_mid=72 / (BRIDGE_SLAB[0] - (-DROP - 8)))
-    # Note #55: bars all round, its ends on the bank too: there they fill the 4 between the bank's floor
-    # and the slab (a two-sided line's middle texture, pegged to the higher floor).
-    for name, a, b in (("edge_n", (b0, s1), (b1, s1)), ("edge_s", (b1, s0), (b0, s0))):
-        ln = m.two_sided(a, b, bridge, room, f"gutter_w.bridge.{name}", texture=STONE)
-        m.linedefs[ln]["dontpegbottom"] = True
-        for side in ("sidefront", "sideback"):
-            m.sidedefs[m.linedefs[ln][side]].fields.update(texturemiddle="MIDBARS3",
-                                                           scaley_mid=72 / (BRIDGE_SLAB[0] - (-DROP)))
-    # The control sector: its floor and ceiling are the slab's underside and top; its line carries
-    # Sector_Set3DFloor (160: tag, type 1 = solid, flags, alpha), its middle texture the slab's sides.
-    cx, cy = BRIDGE_CONTROL
-    control = m.room("bridge_control", cx, cy, 32, 32, floor=BRIDGE_SLAB[0], ceiling=BRIDGE_SLAB[1],
-                     floor_tex="FLOOR7_2", ceiling_tex="FLOOR7_2", light=BASE_LIGHT)
-    m.sectors[control.index]["user_scenery"] = True
-    ln = next(i for i, l in enumerate(m.linedefs) if l["user_gid"] == "bridge_control.wall_s")
-    m.linedefs[ln].fields.update(special=160, arg0=BRIDGE_TAG, arg1=1, arg2=0, arg3=255)
-    m.sidedefs[m.linedefs[ln]["sidefront"]]["texturemiddle"] = STONE
+    # Note #68 (2026-11-23): no bridge. The landing is one big sheet of stone (LANDING: built in build(),
+    # which joins it to the mouth) from the foot of the elevator out over where the channel crossed, a
+    # step above the dirt (LANDING_UP) and LANDING_LIP past the channel's north bank; the water comes out
+    # from under it on either side (the west gutter's channel, and the stretch east of it), and the
+    # player steps down off its lip into the row of obelisks.
+    stone = LANDING["sector"]
+    n1 = s1 + LANDING_LIP
+    _edges(m, stone, [
+        (MOUTH_W, MOUTH_E, "skip", ""),                       # onto the mouth (build())
+        (MOUTH_E, (b1, s0), room, "landing.edge_se"),
+        ((b1, s0), (b1, s1), stub, "landing.edge_e"),
+        ((b1, s1), (b1, n1), room, "landing.edge_ne"),
+        ((b1, n1), (b0, n1), room, "landing.edge_n"),
+        ((b0, n1), (b0, s1), room, "landing.edge_nw"),
+        ((b0, s1), (b0, s0), g, "landing.edge_w"),
+        ((b0, s0), MOUTH_W, room, "landing.edge_sw"),
+    ])
+    for ld in m.linedefs:
+        if ld["user_gid"].startswith("landing.edge_"):
+            for side in ("sidefront", "sideback"):
+                m.sidedefs[ld[side]]["texturebottom"] = STONE   # the stone's edge, from the dirt or the water
     return g
 
 
@@ -649,7 +955,9 @@ def passage(m: MapBuilder, vest, P, floor0) -> None:
     m.two_sided(P(*l0), P(*r0), vest, secs[0], "passage.opening", texture=PASSAGE_TEXTURE)
     for k in range(1, len(PASSAGE) - 1):
         l, r = PASSAGE[k]
-        m.two_sided(P(*l), P(*r), secs[k - 1], secs[k], f"passage_{k + 1}.step", texture=PASSAGE_TEXTURE)
+        step = m.two_sided(P(*l), P(*r), secs[k - 1], secs[k], f"passage_{k + 1}.step", texture=PASSAGE_TEXTURE)
+        if k in PASSAGE_QUIET:
+            m.linedefs[step]["blocksound"] = True
     le, re_ = PASSAGE[-1]
     # Note #77: no end wall: it goes on down into the cistern (cistern(), once the hall's drains exist).
     PASSAGE_END.update(sector=secs[-1], l=P(*le), r=P(*re_))
@@ -679,9 +987,11 @@ def passage(m: MapBuilder, vest, P, floor0) -> None:
             if (k, side) in torches:
                 # A torch niche: 24 wide, NICHE_DEEP deep, from the floor, the torch wholly inside.
                 kind, wide, deep, sill, high, thing_in, thing = "niche", 24, NICHE_DEEP, 0, NICHE_HIGH, NICHE_TORCH_IN, TORCH
+            elif (k, side) in PASSAGE_CARVINGS:
+                kind, wide, deep, sill, high, thing_in, thing = "carving", 128, CARVING_DEEP, CARVING_SILL, 128, 12, None
             elif (k, side) in shelves:
                 # Note #76: wider, deeper and lower (was 32 wide, 16 deep, 40 high), lit as the passage.
-                kind, wide, deep, sill, high, thing_in, thing = "shelf", 48, 24, 32, 24, 12, shelves[(k, side)]
+                kind, wide, deep, sill, high, thing_in, thing = "shelf", 48, 24, 32, 24, 10, shelves[(k, side)]
             else:
                 m.wall(P(*a), P(*b), s, gid, texture=PASSAGE_TEXTURE)
                 continue
@@ -697,19 +1007,67 @@ def passage(m: MapBuilder, vest, P, floor0) -> None:
             niche = m.sector(f"{gid}.{kind}", floor=f + sill, ceiling=f + sill + high, light=PASSAGE_LIGHT + 64,
                              floor_tex=PASSAGE_TEXTURE, ceiling_tex=PASSAGE_TEXTURE)
             m.sectors[niche.index]["user_scenery"] = True
+            inside = PASSAGE_TEXTURE
+            if kind == "carving":
+                inside = CARVING_STONE
+                m.sectors[niche.index].fields.update(lightlevel=CARVING_LIGHT, texturefloor="FLOOR7_2",
+                                                     textureceiling="FLOOR7_2")
             if kind == "shelf":                              # note #76: the passage's own light (and fog)
                 piece = m.sectors[s.index].fields
                 m.sectors[niche.index].fields.update(
                     lightlevel=piece["lightlevel"],
                     **{k2: piece[k2] for k2 in ("fadecolor", "fogdensity") if k2 in piece})
-            m.wall(P(*a), P(*p0), s, f"{gid}_a", texture=PASSAGE_TEXTURE)
-            m.two_sided(P(*p0), P(*p1), s, niche, f"{gid}.{kind}.mouth", texture=PASSAGE_TEXTURE)
-            m.wall(P(*p1), P(*b), s, f"{gid}_b", texture=PASSAGE_TEXTURE)
-            m.wall(P(*p0), P(*q0), niche, f"{gid}.{kind}.side_a", texture=PASSAGE_TEXTURE)
-            m.wall(P(*q0), P(*q1), niche, f"{gid}.{kind}.back", texture=PASSAGE_TEXTURE)
-            m.wall(P(*q1), P(*p1), niche, f"{gid}.{kind}.side_b", texture=PASSAGE_TEXTURE)
+                # Note #6 (2026-11-23): a wooden box set into the stone: wood on its back, sides, shelf and top.
+                inside = "WOOD1"
+                m.sectors[niche.index].fields.update(texturefloor="FLAT5_2", textureceiling="FLAT5_2")
+            if kind == "shelf":
+                # Note #8 (2026-11-23): flush with the wall it looked "painted on stone". A wooden frame
+                # gives it depth: a recess SHELF_FRAME[0] wider all round than the box and SHELF_FRAME[1]
+                # deep, wood on its sides, sill and top; the box opens in its back, which shows as a
+                # wooden border round the box. The box itself is a little darker than the frame.
+                fb, fdp = SHELF_FRAME
+                nx, ny = -ey, ex
+                g0 = (p0[0] - ex * fb, p0[1] - ey * fb)
+                g1 = (p1[0] + ex * fb, p1[1] + ey * fb)
+                h0, h1 = (g0[0] + nx * fdp, g0[1] + ny * fdp), (g1[0] + nx * fdp, g1[1] + ny * fdp)
+                shift = lambda pt: (pt[0] + nx * fdp, pt[1] + ny * fdp)
+                p0, p1, q0, q1 = shift(p0), shift(p1), shift(q0), shift(q1)
+                frame = m.sector(f"{gid}.shelf_frame", floor=f + sill - fb, ceiling=f + sill + high + fb,
+                                 light=piece["lightlevel"], floor_tex="FLAT5_2", ceiling_tex="FLAT5_2")
+                m.sectors[frame.index].fields.update(
+                    user_scenery=True, **{k2: piece[k2] for k2 in ("fadecolor", "fogdensity") if k2 in piece})
+                m.sectors[niche.index]["lightlevel"] = max(0, piece["lightlevel"] - 24)
+                m.wall(P(*a), P(*g0), s, f"{gid}_a", texture=PASSAGE_TEXTURE)
+                m.two_sided(P(*g0), P(*g1), s, frame, f"{gid}.shelf_frame.mouth", texture=PASSAGE_TEXTURE)
+                m.wall(P(*g1), P(*b), s, f"{gid}_b", texture=PASSAGE_TEXTURE)
+                m.wall(P(*g0), P(*h0), frame, f"{gid}.shelf_frame.side_a", texture=inside)
+                m.wall(P(*h0), P(*p0), frame, f"{gid}.shelf_frame.back_a", texture=inside)
+                m.two_sided(P(*p0), P(*p1), frame, niche, f"{gid}.{kind}.mouth", texture=inside)
+                m.wall(P(*p1), P(*h1), frame, f"{gid}.shelf_frame.back_b", texture=inside)
+                m.wall(P(*h1), P(*g1), frame, f"{gid}.shelf_frame.side_b", texture=inside)
+            else:
+                m.wall(P(*a), P(*p0), s, f"{gid}_a", texture=PASSAGE_TEXTURE)
+                m.two_sided(P(*p0), P(*p1), s, niche, f"{gid}.{kind}.mouth", texture=PASSAGE_TEXTURE)
+                m.wall(P(*p1), P(*b), s, f"{gid}_b", texture=PASSAGE_TEXTURE)
+            m.wall(P(*p0), P(*q0), niche, f"{gid}.{kind}.side_a", texture=inside)
+            if kind == "carving":
+                fl = (wide - CARVING_WIDE) / 2               # the plain stone either side of the face
+                c0 = (q0[0] + ex * fl, q0[1] + ey * fl)
+                c1 = (q1[0] - ex * fl, q1[1] - ey * fl)
+                left = m.wall(P(*q0), P(*c0), niche, f"{gid}.{kind}.back_a", texture=inside)
+                m.wall(P(*c0), P(*c1), niche, f"{gid}.{kind}.back", texture=CARVING_TEXTURE)
+                right = m.wall(P(*c1), P(*q1), niche, f"{gid}.{kind}.back_b", texture=inside)
+                m.sidedefs[m.linedefs[left]["sidefront"]]["offsetx"] = round(-fl) % 256
+                m.sidedefs[m.linedefs[right]["sidefront"]]["offsetx"] = CARVING_WIDE
+            else:
+                m.wall(P(*q0), P(*q1), niche, f"{gid}.{kind}.back", texture=inside)
+            m.wall(P(*q1), P(*p1), niche, f"{gid}.{kind}.side_b", texture=inside)
             k_in = thing_in / deep
             cx, cy = (p0[0] + p1[0]) / 2 + ox * k_in, (p0[1] + p1[1]) / 2 + oy * k_in
+            if kind == "carving":                            # two stimpacks on the sill, either side of the middle
+                for j, along in enumerate((-22, 18)):
+                    m.thing(STIMPACK, *P(cx + ex * along, cy + ey * along), f"{gid}.stimpack_{j + 1}", angle=90)
+                continue
             m.thing(thing, *P(cx, cy), f"{gid}.{'torch' if kind == 'niche' else 'item'}")
 
 
@@ -730,24 +1088,70 @@ def great_door(m: MapBuilder, room, a, b) -> None:
     m.wall(P(half, 0), b, room, "room.wall_n2b")
     vest = m.sector("vestibule", floor=floor, ceiling=top, light=VESTIBULE_LIGHT)
     fog(m, vest)
-    opening = m.two_sided(P(-half, 0), P(half, 0), room, vest, "vestibule.opening", texture=STONE)
+    # Note #2 (2026-11-23): the wall above the doorway is the hall's own wall (it was a marble lintel,
+    # which didn't match the walls round it): the same texture, hung from the ceiling like them, and
+    # carried on from the wall on its left.
+    from dms.gen import WALL
+    opening = m.two_sided(P(-half, 0), P(half, 0), room, vest, "vestibule.opening", texture=WALL)
+    m.linedefs[opening]["dontpegtop"] = True
+    m.sidedefs[m.linedefs[opening]["sidefront"]]["offsetx"] = round(L / 2 - half)
     # The vestibule: the jambs (16 deep), then wider behind the wall.
     j = 16
+    # Note #13 (2026-11-23): a torch set in the vestibule's wall VESTIBULE_TORCH_WALL (a niche like the
+    # passage's: 24 wide, from the floor), to explain the room's red glow; the glow now comes from it.
+    ta, tb = VESTIBULE_OUTLINE[VESTIBULE_TORCH_WALL], VESTIBULE_OUTLINE[VESTIBULE_TORCH_WALL + 1]
+    tn = math.hypot(tb[0] - ta[0], tb[1] - ta[1])
+    te = ((tb[0] - ta[0]) / tn, (tb[1] - ta[1]) / tn)
+    to = (-te[1], te[0])                                 # out of the room: away from its middle
+    tmid = ((ta[0] + tb[0]) / 2, (ta[1] + tb[1]) / 2)
+    if to[0] * (0 - tmid[0]) + to[1] * (100 - tmid[1]) > 0:
+        to = (-to[0], -to[1])
+    t0 = (tmid[0] - te[0] * 12, tmid[1] - te[1] * 12)
+    t1 = (tmid[0] + te[0] * 12, tmid[1] + te[1] * 12)
+    u0 = (t0[0] + to[0] * NICHE_DEEP, t0[1] + to[1] * NICHE_DEEP)
+    u1 = (t1[0] + to[0] * NICHE_DEEP, t1[1] + to[1] * NICHE_DEEP)
+    tniche = m.sector("vestibule.torch_niche", floor=floor, ceiling=floor + NICHE_HIGH, light=VESTIBULE_LIGHT + 72,
+                      floor_tex=PASSAGE_TEXTURE, ceiling_tex=PASSAGE_TEXTURE)
+    m.sectors[tniche.index]["user_scenery"] = True
+    fog(m, tniche)
+
+    def outline_edge(i):
+        a2, b2 = P(*VESTIBULE_OUTLINE[i]), P(*VESTIBULE_OUTLINE[i + 1])
+        if i != VESTIBULE_TORCH_WALL:
+            return [(a2, b2, None, f"vestibule.wall_{i + 1}")]
+        return [(a2, P(*t0), None, f"vestibule.wall_{i + 1}_a"),
+                (P(*t0), P(*t1), tniche, "vestibule.torch_niche.mouth"),
+                (P(*t1), b2, None, f"vestibule.wall_{i + 1}_b")]
     _edges(m, vest, [
         (P(half, 0), P(-half, 0), "skip", ""),
         (P(-half, 0), P(-half, j), None, "vestibule.jamb_w"),
         (P(-half, j), P(*VESTIBULE_OUTLINE[0]), None, "vestibule.wall_sw"),
-    ] + [(P(*VESTIBULE_OUTLINE[i]), P(*VESTIBULE_OUTLINE[i + 1]), None, f"vestibule.wall_{i + 1}")
-         for i in range(len(VESTIBULE_OUTLINE) - 1)] + [
+    ] + [e for i in range(len(VESTIBULE_OUTLINE) - 1) for e in outline_edge(i)] + [
         (P(*PASSAGE[0][0]), P(*PASSAGE[0][1]), "skip", ""),     # the passage's opening (passage())
         (P(*PASSAGE[0][1]), P(half, j), None, "vestibule.wall_se"),
         (P(half, j), P(half, 0), None, "vestibule.jamb_e"),
     ])
+    # Note #3 (2026-11-23): the vestibule in the passage's style: mossy stone on its walls, floor and
+    # ceiling (the jambs, in the thickness of the hall's wall, stay the hall's).
+    m.sectors[vest.index].fields.update(texturefloor=PASSAGE_TEXTURE, textureceiling=PASSAGE_TEXTURE)
+    _edges(m, tniche, [(P(*t0), P(*t1), "skip", ""), (P(*t1), P(*u1), None, "vestibule.wall_torch.side_b"),
+                       (P(*u1), P(*u0), None, "vestibule.wall_torch.back"),
+                       (P(*u0), P(*t0), None, "vestibule.wall_torch.side_a")])
+    for ld in m.linedefs:
+        if ld["user_gid"].startswith("vestibule.wall_"):
+            m.sidedefs[ld["sidefront"]]["texturemiddle"] = PASSAGE_TEXTURE
+        elif ld["user_gid"] == "vestibule.torch_niche.mouth":
+            for side in ("sidefront", "sideback"):
+                m.sidedefs[ld[side]].fields.update(texturetop=PASSAGE_TEXTURE, texturebottom=PASSAGE_TEXTURE)
+    m.thing(TORCH, *P(tmid[0] + to[0] * NICHE_TORCH_IN, tmid[1] + to[1] * NICHE_TORCH_IN), "vestibule.torch")
     passage(m, vest, P, floor)
     for k, (iu, idd) in enumerate(VESTIBULE_IMPS):
         imp = m.thing(IMP, *P(iu, idd), f"vestibule.imp_{k + 1}",
                       angle=round(math.degrees(math.atan2(-ux, uy))) % 360)      # facing the doors
-    glow = m.thing(9830, *P(0, 168), "vestibule.glow")
+    imp = m.thing(IMP, *P(*VESTIBULE_AMBUSH_IMP), "vestibule.imp_ambush",
+                  angle=round(math.degrees(math.atan2(-ux, uy))) % 360)
+    m.things[imp]["ambush"] = True
+    glow = m.thing(9830, *P(tmid[0] - to[0] * 20, tmid[1] - to[1] * 20), "vestibule.glow")   # in front of the torch
     r, g, bl, rad = VESTIBULE_GLOW
     m.things[glow].fields.update(height=48, arg0=r, arg1=g, arg2=bl, arg3=rad)
 
@@ -792,28 +1196,46 @@ def great_door(m: MapBuilder, room, a, b) -> None:
                     m.sidedefs[m.linedefs[ln][side]]["texturebottom"] = LEAF_TEXTURES[k]
         for side in ("face", "back"):
             vest_side(by_gid(f"{gid}.{side}"))["offsetx"] = skull_offset(k, side, s0, s1)
+        # Note #61 (2026-11-23): no skulls on the inside: a leaf's back, seen from the vestibule, is the
+        # plain wood and iron of the other leaf (LEAF_TEXTURES[0]).
+        vest_side(by_gid(f"{gid}.back"))["texturebottom"] = LEAF_TEXTURES[0]
         return s
     w0, w1 = WICKET
     leaf(1, 0, length, "great_door.leaf_e", (vest, vest))
     # The left leaf, with the small door (notes #50, #57, #58): pieces in the leaf's own (s, t), built
     # through one table of edges so pieces that meet share their lines; edges nobody else has face the
-    # vestibule. The door's floor is the panel's top, its ceiling the lintel's underside: Plat_DownWaitUpStay
-    # (62: tag, speed, delay) sinks the panel and brings it back up, from either side.
+    # vestibule. Note #1 (2026-11-23): the door slides up (it sank into the floor): a real door sector,
+    # shut (ceiling on the floor), between the frame in front and a recess of the same height behind
+    # (wicket_back), so from both sides only the door's own height shows and the leaf above stays put.
+    # Door_Raise (12: tag, speed, delay) opens it to 4 under those two ceilings (WICKET_HIGH), from either side.
     fd, fw, fh = FRAME
+    td = (fd + T) / 2               # the door's back face: the door is the front half of what's left of the leaf
     a0, a1 = w0 - fw, w1 + fw
     solid = dict(floor=top, ceiling=top, light=VESTIBULE_LIGHT)
+    # Note #55 (2026-11-23): the way through the small door is a slight wooden step (it was the default
+    # grey floor): its frame, the door's own floor and the recess behind it are WICKET_STEP up, in boards.
+    sill = floor + WICKET_STEP
     pieces = {
         "great_door.leaf_w": (m.sector("great_door.leaf_w", **solid), [(0, 0), (a0, 0), (a0, fd), (a0, T), (0, T)]),
-        "great_door.frame": (m.sector("great_door.frame", floor=floor, ceiling=floor + WICKET_HIGH + fh,
-                                      light=VESTIBULE_LIGHT, ceiling_tex="FLOOR4_8"),
+        "great_door.frame": (m.sector("great_door.frame", floor=sill, ceiling=sill + WICKET_HIGH + fh,
+                                      light=VESTIBULE_LIGHT, ceiling_tex="FLOOR4_8", floor_tex=WICKET_SILL),
                              [(a0, 0), (a1, 0), (a1, fd), (w1, fd), (w0, fd), (a0, fd)]),
-        "great_door.post_w": (m.sector("great_door.post_w", **solid), [(a0, fd), (w0, fd), (w0, T), (a0, T)]),
-        "great_door.wicket": (m.sector("great_door.wicket", floor=floor + WICKET_HIGH, ceiling=floor + WICKET_HIGH,
-                                       light=VESTIBULE_LIGHT), [(w0, fd), (w1, fd), (w1, T), (w0, T)]),
-        "great_door.post_e": (m.sector("great_door.post_e", **solid), [(w1, fd), (a1, fd), (a1, T), (w1, T)]),
+        "great_door.post_w": (m.sector("great_door.post_w", **solid), [(a0, fd), (w0, fd), (w0, td), (w0, T), (a0, T)]),
+        "great_door.wicket": (m.sector("great_door.wicket", floor=sill, ceiling=sill, light=VESTIBULE_LIGHT,
+                                       ceiling_tex="FLOOR4_8", floor_tex=WICKET_SILL),
+                              [(w0, fd), (w1, fd), (w1, td), (w0, td)]),
+        "great_door.wicket_back": (m.sector("great_door.wicket_back", floor=sill, ceiling=sill + WICKET_HIGH + fh,
+                                            light=VESTIBULE_LIGHT, ceiling_tex="FLOOR4_8", floor_tex=WICKET_SILL),
+                                   [(w0, td), (w1, td), (w1, T), (w0, T)]),
+        "great_door.post_e": (m.sector("great_door.post_e", **solid), [(w1, fd), (a1, fd), (a1, T), (w1, T), (w1, td)]),
         "great_door.leaf_w2": (m.sector("great_door.leaf_w2", **solid), [(a1, 0), (length, 0), (length, T), (a1, T), (a1, fd)]),
     }
     fog(m, pieces["great_door.frame"][0])
+    # Note #72 (2026-11-23): the step's boards ran askew to the door (flats lie along the map's axes, the
+    # leaf is swung): turned to run with the leaf, in all three sectors of the way through.
+    leaf_dir = (leaf_point(0, 1, 0)[0] - leaf_point(0, 0, 0)[0], leaf_point(0, 1, 0)[1] - leaf_point(0, 0, 0)[1])
+    for name in ("great_door.frame", "great_door.wicket", "great_door.wicket_back"):
+        m.sectors[pieces[name][0].index]["rotationfloor"] = round(math.degrees(math.atan2(leaf_dir[1], leaf_dir[0])), 2)
     door = pieces["great_door.wicket"][0]
     m.sectors[door.index]["id"] = WICKET_TAG
     edges = {}
@@ -842,15 +1264,12 @@ def great_door(m: MapBuilder, room, a, b) -> None:
         is_wicket = "great_door.wicket" in (name, oname)
         if is_wicket and t0 == t1:                      # the door's two faces
             # Note #64: monsters can open it too (monsteruse), so the imps come through once woken.
-            L.fields.update(special=62, arg0=WICKET_TAG, arg1=16, arg2=105, playeruse=True, monsteruse=True,
+            L.fields.update(special=12, arg0=WICKET_TAG, arg1=16, arg2=105, playeruse=True, monsteruse=True,
                             repeatspecial=True)
-            side = "face" if t0 == fd else "back"
-            fs.fields.update(texturebottom=WICKET_TEXTURE, offsetx_bottom=WICKET_OFFSET[0],
-                             offsety_bottom=WICKET_OFFSET[1])
-            if side == "back":                                          # the leaf above it, from behind
-                L["dontpegtop"] = True
-                fs.fields.update(texturetop=LEAF_TEXTURES[0], offsetx=skull_offset(0, "back", lo, hi),
-                                 offsetx_bottom=WICKET_OFFSET[0] - skull_offset(0, "back", lo, hi))
+            # The door's face is the upper part of the side looking at it, hung from the door's underside
+            # (so it rides up with it): WICKET_OFFSET's row at WICKET_HIGH above the floor.
+            fs.fields.update(texturetop=WICKET_TEXTURE, offsetx_top=WICKET_OFFSET[0],
+                             offsety_top=WICKET_OFFSET[1] + WICKET_HIGH - WICKET_TEXTURE_HIGH)
         elif is_wicket:                                 # the door's sides
             fs["texturebottom"] = bs["texturebottom"] = "DOORTRAK"
         elif other is vest:                                             # the leaf's face and back
@@ -858,8 +1277,62 @@ def great_door(m: MapBuilder, room, a, b) -> None:
             side = "face" if t0 == 0 else "back"
             vs.fields.update(texturetop=LEAF_TEXTURES[0], texturebottom=LEAF_TEXTURES[0],
                              offsetx=skull_offset(0, side, lo, hi))
-            L.fields.update(dontpegtop=True, blocking=name != "great_door.frame")
+            L.fields.update(dontpegtop=True, blocking=name not in ("great_door.frame", "great_door.wicket_back"))
+            if name in ("great_door.frame", "great_door.wicket_back"):
+                vs["texturebottom"] = CISTERN_WOOD                      # the step's riser (note #55)
     return None
+
+
+def cistern_door(m: MapBuilder, stair, a, b) -> None:
+    """Note #41: the big wooden door in the stairs' west wall a -> b (the stair on its right), in the
+    middle of it, shut until the cistern's switch is used; behind it a chamber with two shotgunners and
+    a red glow. Built in the wall's own frame (u along it from its middle, d away from the stairs)."""
+    import math
+    L = math.hypot(b[0] - a[0], b[1] - a[1])
+    ux, uy = (b[0] - a[0]) / L, (b[1] - a[1]) / L
+    mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
+    P = lambda u, d: (round(mx + u * ux - d * uy, 2), round(my + u * uy + d * ux, 2))
+    half, thick = CISTERN_DOOR_WIDE / 2, 16
+    floor = m.sectors[stair.index]["heightfloor"]
+    gid = "cistern_door"
+    # Note #63: its floor is a slight wooden step, like the small door's (note #55): WICKET_STEP up, boards.
+    door = m.sector(gid, floor=floor + WICKET_STEP, ceiling=floor + WICKET_STEP, light=PASSAGE_LIGHT,
+                    floor_tex=WICKET_SILL, ceiling_tex=CISTERN_BOARDS)
+    m.sectors[door.index]["id"] = CISTERN_DOOR_TAG
+    room = m.sector(f"{gid}.room", floor=floor, ceiling=floor + CISTERN_DOOR_ROOM_HIGH, light=CISTERN_DOOR_LIGHT,
+                    floor_tex=PASSAGE_TEXTURE, ceiling_tex=PASSAGE_TEXTURE)
+    m.sectors[room.index]["lightcolor"] = CISTERN_DOOR_TINT
+    # The stairs' wall either side, and the door's two faces: each the upper part of the side looking at
+    # it, hung from the door's underside so it rides up with it.
+    m.wall(a, P(-half, 0), stair, f"{gid}.wall_s", texture=PASSAGE_TEXTURE)
+    m.wall(P(half, 0), b, stair, f"{gid}.wall_n", texture=PASSAGE_TEXTURE)
+    for name, p, q, front in (("face", P(-half, 0), P(half, 0), stair), ("back", P(half, thick), P(-half, thick), room)):
+        ln = m.two_sided(p, q, front, door, f"{gid}.{name}", texture=CISTERN_DOOR_TEXTURE)
+        m.sidedefs[m.linedefs[ln]["sidefront"]]["offsetx"] = round((128 - CISTERN_DOOR_WIDE) / 2)
+        m.sidedefs[m.linedefs[ln]["sidefront"]]["texturebottom"] = CISTERN_WOOD   # the step's riser
+    for name, p, q in (("jamb_s", P(-half, 0), P(-half, thick)), ("jamb_n", P(half, thick), P(half, 0))):
+        ln = m.wall(p, q, door, f"{gid}.{name}", texture="DOORTRAK")
+        m.linedefs[ln]["dontpegbottom"] = True                 # the track stays put as the door rises
+    # The chamber behind it.
+    # Note #53: an irregular outline (CISTERN_DOOR_OUTLINE), from one side of the door round to the other.
+    ring = [P(half, thick)] + [P(u, d) for u, d in CISTERN_DOOR_OUTLINE] + [P(-half, thick)]
+    _edges(m, room, [(P(-half, thick), P(half, thick), "skip", "")]
+           + [(a2, b2, None, f"{gid}.room.wall_{i + 1}") for i, (a2, b2) in enumerate(zip(ring, ring[1:]))])
+    for ld in m.linedefs:
+        if ld["user_gid"].startswith(f"{gid}.room.wall_"):
+            m.sidedefs[ld["sidefront"]]["texturemiddle"] = PASSAGE_TEXTURE
+    out = round(math.degrees(math.atan2(-ux, uy))) % 360       # facing the door (towards the stairs)
+    for i, (u, d, kind) in enumerate(CISTERN_DOOR_GUARDS):
+        t = m.thing(SHOTGUNNER, *P(u, thick + d), f"{gid}.guard_{i + 1}", angle=out)
+        if kind == "wake":                                     # zscript.zs sets these on the player at the switch
+            m.things[t]["id"] = CISTERN_DOOR_WAKE_TID
+        elif kind == "deaf":
+            m.things[t]["ambush"] = True
+    # The red glow: dormant (a dynamic light shines through a shut door) until zscript.zs wakes it as the
+    # door starts to open.
+    r, g, bl, rad = CISTERN_DOOR_GLOW
+    glow = m.thing(9830, *P(0, thick + 40), f"{gid}.glow")
+    m.things[glow].fields.update(height=56, arg0=r, arg1=g, arg2=bl, arg3=rad, id=CISTERN_DOOR_GLOW_TID, dormant=True)
 
 
 def cistern(m: MapBuilder, drain, west) -> None:
@@ -893,19 +1366,97 @@ def cistern(m: MapBuilder, drain, west) -> None:
         m.two_sided(l, r, chain[k], chain[k + 1], name, texture=PASSAGE_TEXTURE)
     for k, s in enumerate(secs):
         (la, ra), (lb, rb) = cuts[k], cuts[k + 1]
-        m.wall(la, lb, s, f"cistern_stair_{k + 1}.wall_l", texture=PASSAGE_TEXTURE)
+        # Note #48: the big door is in the east (left) wall now; it was in the west one.
+        if k + 1 == CISTERN_DOOR_STAIR:
+            cistern_door(m, s, la, lb)
+        else:
+            m.wall(la, lb, s, f"cistern_stair_{k + 1}.wall_l", texture=PASSAGE_TEXTURE)
         m.wall(rb, ra, s, f"cistern_stair_{k + 1}.wall_r", texture=PASSAGE_TEXTURE)
-    for k, (x, y) in enumerate(CISTERN_SPECTRES):
-        sp = m.thing(SPECTRE, x, y, f"cistern.spectre_{k + 1}", angle=90)
-        m.things[sp]["ambush"] = True
+    for k, (x, y) in CISTERN_SPECTRES.items():
+        sp = m.thing(SPECTRE, x, y, f"cistern.spectre_{k}", angle=90)
+        m.things[sp].fields.update(ambush=True, id=SLEEPER_TID)
+    y, n = ne[1] - 110, 0
+    while y > se[1] + 60:                                  # note #7: the lights along the east wall
+        x = ne[0] + (se[0] - ne[0]) * (ne[1] - y) / (ne[1] - se[1]) - 20
+        (r, g, bl), rad = CISTERN_GLOWS[n % len(CISTERN_GLOWS)]
+        t = m.thing(9830, round(x), y, f"cistern.glow_{n + 1}")
+        m.things[t].fields.update(height=40, arg0=r, arg1=g, arg2=bl, arg3=rad)
+        y, n = y - CISTERN_GLOW_GAP, n + 1
     # The cistern: east and south walls as drawn, the west wall the drain's far side.
-    m.wall(ne, se, cis, "cistern.wall_e", texture=PASSAGE_TEXTURE)
-    m.wall(se, west[-1], cis, "cistern.wall_s", texture=PASSAGE_TEXTURE)
+    # Note #18: the east wall stands on a low slot (CISTERN_OUT) the water runs out through, into a dark
+    # channel behind it.
+    oh, od = CISTERN_OUT
+    out = m.sector("cistern.out", floor=CISTERN_FLOOR, ceiling=CISTERN_FLOOR + oh, light=24, floor_tex=GUTTER_FLAT,
+                   ceiling_tex=PASSAGE_TEXTURE)
+    m.sectors[out.index].fields.update(fadecolor=CISTERN_DARK_FOG[0], fogdensity=CISTERN_DARK_FOG[1], user_scenery=True)
+    east_line = m.two_sided(ne, se, cis, out, "cistern.wall_e", texture=PASSAGE_TEXTURE)
+    m.linedefs[east_line].fields.update(blocking=True, dontpegtop=True)
+    # Note #23 (2026-11-23): the same hanging vines as the hall's drains (DRAIN_GRATE), on both sides.
+    for sd in ("sidefront", "sideback"):
+        m.sidedefs[m.linedefs[east_line][sd]]["texturemiddle"] = DRAIN_GRATE
+    _edges(m, out, [(ne, se, "skip", ""), (se, (se[0] + od, se[1]), None, "cistern.out.end_s"),
+                    ((se[0] + od, se[1]), (ne[0] + od, ne[1]), None, "cistern.out.back"),
+                    ((ne[0] + od, ne[1]), ne, None, "cistern.out.end_n")])
+    for ld in m.linedefs:
+        if ld["user_gid"].startswith("cistern.out."):
+            m.sidedefs[ld["sidefront"]]["texturemiddle"] = PASSAGE_TEXTURE
+    south = m.wall(se, west[-1], cis, "cistern.wall_s", texture=PASSAGE_TEXTURE)
+    # Note #17: the platform, dais and switch post at the south end. Note #18: the switch
+    # (Light_ChangeToValue on the platform, dais and post: a little brighter, so using it shows) turns the
+    # cistern's water south (zscript.zs listens for it).
+    m.sectors[cis.index]["id"] = CISTERN_TAG
+    dark = dict(light=CISTERN_DARK_LIGHT + 16, floor_tex=CISTERN_BOARDS, ceiling_tex=PASSAGE_TEXTURE)
+    water = CISTERN_FLOOR
+    g0, g1 = CISTERN_GRATE
+    levels = (("cistern.platform", CISTERN_PLATFORM, water, cis),
+              ("cistern.dais", CISTERN_DAIS, water + g1 + 8, None),
+              ("cistern.post", CISTERN_POST, water + g1 + 8 + 48, None))
+    outer = cis
+    for name, (x0, y0, x1, y1), f, _ in levels:
+        grate = name == "cistern.platform"
+        sec = m.sector(name, floor=f, ceiling=CISTERN_TOP, **dict(dark, floor_tex=GUTTER_FLAT if grate else CISTERN_BOARDS))
+        m.sectors[sec.index].fields.update(fadecolor=CISTERN_DARK_FOG[0], fogdensity=CISTERN_DARK_FOG[1],
+                                           id=CISTERN_GRATE_TAG if grate else SWITCH_TAG)
+        pts = [(x0, y1), (x1, y1), (x1, y0), (x0, y0)]         # clockwise from the north-west corner
+        for i, side in enumerate(("n", "e", "s", "w")):
+            # The front is the outer (lower) side: where the player stands to look at it, or to use the switch.
+            ln = m.two_sided(pts[(i + 1) % 4], pts[i], outer, sec, f"{name}.edge_{side}", texture=CISTERN_WOOD)
+            if grate:                                          # bars from the water up to the grate
+                m.linedefs[ln]["dontpegbottom"] = True
+                for sd in ("sidefront", "sideback"):
+                    m.sidedefs[m.linedefs[ln][sd]].fields.update(texturemiddle="MIDBARS3", scaley_mid=72 / g0)
+            if name == "cistern.post" and side == "n":
+                m.sidedefs[m.linedefs[ln]["sidefront"]].fields.update(texturebottom=CISTERN_SWITCH, offsety_bottom=64)
+                # Note #41: the switch's own special is the big door (Door_Open, slow); zscript.zs does the
+                # rest when it's used (the dais's light, the water turning, the glow behind the door).
+                m.linedefs[ln].fields.update(special=11, arg0=CISTERN_DOOR_TAG, arg1=4, playeruse=True)
+        outer = sec
+    m.sectors[outer.index]["user_scenery"] = True              # the post's top: nowhere to stand
+    # The grate's control sector (as the bridge's): floor and ceiling = the grate's underside and top.
+    gx, gy = CISTERN_GRATE_CONTROL
+    control = m.room("cistern_grate_control", gx, gy, 32, 32, floor=water + g0, ceiling=water + g1,
+                     floor_tex=CISTERN_GRATE_FLAT, ceiling_tex=CISTERN_GRATE_FLAT, light=CISTERN_DARK_LIGHT + 16)
+    m.sectors[control.index]["user_scenery"] = True
+    ln = next(i for i, l in enumerate(m.linedefs) if l["user_gid"] == "cistern_grate_control.wall_s")
+    m.linedefs[ln].fields.update(special=160, arg0=CISTERN_GRATE_TAG, arg1=1, arg2=0, arg3=255)
+    m.sidedefs[m.linedefs[ln]["sidefront"]]["texturemiddle"] = CISTERN_GRATE_SIDE
+    for i, (x, y) in enumerate(CISTERN_CANDLES):               # note #19
+        m.thing(CANDLE, x, y, f"cistern.candle_{i + 1}")
+    # Note #50 (2026-11-23): a green armour tucked behind the switch post, on the boards behind the dais.
+    # Note #51: it spawned on the water's floor under the boards (a 3D floor), sunk into them: lifted
+    # by the boards' height above the water.
+    armor = m.thing(GREEN_ARMOR, *CISTERN_ARMOR, "cistern.armor")
+    m.things[armor]["height"] = g1
     for i, (a, b) in enumerate(zip(west, west[1:])):
         if a == b:
             continue
         ln = m.two_sided(a, b, drain, cis, f"cistern.wall_w_{i + 1}", texture=CISTERN_FALL)
-        m.linedefs[ln]["blocking"] = True
+        # blocksound (note #9): with the grates', the second sound-blocking line on the way round from the
+        # hall through the drain, so gunfire in the hall isn't heard in the cistern or up its stairs.
+        m.linedefs[ln].fields.update(blocking=True, blocksound=True)
+        # Note #15 (2026-11-23): water only below the slot (it runs out of the drain and down the wall);
+        # above it, the cistern's stone.
+        m.sidedefs[m.linedefs[ln]["sideback"]]["texturetop"] = PASSAGE_TEXTURE
 
 
 def hall_walls(m: MapBuilder, room, walls) -> dict:
@@ -946,7 +1497,7 @@ def hall_walls(m: MapBuilder, room, walls) -> dict:
             ln = m.two_sided(a, b, sector, drain, gid, texture=WALL)
             # Note #56: the wall above the gap pegged to the ceiling, as the plain walls beside it are.
             # Note #83: blocksight: monsters (the cistern's spectres) can't see through the vines.
-            m.linedefs[ln].fields.update(blocking=True, dontpegtop=True, blocksight=True)
+            m.linedefs[ln].fields.update(blocking=True, dontpegtop=True, blocksight=True, blocksound=True)
             front = m.sidedefs[m.linedefs[ln]["sidefront"]]
             front["texturemiddle"] = DRAIN_GRATE
             # Note #81: the vines on the drain's side too (a two-sided line's middle texture is drawn per
@@ -1024,10 +1575,15 @@ def slit_edges(m: MapBuilder, room, base, sleeve, gid: str, x0: float, y0: float
     # the spill is desaturated (for its liquid), which greyed it. So a lip 1 wide, lit and tinted like the
     # base, stands between them and draws it.
     lx = sx + 1
-    lip = m.sector(f"{gid}.lip", floor=floor, ceiling=-64, light=BASE_LIGHT, floor_tex="FLOOR7_2")
+    # Note #27: the lip's floor showed as a strip of marble across the liquid: now liquid too (blue water
+    # tinted violet: the lip can't be desaturated like the spill, that's what it is for).
+    # Note #29: blue water stayed blue (a tint can only take colour away): a plain grey flat takes the violet.
+    lip = m.sector(f"{gid}.lip", floor=floor, ceiling=-64, light=BASE_LIGHT, floor_tex="CEIL5_1")   # note #33: a dark neutral flat, as dark as the desaturated liquid
     fog(m, lip)
     hall_ceiling(m, lip)
-    m.sectors[lip.index].fields.update(lightcolor=SWITCH_GLOW_TINT, user_scenery=True)
+    # Note #31: the strip was far brighter than the liquid round it: FLAT19 is three times as light as the
+    # green liquid once that is desaturated (104 against 35 of 255), so its violet is scaled down to match.
+    m.sectors[lip.index].fields.update(lightcolor=SWITCH_GLOW_TINT, user_scenery=True, color_floor=VIOLET)
     m.two_sided((lx, yn), (lx, ys), lip, spill, f"{gid}.lip.edge_e", texture=STONE)
     m.two_sided((sx, yn), (lx, yn), lip, base, f"{gid}.lip.side_n", texture=STONE)
     m.two_sided((lx, ys), (sx, ys), lip, base, f"{gid}.lip.side_s", texture=STONE)
@@ -1160,20 +1716,39 @@ def lower_switch_niche(m: MapBuilder, mouth, a, b, mouth_pts, into) -> None:
     q0, q1 = (p0[0] + into[0], p0[1] + into[1]), (p1[0] + into[0], p1[1] + into[1])
     floor = -DROP + NICHE_FLOOR
     niche = m.sector("mouth.call_niche", floor=floor, ceiling=floor + NICHE_TOP - NICHE_FLOOR,
-                     light=CALL_NICHE_LIGHT)
+                     light=CALL_NICHE_LIGHT, floor_tex=LIP_TOP, ceiling_tex=TRACK)    # note #45: track metal, as the top one
     m.sectors[niche.index]["user_scenery"] = True   # too small to enter: decoration (movement check)
     fog(m, niche)
     m.wall(a, p0, mouth, "mouth.wall_w")
+    # Notes #34, #37 (2026-11-23): once an elevator switch has been used, this niche is shut by a panel, so
+    # it's plainly a one-time thing. As at the top switch (note #36): the last SHUTTER_DEEP of the niche,
+    # in front of the switch, is a sector of its own whose ceiling zscript.zs brings down (tag
+    # CALL_NICHE_TAG), the panel riding down inside the niche. (First the sill rose instead, and its
+    # metal face ran all the way down the wall under the niche.)
     m.two_sided(p0, p1, mouth, niche, "mouth.call_niche.mouth")
     m.wall(p1, b, mouth, "mouth.wall_w2")
-    m.wall(p0, q0, niche, "mouth.call_niche.side_a")
-    back = m.wall(q0, q1, niche, "mouth.call_niche.switch", texture=SWITCH_TEXTURE)
-    m.wall(q1, p1, niche, "mouth.call_niche.side_b")
+    depth = (into[0] ** 2 + into[1] ** 2) ** 0.5
+    k = (depth - SHUTTER_DEEP) / depth
+    r0, r1 = (p0[0] + into[0] * k, p0[1] + into[1] * k), (p1[0] + into[0] * k, p1[1] + into[1] * k)
+    shutter = m.sector("mouth.call_niche.shutter", floor=floor, ceiling=floor + NICHE_TOP - NICHE_FLOOR,
+                       light=CALL_NICHE_LIGHT, floor_tex=LIP_TOP, ceiling_tex=TRACK)
+    m.sectors[shutter.index].fields.update(user_scenery=True, id=CALL_NICHE_TAG)
+    fog(m, shutter)
+    m.wall(p0, r0, niche, "mouth.call_niche.side_a", texture=TRACK)
+    panel = m.two_sided(r0, r1, niche, shutter, "mouth.call_niche.shutter.panel")
+    m.sidedefs[m.linedefs[panel]["sidefront"]]["texturetop"] = CALL_SHUTTER_TEXTURE
+    m.wall(r1, p1, niche, "mouth.call_niche.side_b", texture=TRACK)
+    m.wall(r0, q0, shutter, "mouth.call_niche.shutter.side_a", texture=TRACK)
+    back = m.wall(q0, q1, shutter, "mouth.call_niche.switch", texture=SWITCH_TEXTURE)
+    m.wall(q1, r1, shutter, "mouth.call_niche.shutter.side_b", texture=TRACK)
     m.linedefs[back].fields.update(special=37, arg0=CAR_TAG, arg1=CAR_SPEED, arg2=DROP, arg3=1, playeruse=True)
     width = ((q1[0] - q0[0]) ** 2 + (q1[1] - q0[1]) ** 2) ** 0.5
     side = m.sidedefs[m.linedefs[back]["sidefront"]]
     side["offsetx"] = round(32 - width / 2)   # SW1GRAY's plate (x ~16-47) in the middle of the back wall
-    side["offsety"] = 69                      # its plate (rows ~70-102) fills the niche's 32 of height
+    # Note #42: stood on the floor (dontpegbottom), not hung from the shutter's ceiling, so the plate
+    # stays put as the panel comes down: row 69 at the niche's top, 32 above the floor.
+    m.linedefs[back]["dontpegbottom"] = True
+    side["offsety"] = 69 - (128 - (NICHE_TOP - NICHE_FLOOR))
 
 
 def altar(m: MapBuilder, room, gid: str, x0: float, y0: float, facing: str) -> None:
@@ -1237,6 +1812,7 @@ def shaft_side(m: MapBuilder, car, closet, gid: str, *, x_wall: float, x_out: fl
         elif a[1] == b[1] == 128:
             ln = m.two_sided(a, b, s, closet, f"{gid}.closet")
             m.linedefs[ln]["blocking"] = True
+            m.sidedefs[m.linedefs[ln]["sideback"]]["texturebottom"] = TRACK    # its foot: the strip (note #54)
         else:
             m.wall(a, b, s, f"{gid}.wall_{i}")
     return s
@@ -1341,6 +1917,9 @@ def start_door(m: MapBuilder, closet, coffer, a, b, coffer_x) -> None:
     for s in (beam_w, slot, beam_e):
         m.sectors[s.index].fields.update(id=CLOSET_TAG, user_scenery=True)   # too narrow to walk into
     m.sectors[recess.index]["user_scenery"] = True   # behind the beam now: too narrow to reach
+    # Note #35 (2026-11-23): once the target is shot, a block drops over it: the slot's ceiling comes down
+    # to the beam's (zscript.zs, by the slot's second tag), which leaves the lintel one plain beam.
+    m.sectors[slot.index]["moreids"] = str(TARGET_SLOT_TAG)
     m.two_sided((x1, y0), (x1, yb), coffer, beam_e, "closet.lintel_e.edge_e")
     m.two_sided((x1, yb), (t1, yb), coffer, beam_e, "closet.lintel_e.edge_n")
     m.two_sided((t1, yb), (t0, yb), coffer, slot, "closet.target.edge_n")

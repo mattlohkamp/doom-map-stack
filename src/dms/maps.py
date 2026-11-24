@@ -106,7 +106,7 @@ music = "D_RUNNIN"
 """
 
 MAP_PY = '''\
-"""{title}: the generator for this map. `.\\\\dms.ps1 build {name}` turns it into TEXTMAP."""
+"""{title}: the generator for this map. `.\\\\scripts\\\\dms.ps1 build {name}` turns it into TEXTMAP."""
 
 from dms.gen import MapBuilder
 

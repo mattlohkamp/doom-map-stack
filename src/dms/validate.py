@@ -181,7 +181,7 @@ def validate(tm: Textmap, catalog: Catalog | None = None) -> list[Issue]:
                 tex = sd.get(key, "-")
                 if tex != "-" and not catalog.has_texture(tex):
                     if catalog.has_flat(tex):
-                        warn(f"{key} {tex!r} is a flat, not a wall texture", n)
+                        pass  # a flat on a wall: UZDoom draws it (as it does a wall texture on a floor)
                     else:
                         err(f"{key} {tex!r} isn't in the texture catalog", n)
 

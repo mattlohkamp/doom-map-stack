@@ -2,7 +2,6 @@
 name = "dms"
 version = "0.1.0"
 description = "Doom map stack: write, check and play UDMF maps for UZDoom"
-readme = "README.md"
 license = "MIT"
 requires-python = ">=3.14"
 dependencies = [
@@ -18,3 +17,7 @@ dev = ["pytest"]
 [build-system]
 requires = ["uv_build>=0.13.9,<0.14"]
 build-backend = "uv_build"
+
+# pyproject.toml sits in src\ next to the package (the repo root holds only Start Session.cmd).
+[tool.uv.build-backend]
+module-root = ""

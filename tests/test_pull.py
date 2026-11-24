@@ -163,3 +163,23 @@ def test_elements_without_gid_match_by_position():
     saved.things[1]["angle"] = 45  # a tweak on a position-matched thing is still a tweak
     ch = pull.compare(ported, saved)
     assert ch.tweaks == {("thing", "room.shotgun"): {"angle": 45}} and not ch.structural
+
+
+def test_the_editors_rounding_is_not_a_move():
+    # The editor saves coordinates with 3 decimals; a vertex map.py worked out with more comes back
+    # rounded. That's not a moved line (2026-11-23: 26 "moves" listed with one real change).
+    from dms.gen import MapBuilder
+
+    m = MapBuilder()
+    room = m.sector("room")
+    pts = [(0, 0), (0, 512), (512, 224.94117647058823), (512, 0)]
+    for i, (a, c) in enumerate(zip(pts, pts[1:] + pts[:1])):
+        m.wall(a, c, room, f"room.wall_{i}")
+    m.player_start(128, 128)
+    base = m.textmap()
+
+    saved = udmf.parse(udmf.dump(base))
+    saved.vertices[2]["y"] = 224.941
+    assert pull.compare(base, saved).empty
+    saved.vertices[2]["y"] = 225.0
+    assert len(pull.compare(base, saved).structural) == 2

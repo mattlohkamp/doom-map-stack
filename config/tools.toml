@@ -1,7 +1,7 @@
 # Doom tools that `dms setup` downloads into .tools/<name>/ (git-ignored, never committed).
 #
 # To update a tool: change version, url and sha256 together (the sha256 is from the release
-# page or the project's published checksums), then run `.\dms.ps1 setup --upgrade <name>`.
+# page or the project's published checksums), then run `.\scripts\dms.ps1 setup --upgrade <name>`.
 #
 # Fields:
 #   url       official release download

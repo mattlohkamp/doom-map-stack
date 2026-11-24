@@ -27,6 +27,9 @@ class CacobeliskElevator : EventHandler
 
 	const SECRET_TAG = 3;       // the entry secret's panel (map.py SECRET_TAG)
 	const TARGET_TID = 301;     // the target's red pulse (map.py TARGET_TID)
+	const SLOT_TAG = 5;         // the target's slot (map.py TARGET_SLOT_TAG)
+	const SLOT_DROP = 16;       // how far its ceiling comes down to shut it
+	const DUST_PUFFS = 10;      // note #39
 
 	// The entry secret's target (the valve wheel over the start door, map.py) glows until it's shot:
 	// then its wall goes back to the closet's own light and its pulse goes out.
@@ -42,6 +45,25 @@ class CacobeliskElevator : EventHandler
 		Actor l;
 		while ((l = it.Next()) != null)
 			l.Deactivate(null);
+		// Note #39: a little cloud of dust puffs out of the secret panel as it starts to open, drifts
+		// into the closet and fades.
+		let panels = Level.CreateSectorTagIterator(SECRET_TAG);
+		int pi;
+		while ((pi = panels.Next()) >= 0)
+		{
+			Sector door = Level.sectors[pi];
+			Vector2 c = door.centerspot;
+			double z0 = door.floorplane.ZAtPoint(c);
+			double into = (c.x > 32) ? -1 : 1;      // towards the closet's middle (x 32)
+			for (int n = 0; n < DUST_PUFFS; n++)
+			{
+				Actor puff = Actor.Spawn("CacobeliskDust", (c.x + into * 6, c.y + FRandom(-16, 16), z0 + FRandom(4, 52)), NO_REPLACE);
+				if (puff != null)
+					puff.vel = (into * FRandom(0.3, 1.1), FRandom(-0.25, 0.25), FRandom(0.02, 0.25));
+			}
+		}
+		// Note #35: a block drops over the target: the slot's ceiling (72) comes down to the beam's (56).
+		Level.ExecuteSpecial(Ceiling_LowerByValue, null, null, false, SLOT_TAG, 16, SLOT_DROP);
 		Console.Printf("[DMS] CacobeliskElevator: the target was shot; the secret panel opens");
 	}
 
@@ -63,13 +85,69 @@ class CacobeliskElevator : EventHandler
 	// Note #12: once either switch is used, both are done for good: the other one loses its special
 	// (from the bottom of the shaft the top switch could still be reached, and lowered the platform
 	// another 256) and shows its "on" texture, like the one that was pressed.
+	// Note #34: once either switch has been used, both are shut away behind metal, so it's plain they
+	// are a one-time thing: a second after, the bottom niche's sill rises to its top (the sill's face is
+	// the metal panel: map.py), and the top switch, whose niche is the way down and can't shut, has its
+	// plate replaced by the niche's own metal.
+	const NICHE_SHUT_TAG = 4;    // the bottom niche (map.py CALL_NICHE_TAG)
+	const NICHE_SHUT_RISE = 32;  // its height
+	const SHUT_DELAY = 0;        // note #40: at once (was a second later)
+	const SHUT_SPEED = 64;       // and fast: the panel snaps shut (8 units a tic)
+	const SHUTTER_TAG = 6;       // the top switch's shutter (map.py SHUTTER_TAG)
+	const PULSE_TID = 302;       // the top switch's pulsing light (map.py SWITCH_PULSE_TID)
+	Line upperSwitch;
+	int shutAt;
+
+	void ShutSwitches()
+	{
+		// Note #37: the bottom niche too (its sill rose at first, and its face ran down the whole wall).
+		Level.ExecuteSpecial(Ceiling_LowerByValue, null, null, false, NICHE_SHUT_TAG, SHUT_SPEED, NICHE_SHUT_RISE);
+		// Note #36: the top switch isn't swapped for plain metal any more: a panel comes down in front of
+		// it (the shutter's ceiling, from the niche's top to its sill), and its pulsing light goes out.
+		Level.ExecuteSpecial(Ceiling_LowerByValue, null, null, false, SHUTTER_TAG, SHUT_SPEED, NICHE_SHUT_RISE);
+		let it = Level.CreateActorIterator(PULSE_TID);
+		Actor glow;
+		while ((glow = it.Next()) != null)
+			glow.Deactivate(null);
+		trackAt = Level.maptime + 8;
+		Console.Printf("[DMS] CacobeliskElevator: the switches are shut behind metal");
+	}
+
+	// Note #49: the top switch's wall is one texture (the switch, cement round its plate) all the way
+	// down the shaft below it, so riding down the player saw cement where the elevator's track should
+	// be. Once the panel has covered the plate (trackAt), the wall behind it becomes the track's metal.
+	int trackAt;
+
+	void WallToTrack()
+	{
+		if (upperSwitch == null)
+			return;
+		TextureID track = TexMan.CheckForTexture("SUPPORT3", TexMan.Type_Wall);
+		TextureID plateOff = TexMan.CheckForTexture("SW1GRAY", TexMan.Type_Wall);
+		TextureID plateOn = TexMan.CheckForTexture("SW2GRAY", TexMan.Type_Wall);
+		for (int s = 0; s < 2; s++)
+		{
+			Side sd = upperSwitch.sidedef[s];
+			if (sd == null)
+				continue;
+			for (int part = Side.top; part <= Side.bottom; part++)
+			{
+				if (sd.GetTexture(part) == plateOff || sd.GetTexture(part) == plateOn)
+					sd.SetTexture(part, track);
+			}
+		}
+	}
+
 	void LockSwitches(Line used)
 	{
 		TextureID off = TexMan.CheckForTexture("SW1GRAY", TexMan.Type_Wall);
 		TextureID on = TexMan.CheckForTexture("SW2GRAY", TexMan.Type_Wall);
+		shutAt = Level.maptime + SHUT_DELAY;
 		for (int i = 0; i < Level.Lines.Size(); i++)
 		{
 			Line l = Level.Lines[i];
+			if (l.args[0] == CAR_TAG && l.special == Floor_LowerByValue)
+				upperSwitch = l;
 			if (l == used || l.args[0] != CAR_TAG
 				|| (l.special != Floor_LowerByValue && l.special != Floor_MoveToValue))
 				continue;
@@ -92,6 +170,16 @@ class CacobeliskElevator : EventHandler
 	{
 		if (!riding)
 			return;
+		if (trackAt > 0 && Level.maptime >= trackAt)
+		{
+			trackAt = 0;
+			WallToTrack();
+		}
+		if (shutAt > 0 && Level.maptime >= shutAt)
+		{
+			shutAt = 0;
+			ShutSwitches();
+		}
 		Sector car = FindCar();
 		if (car == null)
 			return;
@@ -479,7 +567,7 @@ class CacobeliskObelisks : EventHandler
 			{
 				Sector slab = Level.Sectors[s];
 				Vector2 c = slab.centerspot;
-				Actor caco = Actor.Spawn("Cacodemon", (c.x, c.y, slab.floorplane.ZAtPoint(c)), ALLOW_REPLACE);
+				Actor caco = Actor.Spawn("CacobeliskDozer", (c.x, c.y, slab.floorplane.ZAtPoint(c)), NO_REPLACE);
 				if (caco != null)
 				{
 					caco.angle = caco.AngleTo(player);
@@ -513,5 +601,277 @@ class CacobeliskObelisks : EventHandler
 		}
 		Console.Printf("[DMS] CacobeliskObelisks: pair %d, %s obelisk revealed%s", pair + 1,
 			sc.x < 32 ? "west" : "east", cacos > 0 ? " (with its cacodemon)" : "");
+	}
+}
+
+// Note #11 (2026-11-23): the cistern's spectres are asleep: they neither hear nor see the player, and
+// wake only when touched or hurt, so a careful player can skirt round them. A spectre whose idle state
+// never looks (no A_Look); being hurt wakes any monster by itself, and Tick wakes it on a touch. The
+// handler swaps the map's spectres (thing id SLEEPER_TID, map.py) for it when the level loads.
+class CacobeliskSleeper : Spectre
+{
+	const TOUCH = 8;             // how near (beyond the two radii) counts as a touch
+
+	States
+	{
+	Spawn:
+		SARG AB 10;
+		Loop;
+	}
+
+	override void Tick()
+	{
+		Super.Tick();
+		if (health <= 0 || target || !InStateSequence(CurState, SpawnState))
+			return;
+		for (int i = 0; i < MAXPLAYERS; i++)
+		{
+			if (!playeringame[i] || !players[i].mo)
+				continue;
+			let mo = players[i].mo;
+			if (mo.health > 0 && Distance2D(mo) <= radius + mo.radius + TOUCH
+				&& mo.pos.z < pos.z + height && pos.z < mo.pos.z + mo.height)
+			{
+				target = mo;
+				A_StartSound(SeeSound, CHAN_VOICE);
+				SetState(SeeState);
+				Console.Printf("[DMS] CacobeliskSleeper: a spectre was touched and woke");
+				return;
+			}
+		}
+	}
+}
+
+class CacobeliskSleepers : EventHandler
+{
+	const SLEEPER_TID = 310;     // the cistern's spectres (map.py SLEEPER_TID)
+
+	override void WorldLoaded(WorldEvent e)
+	{
+		Array<Actor> found;
+		let it = Level.CreateActorIterator(SLEEPER_TID);
+		Actor a;
+		while (a = it.Next())
+			if (!(a is "CacobeliskSleeper"))
+				found.Push(a);
+		for (int i = 0; i < found.Size(); i++)
+		{
+			let old = found[i];
+			let s = Actor.Spawn("CacobeliskSleeper", old.pos, NO_REPLACE);
+			if (!s)
+				continue;
+			s.angle = old.angle;
+			old.ClearCounters();
+			old.Destroy();
+		}
+		Console.Printf("[DMS] CacobeliskSleepers: %d spectre(s) asleep", found.Size());
+	}
+}
+
+// Note #12 (2026-11-23): the switch obelisk's cacodemon is asleep too: a shadow minding its own business
+// up there. Note #32: deaf to gunshots as well (at first it woke on hearing the player), like the
+// cistern's spectres: it never looks or listens, and wakes only when hurt (as any monster does) or when a
+// player touches it.
+class CacobeliskDozer : Cacodemon
+{
+	const REACH = 8;             // how near (beyond the two radii) counts as a touch
+
+	States
+	{
+	Spawn:
+		HEAD A 10;
+		Loop;
+	}
+
+	override void Tick()
+	{
+		Super.Tick();
+		if (health <= 0 || target || !InStateSequence(CurState, SpawnState))
+			return;
+		for (int i = 0; i < MAXPLAYERS; i++)
+		{
+			if (!playeringame[i] || !players[i].mo)
+				continue;
+			let mo = players[i].mo;
+			if (mo.health > 0 && Distance2D(mo) <= radius + mo.radius + REACH
+				&& mo.pos.z < pos.z + height && pos.z < mo.pos.z + mo.height)
+			{
+				target = mo;
+				A_StartSound(SeeSound, CHAN_VOICE);
+				SetState(SeeState);
+				Console.Printf("[DMS] CacobeliskDozer: the cacodemon was touched and woke");
+				return;
+			}
+		}
+	}
+}
+
+// Note #18 (2026-11-23): which way the water runs. It flows away from the obelisk hall, slow and lazy:
+// the west gutter and its drain west, the east gutter and its drain east, the cistern's on east and out
+// under its east wall. Using the switch on the cistern's dais turns the cistern's water south and speeds
+// it up a little. Only the water's picture moves (its floor's texture offset, a little each tic); the
+// player isn't carried. Sectors are found by tag (map.py FLOW_WEST_TAG, FLOW_EAST_TAG, CISTERN_TAG).
+class CacobeliskWater : EventHandler
+{
+	const WEST_TAG = 610;
+	const EAST_TAG = 611;
+	const CISTERN_TAG = 600;
+	const SWITCH_TAG = 601;      // the dais and its post: lit a little when the switch is used
+	const DAIS_LIGHT = 96;
+	const BIG_DOOR_TAG = 7;      // the big door on the stairs (map.py CISTERN_DOOR_TAG)
+	const DOOR_GLOW_TID = 303;   // the red light behind it (map.py CISTERN_DOOR_GLOW_TID)
+	const GUARD_TID = 304;       // the shotgunners who come at once (map.py CISTERN_DOOR_WAKE_TID)
+	const LAZY = 0.12;           // map units a tic (about 4 a second)
+	const SOUTH_SPEED = 0.2;     // the cistern's, once the switch is used (not "TURNED": names ignore case)
+
+	// Note #26: once the switch is used, the cistern's current carries the player too: a push south each
+	// tic while they stand in its water (friction settles it at about 11 times this: ~2 units a tic, a
+	// quarter of walking speed, so it can be walked against).
+	const PUSH_SOUTH = 0.18;
+
+	bool turned;
+
+	// Push everything the current can take, standing on the floor of a sector tagged `tag`, by (dx, dy) a
+	// tic: players, and (note #62) monsters and bodies. Not a monster still asleep (the spectres would
+	// drift into the player and spoil skirting round them), nor anything that flies.
+	void Carry(int tag, double dx, double dy)
+	{
+		let it = Level.CreateSectorTagIterator(tag);
+		int i;
+		while ((i = it.Next()) >= 0)
+		{
+			for (Actor a = Level.sectors[i].thinglist; a != null; a = a.snext)
+			{
+				if (a.pos.z > a.floorz || a.bNoGravity)
+					continue;
+				bool body = a.bCorpse || (a.bIsMonster && a.health <= 0);
+				bool awake = a.bIsMonster && a.health > 0 && a.target != null;
+				if (a.player != null || body || awake)
+				{
+					a.vel.x += dx;
+					a.vel.y += dy;
+				}
+			}
+		}
+	}
+
+	// Move the water's picture in every sector tagged `tag` by (dx, dy) map units (east, north). A flat's
+	// picture sits at x + its x offset and at -y + its y offset, so east is a smaller x offset and north
+	// a bigger y offset.
+	void Flow(int tag, double dx, double dy)
+	{
+		let it = Level.CreateSectorTagIterator(tag);
+		int i;
+		while ((i = it.Next()) >= 0)
+		{
+			Sector s = Level.sectors[i];
+			if (dx != 0) s.AddXOffset(Sector.floor, -dx);
+			if (dy != 0) s.AddYOffset(Sector.floor, dy);
+		}
+	}
+
+	// Note #52: trying the big door by hand, while it's still shut, says it opens elsewhere: a player who
+	// presses use within reach of it and facing it gets the message and the "can't use that" grunt. (The
+	// door's lines have no special of their own to hang a message on: the switch opens it.)
+	const DOOR_REACH = 100;      // from the door's middle (it is 112 wide, 16 thick)
+	const DOOR_FACING = 55;      // degrees either side
+
+	void TryBigDoor()
+	{
+		if (turned)
+			return;
+		let doors = Level.CreateSectorTagIterator(BIG_DOOR_TAG);
+		int di = doors.Next();
+		if (di < 0)
+			return;
+		Vector2 c = Level.sectors[di].centerspot;
+		for (int p = 0; p < MAXPLAYERS; p++)
+		{
+			if (!playeringame[p] || !players[p].mo)
+				continue;
+			if (!(players[p].cmd.buttons & BT_USE) || (players[p].oldbuttons & BT_USE))
+				continue;
+			let mo = players[p].mo;
+			Vector2 d = c - mo.pos.xy;
+			if (d.Length() <= DOOR_REACH && abs(Actor.deltaangle(mo.angle, VectorAngle(d.x, d.y))) <= DOOR_FACING)
+			{
+				mo.A_Print("This door is opened elsewhere.");
+				mo.A_StartSound("*usefail", CHAN_VOICE);
+			}
+		}
+	}
+
+	override void WorldTick()
+	{
+		TryBigDoor();
+		Flow(WEST_TAG, -LAZY, 0);
+		Flow(EAST_TAG, LAZY, 0);
+		if (turned)
+		{
+			Flow(CISTERN_TAG, 0, -SOUTH_SPEED);
+			Carry(CISTERN_TAG, 0, -PUSH_SOUTH);
+		}
+		else
+			Flow(CISTERN_TAG, LAZY, 0);
+	}
+
+	override void WorldLineActivated(WorldEvent e)
+	{
+		Line ln = e.ActivatedLine;
+		// The dais switch: its own special is the big door on the stairs (Door_Open, note #41); the rest
+		// happens here: the dais lights up, the water turns, and the red glow behind the door comes on.
+		if (ln != null && !turned && ln.special == Door_Open && ln.args[0] == BIG_DOOR_TAG)
+		{
+			turned = true;
+			Level.ExecuteSpecial(Light_ChangeToValue, null, null, false, SWITCH_TAG, DAIS_LIGHT);
+			// Note #48: two of the shotgunners behind the door come for whoever used the switch at once.
+			let guards = Level.CreateActorIterator(GUARD_TID);
+			Actor guard;
+			int roused = 0;
+			while ((guard = guards.Next()) != null)
+			{
+				if (guard.health > 0 && e.Thing != null)
+				{
+					guard.target = e.Thing;
+					guard.SetState(guard.SeeState);
+					roused++;
+				}
+			}
+			Console.Printf("[DMS] CacobeliskWater: %d guard(s) roused behind the big door", roused);
+			let glows = Level.CreateActorIterator(DOOR_GLOW_TID);
+			Actor glow;
+			while ((glow = glows.Next()) != null)
+				glow.Activate(null);
+			Console.Printf("[DMS] CacobeliskWater: the switch was used; the cistern's water turns south");
+		}
+	}
+}
+
+// Note #39 (2026-11-23): dust from the secret panel: the bullet puff's smoke, bigger, pale and see-through,
+// drifting where it is thrown, slowing and fading out over about two seconds.
+class CacobeliskDust : Actor
+{
+	Default
+	{
+		+NOGRAVITY
+		+NOBLOCKMAP
+		+NOINTERACTION
+		RenderStyle "Translucent";
+		Alpha 0.45;
+		Scale 1.6;
+	}
+
+	States
+	{
+	Spawn:
+		PUFF CCDD 9 A_FadeOut(0.05);
+		PUFF D 4 A_FadeOut(0.06);
+		Wait;
+	}
+
+	override void Tick()
+	{
+		Super.Tick();
+		vel *= 0.96;
 	}
 }

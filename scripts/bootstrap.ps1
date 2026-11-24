@@ -1,7 +1,8 @@
 # One-time setup on a fresh clone; safe to re-run (only fills in what's missing).
+# dms.ps1 runs it by itself when something is missing; launchers\Bootstrap.cmd runs it by hand.
 #   1. Fetch the pinned standalone uv.exe into .tools\uv\ and check its hash.
 #   2. Install the pinned Python into .tools\python\ (no registry entries, no shortcuts).
-#   3. uv sync: dependencies into .venv\.
+#   3. uv sync: dependencies into .tools\venv\.
 #   4. dms setup: engine, editor and IWAD into .tools\.
 # ASCII only (Windows PowerShell 5.1 reads BOM-less scripts in the ANSI code page).
 
@@ -9,16 +10,17 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'   # Invoke-WebRequest is very slow with the progress bar on 5.1
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-. (Join-Path $PSScriptRoot 'scripts\dms-env.ps1')
-$root = $PSScriptRoot
+. (Join-Path $PSScriptRoot 'dms-env.ps1')
+$root = Get-DmsRoot
+$project = Get-DmsProject -Root $root
 
-# The uv version is pinned once, in uv.toml (required-version = "==X.Y.Z").
+# The uv version is pinned once, in src\uv.toml (required-version = "==X.Y.Z").
 # The hash below is for that version's uv-x86_64-pc-windows-msvc.zip; update both together.
 $uvSha256 = 'edd61f7f5728a56cc62455386661860bdfc7bab65872f39b0c25bdcc1d8e1beb'
 
-$uvToml = Get-Content (Join-Path $root 'uv.toml') -Raw
+$uvToml = Get-Content (Join-Path $project 'uv.toml') -Raw
 if ($uvToml -notmatch '(?m)^required-version\s*=\s*"==([0-9.]+)"') {
-    throw 'uv.toml must pin uv exactly: required-version = "==X.Y.Z"'
+    throw 'src\uv.toml must pin uv exactly: required-version = "==X.Y.Z"'
 }
 $uvVersion = $Matches[1]
 
@@ -57,7 +59,7 @@ else {
 }
 
 $failed = $false
-Push-Location $root   # uv python install reads .python-version from the current directory
+Push-Location $project   # uv python install reads .python-version from the current directory
 try {
 Invoke-DmsScope -Root $root -Body {
     # --- 2. Python (version from .python-version) --------------------------
@@ -67,12 +69,12 @@ Invoke-DmsScope -Root $root -Body {
 
     # --- 3. Dependencies ---------------------------------------------------
     Write-Step 'uv sync'
-    & $uv sync --locked --project $root
+    & $uv sync --locked --project $project
     if ($LASTEXITCODE -ne 0) { $script:failed = $true; return }
 
     # --- 4. Doom tools -----------------------------------------------------
     Write-Step 'dms setup'
-    & $uv run --locked --quiet --project $root dms setup
+    & $uv run --locked --quiet --project $project dms setup
     if ($LASTEXITCODE -ne 0) { $script:failed = $true; return }
 }
 }
@@ -81,4 +83,4 @@ if ($failed) {
     Write-Host 'bootstrap failed (see above).' -ForegroundColor Red
     exit 1
 }
-Write-Step 'Done. Run commands as .\dms.ps1 <command>.'
+Write-Step 'Done. Run commands as .\scripts\dms.ps1 <command>.'

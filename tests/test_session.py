@@ -6,7 +6,8 @@ from dms import board, cli, inbox, launch, live, maps, picker, session
 @pytest.fixture
 def repo(tmp_path, monkeypatch):
     (tmp_path / "maps").mkdir()
-    (tmp_path / "start-claude.bat").write_text("@echo off\r\n")
+    (tmp_path / "launchers").mkdir()
+    (tmp_path / "launchers" / "start-claude.bat").write_text("@echo off\r\n")
     monkeypatch.setattr(cli, "repo_root", lambda: tmp_path)
     return tmp_path
 
@@ -75,7 +76,8 @@ def test_a_running_board_is_used_as_it_is(repo, calls, monkeypatch):
 
 def test_session_defaults_and_flags_from_dms_toml(repo, calls):
     maps.new(repo, "a")
-    (repo / "dms.toml").write_text('[session]\ngame = false\nagent = ""\n')
+    (repo / "config").mkdir()
+    (repo / "config" / "dms.toml").write_text('[session]\ngame = false\nagent = ""\n')
     assert cli.main(["session", "a", "--no-editor"]) == 0
     assert [c[0] for c in calls] == ["board", "browser"]
     assert _session(repo) == {"map": "a"}

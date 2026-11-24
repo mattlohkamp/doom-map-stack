@@ -9,6 +9,7 @@ import sys
 import time
 from pathlib import Path
 
+from dms import paths
 from dms.build import build, edit_wad_changed, editor_state, needs_build, pack_edit_wad
 from dms.configure import (
     UDB_GAME_CONFIG,
@@ -22,14 +23,14 @@ from dms.maps import MapInfo
 
 
 def tool_path(root: Path, name: str) -> Path:
-    local = root / "tools.local.json"
+    local = paths.tools_local(root)
     try:
         entry = json.loads(local.read_text(encoding="utf-8"))[name]
     except (FileNotFoundError, KeyError):
-        raise SystemExit(f"dms: {name} is not installed; run .\\dms.ps1 setup") from None
+        raise SystemExit(f"dms: {name} is not installed; run .\\scripts\\dms.ps1 setup") from None
     path = Path(entry["path"])
     if not path.exists():
-        raise SystemExit(f"dms: {path} is missing; run .\\dms.ps1 setup")
+        raise SystemExit(f"dms: {path} is missing; run .\\scripts\\dms.ps1 setup")
     return path
 
 
@@ -44,7 +45,7 @@ def repo_env(root: Path) -> dict[str, str]:
 
 def reapply_editor_settings(root: Path) -> None:
     """The editor rewrites UDBuilder.cfg on exit (e.g. the last-used game config); put ours back."""
-    local = json.loads((root / "tools.local.json").read_text(encoding="utf-8"))
+    local = json.loads(paths.tools_local(root).read_text(encoding="utf-8"))
     if not local.get("udb", {}).get("managed"):
         return
     configure_udb(
@@ -112,8 +113,10 @@ def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False,
     _, lumps = wadfile.read(info.wad(root))
     by_name = {l.name: l.data for l in lumps}
     latest = history.latest(info, root)
+    from dms import extras
+
     out_wad = live.pack(info, root, by_name.get("MAPINFO", b""), by_name["TEXTMAP"], latest["seq"] if latest else 0,
-                        zscript=by_name.get("ZSCRIPT", b""))
+                        zscript=by_name.get("ZSCRIPT", b""), extra=[l for l in lumps if l.name in extras.LUMPS])
     log = build_dir / "log-play.txt"
     saves = uzdoom.parent / "saves" / info.name
     saves.mkdir(parents=True, exist_ok=True)
@@ -126,7 +129,10 @@ def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False,
         str(uzdoom),
         "-iwad", str(tool_path(root, "freedoom")),
         "-file", str(out_wad), str(devtools),
-        "+screenshot_dir", str(shots),
+        # Forward slashes: this is a console command, where "\c" + a letter is a colour code. With
+        # backslashes, build\cacobelisk\shots became "buildcobelisk/shots" and no screenshot was
+        # saved (seen 2026-11-23; any map name starting with c, n or t would do it).
+        "+screenshot_dir", shots.as_posix(),
         # Lets the mod's script take the note's screenshot (LevelLocals.MakeScreenShot). A player
         # setting, so it's set here, not by the mod; nothing else uses it.
         "+enablescriptscreenshot", "true",

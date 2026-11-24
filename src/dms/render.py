@@ -26,7 +26,9 @@ WALL = (235, 235, 235)
 TWO_SIDED = (130, 130, 145)
 SPECIAL = (255, 165, 0)
 PLAYER = (70, 220, 100)
-THING = (220, 90, 220)
+THING = (150, 130, 175)      # other things: lights, decoration, markers
+MONSTER = (255, 85, 60)
+ITEM = (80, 200, 255)
 ISSUE = (255, 60, 60)
 ADDED = (60, 230, 90)
 REMOVED = (255, 70, 70)
@@ -35,6 +37,46 @@ LABEL = (200, 200, 210)
 
 TARGET_PX = 1024
 MARGIN = 64  # map units around the map
+
+
+# Pickups not in movement's tables (ammo, small health and armour), for when the editor isn't installed.
+_SMALL_PICKUPS = {2007: "clip", 2048: "box of bullets", 2008: "shells", 2049: "box of shells", 2010: "rocket",
+                  2046: "box of rockets", 2047: "cell", 17: "cell pack", 2011: "stimpack", 2012: "medikit",
+                  2014: "health bonus", 2015: "armor bonus"}
+_KINDS: dict[int, tuple[str, str]] | None = None
+
+
+def thing_kind(type_) -> tuple[str, str]:
+    """(kind, name) of a thing type: kind "player", "monster", "item" (anything picked up) or "other"
+    (lights, decoration, markers). From the editor's thing lists when it is installed (every type it
+    knows), else from the tables dms has."""
+    global _KINDS
+    if _KINDS is None:
+        from dms import movement
+
+        kinds: dict[int, tuple[str, str]] = {}
+        try:
+            from dms import paths, resources
+            from dms.launch import tool_path
+
+            groups = {"monsters": "monster", "items": "item"}
+            for num, t in resources.editor_things(tool_path(paths.repo_root(), "udb").parent).items():
+                kinds[num] = (groups.get(resources.THING_GROUPS.get(t["category"], ""), "other"), t["title"])
+        except (SystemExit, Exception):  # not installed, or its files aren't as expected: the tables below
+            pass
+        for table, kind in ((_SMALL_PICKUPS, "item"), (movement.ITEMS, "item"), (movement.WEAPONS, "item"),
+                            (movement.KEYS, "item")):
+            for num, name in table.items():
+                kinds.setdefault(num, (kind, name))
+        for num, spec in movement.MONSTERS.items():
+            kinds.setdefault(num, ("monster", spec[0]))
+        for num in (1, 2, 3, 4):
+            kinds[num] = ("player", f"player {num} start")
+        _KINDS = kinds
+    return _KINDS.get(type_, ("other", ""))
+
+
+THING_COLORS = {"player": PLAYER, "monster": MONSTER, "item": ITEM, "other": THING}
 
 
 def _font(size: int):
@@ -190,13 +232,21 @@ def _draw_map(img: Image.Image, view: View, tm: Textmap, *, dim: bool = False, l
             continue
         cx, cy = view.px(t["x"], t["y"])
         r = max(4, 16 * view.scale)
-        is_player = t.get("type") in (1, 2, 3, 4)
-        color = PLAYER if is_player else THING
+        kind = thing_kind(t.get("type"))[0]
+        is_player = kind == "player"
+        color = THING_COLORS[kind]
         if dim:
             color = tuple(int(c * 0.45) for c in color)
-        draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=color, width=2)
-        ang = math.radians(t.get("angle", 0))
-        draw.line([(cx, cy), (cx + math.cos(ang) * r * 1.8, cy - math.sin(ang) * r * 1.8)], fill=color, width=2)
+        # Monsters and player starts: a circle with an arrow for the way they face. Items: a diamond.
+        # Everything else (lights, decoration): a smaller circle.
+        if kind == "item":
+            draw.polygon([(cx, cy - r), (cx + r, cy), (cx, cy + r), (cx - r, cy)], outline=color, width=2)
+        elif kind == "other":
+            draw.ellipse([cx - r * 0.6, cy - r * 0.6, cx + r * 0.6, cy + r * 0.6], outline=color, width=2)
+        else:
+            draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=color, width=2)
+            ang = math.radians(t.get("angle", 0))
+            draw.line([(cx, cy), (cx + math.cos(ang) * r * 1.8, cy - math.sin(ang) * r * 1.8)], fill=color, width=2)
         markers.append((cx - r, cy - r, cx + r, cy + r))
         if not is_player and not dim:
             pending.append(Label(str(t.get("type")), (cx, cy), color, priority=-1, gap=r + 2))
@@ -312,6 +362,10 @@ def render(tm: Textmap, out_png: Path, issues: list[Issue] = (), title: str = ""
         draw.text((view.width - 6, view.height - 6), title, fill=GRID_LABEL, font=font, anchor="rd")
     out_png.parent.mkdir(parents=True, exist_ok=True)
     img.save(out_png)
+    from dms import svg  # the same picture for the board's pan/zoom map
+
+    svg.write(out_png.with_suffix(".svg"), svg.scene(view, tm, issues=issues, unreachable=set(unreachable),
+                                                     softlocks=set(softlocks)))
     text = describe(tm, issues, view, title)
     if unreachable:
         text += f"hatched red: unreachable from the player start: sectors {', '.join(map(str, sorted(unreachable)))}\n"
@@ -334,9 +388,12 @@ def describe(tm: Textmap, issues: list[Issue], view: View, title: str) -> str:
                if pts else "no closed outline")
         lines.append(f"  {i} {s.get('user_gid', '-')}: {s.get('heightfloor', 0)}/{s.get('heightceiling', 0)}, "
                      f"light {s.get('lightlevel', 160)}, {s.get('texturefloor')}/{s.get('textureceiling')}, {box}")
-    lines.append(f"things ({len(tm.things)}): index, type, position, angle, gid")
+    lines.append(f"things ({len(tm.things)}): index, type (kind: name), position, angle, gid; drawn as red circles"
+                 " (monsters), blue diamonds (items), small grey circles (lights, decoration), green (player start)")
     for i, t in enumerate(tm.things):
-        lines.append(f"  {i} type {t.get('type')} at ({t.get('x', 0):g}, {t.get('y', 0):g}) angle {t.get('angle', 0)}"
+        kind, name = thing_kind(t.get("type"))
+        what = f" ({kind}: {name})" if name else f" ({kind})"
+        lines.append(f"  {i} type {t.get('type')}{what} at ({t.get('x', 0):g}, {t.get('y', 0):g}) angle {t.get('angle', 0)}"
                      f" {t.get('user_gid', '')}".rstrip())
     specials = [(i, ld) for i, ld in enumerate(tm.linedefs) if ld.get("special", 0)]
     lines.append(f"lines: {len(tm.linedefs)}, of which {len(specials)} with a special")
@@ -541,8 +598,11 @@ def render_diff(prev: Textmap, cur: Textmap, out_png: Path, title: str = "") -> 
         stem = out_png.with_suffix("")
         for s in DIFF_SUFFIXES:
             stem.with_name(stem.name + s + ".png").unlink(missing_ok=True)
+            stem.with_name(stem.name + s + ".svg").unlink(missing_ok=True)
         out_txt.write_text(f"{title}: no changes since the previous build\n", encoding="utf-8", newline="\n")
         return False
+    from dms import svg
+
     # One view for all three images, so before and after line up.
     view = view_for(prev, cur)
     stem = out_png.with_suffix("")
@@ -557,6 +617,7 @@ def render_diff(prev: Textmap, cur: Textmap, out_png: Path, title: str = "") -> 
         if label:
             ImageDraw.Draw(img).text((view.width - 6, view.height - 6), label, fill=GRID_LABEL, font=_font(13), anchor="rd")
         img.save(path)
+        svg.write(path.with_suffix(".svg"), svg.scene(view, base, marks=(prev, cur, changes, side)))
 
     def pt(p):
         return f"({p[0]:g}, {p[1]:g})"

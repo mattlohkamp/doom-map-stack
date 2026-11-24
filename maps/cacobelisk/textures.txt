@@ -1,0 +1,24 @@
+// Cacobelisk's own textures (dms packs this file as the map's TEXTURES lump: src/dms/extras.py).
+// Composed by the engine from Freedoom's own textures; nothing is drawn here.
+
+// Notes #54, #57 (2026-11-23): a strip of the elevator's track metal (SUPPORT3), 16 high, along the foot of
+// the start closet's walls, as it shows round the car before the ride. CACOBASE: the closet's wall
+// (METAL4, the mapper's pick; PIPEWAL1 for a moment, note #64; GRAY1 cement before) with the track's top 16 rows in its bottom 16; the walls using it are pegged to the floor, so
+// the strip sits on the floor. The track is used as it is (note #57): turned on its side at first
+// (note #54, { Rotate 90 }), which the mapper took back.
+WallTexture "CACOBASE", 128, 128
+{
+	Patch "METAL4", 0, 0
+	Patch "METAL4", 64, 0
+	Patch "SUPPORT3", 0, 112
+	Patch "SUPPORT3", 64, 112
+}
+
+// The hall's sky (map.toml's sky). Note #70 (2026-11-23): Freedoom's cloud sky SKY3 (red clouds on black),
+// "darkened and tinted all green": a black ground, and over it the clouds turned to green (the engine's
+// Green translation: brightness kept, colour replaced) at 60% strength. (Note #65 before it: the
+// starfield SKY4 with its red and blue halved: Patch "SKY4", 0, 0 { Blend "80FF80" }.)
+WallTexture "CACOSKY", 512, 128
+{
+	Patch "P-SKY3", 0, 0 { Translation "Green" }
+}

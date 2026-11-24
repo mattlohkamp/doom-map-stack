@@ -74,6 +74,20 @@
   .pick .t .x { margin-left: auto; cursor: pointer; color: var(--dim); }
   .udmf { font: 11px ui-monospace, Consolas, monospace; color: #b9d7a5; }
   .empty { color: var(--dim); padding: 20px; text-align: center; }
+  /* The loading screen: a turning sigil (our own drawing, no game graphics) and a real progress bar. */
+  .loading { padding-top: 60px; }
+  .sigil { width: 96px; height: 96px; fill: none; stroke: #d02818; stroke-width: 4; stroke-linejoin: round;
+           animation: sigil-turn 2.4s linear infinite, sigil-glow 1.2s ease-in-out infinite alternate; }
+  .sigil .thin { stroke-width: 1.5; }
+  @keyframes sigil-turn { to { transform: rotate(360deg); } }
+  @keyframes sigil-glow { from { filter: drop-shadow(0 0 3px #a01808); } to { filter: drop-shadow(0 0 12px #ff5a2a); } }
+  .sigil.small { width: 40px; height: 40px; }
+  .meter { width: 320px; max-width: 80%; height: 10px; margin: 12px auto 6px; background: #1a1012; border: 1px solid #5a1a14;
+           border-radius: 2px; overflow: hidden; }
+  .meter > div { height: 100%; width: 0; background: linear-gradient(#ff5a2a, #a01808); transition: width .25s linear; }
+  .meter.unknown > div { width: 30%; animation: meter-slide 1.1s ease-in-out infinite alternate; }
+  @keyframes meter-slide { from { margin-left: 0; } to { margin-left: 70%; } }
+  #boot-text { margin-top: 14px; color: #e8c8b8; }
   .voice { display: flex; gap: 8px; align-items: center; padding: 3px 0; border-bottom: 1px solid #22252b; }
   .frames { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-end; }
   .frames figure { margin: 0; text-align: center; font-size: 10px; color: var(--dim); }
@@ -101,7 +115,12 @@
   <span id="shown"></span>
 </div>
 <main>
-  <div id="list"><div class="empty">loading... (the first time, the server reads the WAD: about 15 seconds)</div></div>
+  <div id="list"><div class="empty loading" id="boot">
+    <svg class="sigil" viewBox="-50 -50 100 100" aria-hidden="true"><circle r="44"/><circle r="38" class="thin"/><path d="M0 -38 L22.3 30.7 L-36.1 -11.7 L36.1 -11.7 L-22.3 30.7 Z"/></svg>
+    <div id="boot-text">loading...</div>
+    <div class="meter unknown"><div id="boot-bar"></div></div>
+    <div id="boot-detail"></div>
+  </div></div>
   <div id="side"></div>
 </main>
 <div id="toast"></div>
@@ -195,7 +214,21 @@ function alertLine(msg) { $("#shown").textContent = msg; }
 
 async function init() {
   try { favs = await (await fetch("/api/assets/favorites")).json(); } catch { favs = {}; }
-  const idx = await (await fetch("/api/assets/index")).json();
+  // The first time, the server reads the WAD and indexes everything (15-20 s): show how far it is.
+  const bar = $("#boot-bar"), meter = bar.parentElement, text = $("#boot-text"), detail = $("#boot-detail");
+  const watch = setInterval(async () => {
+    try {
+      const p = await (await fetch("/api/assets/progress")).json();
+      if (!p.active || !bar.isConnected) return;
+      const part = p.total ? p.done / p.total : 0.5;
+      meter.classList.remove("unknown");
+      bar.style.width = Math.min(100, 100 * (p.step - 1 + part) / p.steps) + "%";
+      text.textContent = "reading the WAD: " + p.stage + (p.total ? " " + p.done + " / " + p.total : "...");
+      detail.textContent = "step " + p.step + " of " + p.steps + " (only the first time: it is cached after that)";
+    } catch { meter.classList.add("unknown"); }  // an older board server: no numbers, just the sigil
+  }, 250);
+  let idx;
+  try { idx = await (await fetch("/api/assets/index")).json(); } finally { clearInterval(watch); }
   KEY = idx.key; counts = idx.counts;
   const tabs = $("#tabs");
   for (const [k, label] of TABS) tabs.append(h("button", { class: "tab", "data-cat": k, onclick: () => go(k) }, label, h("span", { class: "n" }, counts[k] ?? "")));
@@ -205,7 +238,7 @@ async function go(c) {
   cat = c; store.set("cat", c); history.replaceState(null, "", "#" + c);
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.dataset.cat === c));
   if (!data[c]) {
-    $("#list").innerHTML = '<div class="empty">loading...</div>';
+    $("#list").innerHTML = '<div class="empty loading"><svg class="sigil small" viewBox="-50 -50 100 100"><circle r="44"/><circle r="38" class="thin"/><path d="M0 -38 L22.3 30.7 L-36.1 -11.7 L36.1 -11.7 L-22.3 30.7 Z"/></svg><div>loading...</div></div>';
     data[c] = (await (await fetch("/api/assets/" + c)).json()).items;
   }
   buildBar(); render(); renderSide();

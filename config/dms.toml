@@ -1,5 +1,5 @@
 # Project settings for how dms runs the tools. Committed; change them here (or ask Claude to).
-# They take effect the next time the editor is opened with `Open Editor.cmd` (or `.\dms.ps1 setup` runs).
+# They take effect the next time the editor is opened with `Open Editor.cmd` (or `.\scripts\dms.ps1 setup` runs).
 
 [play]
 # Music when test-playing (F9 in the editor, and later `dms play`). false = UZDoom runs with
@@ -25,7 +25,7 @@ game = true
 agent = "claude"
 
 # Coding agents Start Session can start. Each: a name for the window, and a launcher, a .bat or .cmd
-# in the repo root, run as `<launcher> --session <map>` with the mapper's own environment. Only
+# in launchers\, run as `<launcher> --session <map>` with the mapper's own environment. Only
 # Claude Code is supported (AGENTS.md); another agent needs its own launcher, e.g.:
 #   [agents.other]
 #   name = "Other Agent"

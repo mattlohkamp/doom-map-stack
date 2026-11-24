@@ -51,6 +51,8 @@ Everything installs into the repo (see "Self-contained" in `AGENTS.md`).
 
 ### Fresh-machine install
 
+*Since 2026-11-23: clone, then double-click `Start Session.cmd`; it runs `scripts\bootstrap.ps1` by itself.*
+
 ```powershell
 git clone https://github.com/mattlohkamp/doom-map-stack.git
 cd doom-map-stack
@@ -144,6 +146,8 @@ A new map normally starts **generated** while the layout is rough, and switches 
 ---
 
 ## 5. Proposed repo layout
+
+*Superseded 2026-11-23: the layout as it is now is in `AGENTS.md`, "Where things are".*
 
 ```
 doom-map-stack/
@@ -342,7 +346,8 @@ Still to build later:
   grid with search, filters and sort; textures auditioned side by side on a zoomable 2D plane and on 3D boxes
   with per-texture offsets and scale; sounds with the engine's own controls; music rendered by UZDoom; picks
   sent to Claude as a note.
-- **Earmarked (mapper, 2026-11-22): a pan/zoom map on the board, drawn as SVG.** The renderer writes an SVG
+- **Built 2026-11-23 (see `AGENTS.md`, "Renders" and `dms board`); earmarked by the mapper 2026-11-22: a
+  pan/zoom map on the board, drawn as SVG.** The renderer writes an SVG
   besides the PNG (it already draws polygons, lines, circles and text); the board shows it with mouse-wheel
   zoom and drag to pan (the viewBox), sharp at any zoom, labels a constant size on screen so crowded spots
   spread out as you zoom in, and a click still maps to map coordinates for notes. Chosen over zooming the PNG
@@ -356,7 +361,62 @@ Still to build later:
 
 ## 9. Where we left off
 
-*Updated 2026-11-22 (night). A new session starts here.*
+*Updated 2026-11-23. A new session starts here.*
+
+**2026-11-23, a long session on Cacobelisk (72 in-game and board notes, two editor saves) and the tools
+round it.** Not committed until the end of the day; 147 tests.
+
+*Cacobelisk now* (`maps/cacobelisk/notes.md` has every note): the start closet in METAL4 with a strip of
+track metal along its walls' foot (the map's own texture), both elevator switches twins in 32-wide
+niches that a panel shuts once either is used, a block over the secret's target once shot and a puff of
+dust from the panel; the hall open to a green cloud sky, walls of big ruined stone (STONE3 at twice its
+size), a dirt floor, a stone landing in place of the bridge; water that flows away from the hall
+(script), a violet leak from the switch obelisk spreading in half rings where it meets the gutter; the
+cacodemon and the cistern's two spectres asleep until hurt or touched; sound blocked so only one pinky
+comes at gunfire; a carved satyr with a stimpack shelf, a wooden shell niche; the cistern roofless-dark
+with a wooden platform, dais, candles, an armour, and a switch that turns the current south (it then
+carries the player, monsters and bodies) and slowly opens a big wooden door on the stairs: a chamber of
+six shotgunners (two roused at once, two ordinary, two deaf), a dead end.
+**Open:** where that chamber leads and an exit; what the switch obelisk does (still inert); the violet
+water turns the weapon grey (sector desaturation: the cure is violet flats of the map's own in
+`textures.txt`, with `animdefs.txt`); the sky may want darkening; unverified signs and directions listed
+in the notes (water flow, wall seam, step rotation). The movement check warns, wrongly, that imps and
+shotgunners can't pass the shaft's foot (it reads 32, it is 48).
+
+*Tools built today* (all in `AGENTS.md`):
+- **The board's map pans and zooms**: an SVG beside every PNG (`src/dms/svg.py`), shown inline; labels
+  decluttered by zoom (stacked where sectors share a middle), a readout under the cursor, corner buttons
+  instead of captions. Seen working by the mapper (notes came from it). Things are drawn by kind
+  (monsters red, pickups blue diamonds, the rest grey) in PNG and SVG.
+- **Per-map textures** (`src/dms/extras.py`, `maps/<map>/textures.txt`, `animdefs.txt`): composed by the
+  engine, text only. Lessons: a Blend colour of digits only is read as a number (write "#808080"); a
+  thing on a 3D floor needs a `height`; an upper texture is hung from the lower ceiling unless
+  `dontpegtop`, which matters when that ceiling moves.
+- **Crashes reach Claude** (`src/dms/gamelog.py`, `[DMS-CRASH]` from `dms watch`); the board won't restart
+  the game onto a script that doesn't compile; `dms play` waits for a script check already running.
+- **Note screenshots work again** (the folder was passed with backslashes: "\c" + a letter is a colour
+  code in a console command; no screenshot had been saved since the map was renamed to *c*acobelisk).
+- `dms pull` ignores the editor's 3-decimal rounding; the movement check knows a switch behind a shutter
+  at the back of a niche; the validator accepts a flat on a wall; the asset browser's first load shows a
+  spinner and real progress.
+
+*Lessons about working this way:* changes to `board.py`, `launch.py`, `live.py` reach the mapper only
+when the board is restarted (it starts the game): say so in the note's reply and the game's status line,
+since the mapper reads those, not the terminal. Don't try texture or script variants on the map being
+played: three builds today had a script that didn't compile (a constant and a method or variable with
+the same name, twice more: ZScript ignores case), and a sky definition the engine rejected stopped the
+mapper's `dms play`. The "hidden" script check's error window is not hidden: the mapper sees it.
+**Worth building next:** a scratch check (compile a script or load a textures file without touching the
+map's build), `dms rename`, layer toggles and a gid search on the board's map.
+
+**2026-11-23: the repo root was tidied, and launchers install by themselves** (mapper's request, after Start
+Session failed on a fresh clone with `uv is not installed`). The root now holds one script, `Start Session.cmd`;
+the other launchers are in `launchers\`, `dms.ps1` and `bootstrap.ps1` in `scripts\`, `dms.toml` and `tools.toml` in
+`config\`, the Python project files (`pyproject.toml`, `uv.lock`, `uv.toml`, `.python-version`) in `src\`, this file
+in `docs\`; the environment moved to `.tools\venv\` and `tools.local.json` into `.tools\` (`AGENTS.md` "Where things
+are"). `dms.ps1` runs `bootstrap.ps1` whenever something is missing. 144 tests. **Entries below this one, and
+§3 and §5, use the old paths** (`.\dms.ps1`, `Bootstrap.cmd` in the root, and so on). To try on a clean clone by
+the mapper: double-click `Start Session.cmd` and let it install.
 
 **Latest, 2026-11-22: Cacobelisk (`maps/cacobelisk`, kind `example`; was `test2`), 129 tests.** One evening's
 map built entirely from 28 in-game notes, five editor saves and chat, every round played live with H. A broken

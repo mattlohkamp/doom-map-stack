@@ -64,7 +64,10 @@ def check(info: MapInfo, root: Path, map_wad: Path, code: bytes) -> list[str] | 
     devtools = root / "resources" / "devtools"
     mod = b"".join(p.relative_to(devtools).as_posix().encode() + p.read_bytes()
                    for p in sorted(devtools.rglob("*")) if p.is_file()) if devtools.is_dir() else b""
-    h = _hash(code + mod)
+    # The map's own textures (extras.py) are read in the same load and can stop it too.
+    from dms import extras
+
+    h = _hash(code + mod + b"".join(lump.name.encode() + lump.data for lump in extras.lumps(info)))
     try:
         old = json.loads(cache.read_text(encoding="utf-8"))
         if old.get("sha256") == h:
@@ -89,7 +92,20 @@ def _run(root: Path, uzdoom: Path, iwad: Path, files: list[Path], workdir: Path)
     from dms.launch import repo_env
 
     log = workdir / "log-zscript-check.txt"
-    log.unlink(missing_ok=True)
+    try:
+        log.unlink(missing_ok=True)
+    except PermissionError:
+        # Another check is running right now (a build by Claude while the mapper starts the game: seen
+        # 2026-11-23, it stopped `dms play` with a traceback). Wait for it rather than fight over the log.
+        for _ in range(int(CHECK_TIMEOUT / 0.5)):
+            time.sleep(0.5)
+            try:
+                log.unlink(missing_ok=True)
+                break
+            except PermissionError:
+                continue
+        else:
+            return [f"another script check was still running after {CHECK_TIMEOUT} s"]
     si = None
     if hasattr(subprocess, "STARTUPINFO"):
         si = subprocess.STARTUPINFO()

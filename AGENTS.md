@@ -18,17 +18,32 @@ Claude edits source ──► build ──► validate + render PNG ──► Cl
 One iteration should be: Claude runs `build`, then the mapper runs `play` (or presses F9 in the editor).
 
 Settled choices: UDMF (text TEXTMAP) maps, UZDoom only (no vanilla/Boom compatibility),
-Freedoom2 0.13.0 as the IWAD, jump and crouch off. `PLAN.md` §2 has the full list.
+Freedoom2 0.13.0 as the IWAD, jump and crouch off. `docs/PLAN.md` §2 has the full list.
 
 ## Start of every session
 
-1. Read `PLAN.md` §9 "Where we left off": what's done and what's next. `PLAN.md` is the roadmap;
+1. Read `docs/PLAN.md` §9 "Where we left off": what's done and what's next. `docs/PLAN.md` is the roadmap;
    settled rules live here, not there.
 2. Before designing or changing a map, read `docs/map-design-notes.md`.
 3. When work moves to a map, read its `maps/<map>/notes.md` first.
 
-## Supported environment
+## Where things are
 
+The repo root holds one script, **`Start Session.cmd`**, and the files that have to be there (`AGENTS.md`,
+`README.md`, `LICENSE`, `.gitignore`, `.gitattributes`). Everything else is in folders; don't add files to the root.
+
+| Folder | What's in it |
+|--------|--------------|
+| `launchers\` | The other double-click launchers (`Edit Map.cmd`, `Play Map.cmd`, `Pull Map.cmd`, `Open Board.cmd`, `Open Editor.cmd`, `Bootstrap.cmd`) and the agent launchers (`start-claude.bat`) |
+| `scripts\` | `dms.ps1` (the entry point for every command), `bootstrap.ps1`, `dms-env.ps1` |
+| `config\` | `dms.toml` (project settings), `tools.toml` (the pinned Doom tools) |
+| `src\` | The Python project: `pyproject.toml`, `uv.lock`, `uv.toml`, `.python-version`, the `dms` package (`src\dms\`), the editor plugin (`src\udb-plugin\`). uv is always run with `--project src` |
+| `maps\`, `catalog\`, `resources\`, `docs\`, `tests\` | Maps, the IWAD's texture names, the devtools mod, documents (`docs\PLAN.md` is the roadmap), tests |
+| `.tools\`, `build\` | Git-ignored: downloads, the Python environment (`.tools\venv\`), `tools.local.json`; build output |
+
+`src/dms/paths.py` has these locations for the code.
+
+## Supported environment
 - **Windows 11 only.** Scripts are PowerShell (`.ps1`); no bash/macOS/Linux support.
 - **Claude Code only.** Other agents may work, but nothing is done to make sure of it.
   (Claude Code reads AGENTS.md natively from v2.1.277 when no CLAUDE.md exists.)
@@ -48,8 +63,8 @@ Deleting the repo folder removes everything.
 - **uv:** a standalone `uv.exe` in `.tools\uv\`, fetched by `bootstrap.ps1`. Never install uv with winget
   or use a `uv` from PATH. uv's Pythons and cache go in `.tools\python\` and `.tools\uv-cache\`.
   This isn't conventional Python practice (normally they're shared machine-wide); it's a deliberate choice for this project.
-- **Isolation from global Python/uv:** `uv.toml` pins the uv version (`required-version`) and sets
-  `python-preference = "only-managed"`; `UV_CONFIG_FILE` makes uv ignore a user-level `%APPDATA%\uv\uv.toml`; `.python-version` pins Python;
+- **Isolation from global Python/uv:** `src\uv.toml` pins the uv version (`required-version`) and sets
+  `python-preference = "only-managed"`; `UV_CONFIG_FILE` makes uv ignore a user-level `%APPDATA%\uv\uv.toml`; `src\.python-version` pins Python;
   `dms.ps1` clears `PYTHONPATH`, `PYTHONHOME`, `VIRTUAL_ENV`, `PIP_*` and outside `UV_*` variables.
 - **UZDoom** runs in its portable mode (`uzdoom_portable.ini` next to the exe, created by `dms setup`), so its config,
   saves (`Save\`) and screenshots (`Screenshots\`) stay in `.tools\uzdoom\`.
@@ -63,27 +78,31 @@ Deleting the repo folder removes everything.
 
 ## Commands
 
-The real interface is one Python command, run as **`.\dms.ps1 <command>`** from the repo root.
+The real interface is one Python command, run as **`.\scripts\dms.ps1 <command>`** from the repo root.
 It sets the environment and runs `uv run dms <command>`. Any other `.ps1` scripts are thin wrappers around it.
 
-- `.\bootstrap.ps1`: one-time setup on a fresh clone: fetches uv (hash-checked), installs Python into
-  `.tools\python\`, `uv sync`, `dms setup`. Safe to re-run; it only fills in what's missing.
-- `dms setup [--upgrade <tool>]`: downloads the Doom tools pinned in `tools.toml` (UZDoom, Ultimate Doom Builder,
-  Freedoom) into `.tools\<name>\`, checks hashes, writes `tools.local.json`. Skips tools already at the pinned version.
+- `.\scripts\bootstrap.ps1` (**`launchers\Bootstrap.cmd`**): the install: fetches uv (hash-checked), installs Python into
+  `.tools\python\`, `uv sync` (the environment goes in `.tools\venv\`), `dms setup`. Safe to re-run; it only fills in
+  what's missing. **Nobody has to run it by hand:** `dms.ps1` runs it first whenever uv, the environment or
+  `.tools\tools.local.json` is missing (`Test-DmsInstalled`), so on a fresh clone the first launcher or command
+  installs everything, then carries on. The exception is `agent-hook` (Claude Code's hooks): it exits quietly
+  and leaves the install to a real command.
+- `dms setup [--upgrade <tool>]`: downloads the Doom tools pinned in `config\tools.toml` (UZDoom, Ultimate Doom Builder,
+  Freedoom) into `.tools\<name>\`, checks hashes, writes `.tools\tools.local.json`. Skips tools already at the pinned version.
   `--upgrade <tool>` reinstalls one after its pin changes, keeping the files in its `preserve` list (settings, saves).
-  An entry hand-edited in `tools.local.json` with `"managed": false` points at an outside install and is left alone.
+  An entry hand-edited in `.tools\tools.local.json` with `"managed": false` points at an outside install and is left alone.
   It also configures the tools (`src/dms/configure.py`): UZDoom portable mode; in the editor's `UDBuilder.cfg`, the
   UZDoom UDMF game config as the default for new maps, UZDoom as the F9 engine, `uzdoom.pk3` (excluded from testing)
   and `freedoom2.wad` as resources, and the Open dialog starting in `build\scratch\`.
-- `dms editor [wad]` (**`Open Editor.cmd`**): opens the editor. Re-applies the settings above first, because the
+- `dms editor [wad]` (**`launchers\Open Editor.cmd`**): opens the editor. Re-applies the settings above first, because the
   editor rewrites `UDBuilder.cfg` on exit.
-- **`dms.toml`**: committed project settings, applied at the next editor launch. `[play] music = false` makes
+- **`config\dms.toml`**: committed project settings, applied at the next editor launch. `[play] music = false` makes
   test-play run UZDoom with `-nomusic` (per launch; nothing is saved in UZDoom's settings).
   `[play] test_automap = true` (default) gives test-play (F9 and `dms play`) a testing automap: all things shown
   (`am_cheat 2`, not saved) as their sprites, keys always, every trigger line coloured; set explicitly on every
   launch, on or off, since UZDoom saves the other three in its ini (`configure.TEST_AUTOMAP`). The devtools mod's
   `LOCKDEFS` gives skull locks lighter map colours than card locks (`dms play` only).
-- Tests: `. .\scripts\dms-env.ps1; Invoke-DmsScope -Root $PWD -Body { & .tools\uv\uv.exe run --locked pytest -q }`
+- Tests: `. .\scripts\dms-env.ps1; Invoke-DmsScope -Root $PWD -Body { & .tools\uv\uv.exe run --locked --project src pytest -q -p no:cacheprovider }`
 
 Map commands take a map name (`maps/<name>`) or a path to a map folder:
 - `dms new <name> [--kind map|test|example]`: creates `maps/<name>/` with `map.toml`, `map.py` (one room) and `notes.md`.
@@ -92,10 +111,10 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   content); then packs `build/<map>/<map>.wad` (MAPINFO with title/sky/music and `nojump`/`nocrouch`; the map in MAP01).
   Refuses to overwrite a generated `TEXTMAP` that was edited by hand, or to build while `build/<map>/edit.wad` has
   editor changes not brought back yet; `--force` discards them.
-- `dms play [<map>] [--skill N] [--nomonsters]` (**`Play Map.cmd`**): builds if the sources changed, starts UZDoom.
+- `dms play [<map>] [--skill N] [--nomonsters]` (**`launchers\Play Map.cmd`**): builds if the sources changed, starts UZDoom.
   Console log: `build/<map>/log-play.txt` (read it after a play session; UZDoom 5 names logs `log-<name>.txt`
   in its working directory, so play runs UZDoom from `build/<map>/`). Saves: `.tools/uzdoom/saves/<map>/`.
-- `dms edit [<map>]` (**`Edit Map.cmd`**): packs `build/<map>/edit.wad` from `TEXTMAP` and opens it in the editor,
+- `dms edit [<map>]` (**`launchers\Edit Map.cmd`**): packs `build/<map>/edit.wad` from `TEXTMAP` and opens it in the editor,
   so Save writes there. If the mapper already saved changes in it, it is reopened as it is, not overwritten.
 - **Live reload in the editor:** `dms setup` compiles `src/udb-plugin/DmsBridge.cs` (Windows' own C# compiler,
   .NET Framework 4.8, so C# 5) into `.tools/udb/Plugins/DmsBridge.dll`. For maps opened through `dms edit`, the
@@ -114,7 +133,7 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   - Reload = the editor's internal `CloseMap()` then `OpenMapFileWithOptions()` (both by reflection). Without the
     close, the old map's handle on `edit.wad` leaked and the next save failed with "target file is locked by Builder".
 
-- `dms pull [<map>] [--ported]` (**`Pull Map.cmd`**): brings the mapper's saved editor changes (`edit.wad`) back
+- `dms pull [<map>] [--ported]` (**`launchers\Pull Map.cmd`**): brings the mapper's saved editor changes (`edit.wad`) back
   into the map's source (`src/dms/pull.py`). Compares the save with `TEXTMAP` (what `edit.wad` was packed from),
   matching elements by `user_gid`. Property tweaks (light, heights, textures, offsets, flags, a thing's
   position/angle/type) go to **`maps/<map>/overrides.toml`** (`src/dms/overrides.py`; keyed by kind and gid; every
@@ -122,7 +141,7 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   requests. Structural changes (moved vertices; new, removed, split or copied lines/sectors/things) are listed in
   `build/<map>/pull.txt` and nothing is written: **Claude ports them into `map.py`, then runs
   `dms pull <map> --ported`**. Then it rebuilds (the editor reloads), checks the result against the save and keeps
-  the save in `build/<map>/pulled/`. Refuses while the editor has unsaved changes. Hand-edited maps: the save
+  the save in `build/<map>/pulled/`. A line whose ends differ by no more than 0.001 hasn't moved (the editor saves 3 decimals). Refuses while the editor has unsaved changes. Hand-edited maps: the save
   becomes `TEXTMAP`. It also draws `render-edit.png`/`diff-edit.png`: look at them, and read the requests.
   Claude looks at `overrides.toml` for patterns: if a whole room got the same tweak, fix `map.py` and drop those
   overrides.
@@ -139,6 +158,12 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
     with structural changes waiting to be ported (`[DMS-EDIT] ...`, once per save; builds refuse until it's ported). **While the mapper is
     working, Claude keeps it running with the Monitor tool** (re-arm it when it expires), acts on each note, and
     closes it with a reply. Notes from a play session can be batched until the mapper says "go".
+  - **Game crashes come the same way** (`src/dms/gamelog.py`): `dms watch` reads `build/<map>/log-play.txt` each
+    round and prints `[DMS-CRASH] <map>: ...` with the log's lines when UZDoom stops on an error (a script that
+    doesn't compile, "VM execution aborted" while playing, a fatal error), each error once. **On a
+    `[DMS-CRASH]` line Claude fixes the cause, rebuilds, and tells the mapper to start the game again**; the
+    mapper doesn't have to paste the log. Only games started by `dms play` (or the board's restart) are
+    covered: F9 from the editor writes no log dms reads.
   - **Order of work when requests come from several places** (editor saves, game notes, board notes, chat; agreed
     with the mapper 2026-11-21):
     1. **Editor saves first**, whenever they arrived: they're work the mapper already did, not requests, and
@@ -159,7 +184,7 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
     shows "Claude isn't watching notes" (and says so in its console when a note arrives), the game's "Got note #N"
     and status line say so, and the editor's "sent to Claude" becomes a warning. Two backstops on Claude's side:
     a `UserPromptSubmit` hook (`.claude/settings.json`, `dms agent-hook prompt`) shows Claude every open note no
-    watch delivered with each message the mapper sends (silent when none are open), and `start-claude.bat` starts
+    watch delivered with each message the mapper sends (silent when none are open), and `launchers\start-claude.bat` starts
     each session by asking Claude to arm the watch.
   - **Which Claude sessions are running** (`src/dms/agents.py`): the `SessionStart` and `UserPromptSubmit` hooks
     record the `claude.exe` process they run under (nearest ancestor) in `build/agents/<session id>.json`;
@@ -203,16 +228,17 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
     saying what changed and "press H"**; the mapper sees it in the game and reloads.
   - If the map outgrows its slot (1 MB or 4x the map, whichever is bigger), `DMSLIVE` says "restart" and H instead
     logs `[DMS-RELOAD]`: the board's watcher closes the game (`launch.stop_game`) and starts it again with
-    `+set dms_spawn` / `+set dms_message` (CVARINFO). That path needs the board running.
+    `+set dms_spawn` / `+set dms_message` (CVARINFO). That path needs the board running; it checks the script first, and keeps the
+    running game if the script doesn't compile.
     `dms_spawn` and `dms_message` are plain local cvars (`nosave`): as `user` cvars they counted against
     UZDoom's userinfo size limit, and a long message stopped it at startup ("User info descriptor too
     big"). `launch.fit_message` still cuts the message to 400 characters (newest replies first, the rest
     "on the board"), so the box stays readable.
-- `dms board [--port N] [--no-browser]` (**`Open Board.cmd`**): serves the board on 127.0.0.1 (port from `dms.toml`
+- `dms board [--port N] [--no-browser]` (**`launchers\Open Board.cmd`**): serves the board on 127.0.0.1 (port from `config\dms.toml`
   `[board]`, default 8765) and opens the browser (if the board is already running, it only opens the browser: the way back after
   closing the browser); the console window keeps it running and prints a timestamped
   line for each new build (with the note's first line), editor change (opened, unsaved, saved edits waiting,
-  closed) and finished play session. **Auto-pull** (`dms.toml` `[board] auto_pull`, on by default): while the board
+  closed) and finished play session. **Auto-pull** (`config\dms.toml` `[board] auto_pull`, on by default): while the board
   runs, a save in the editor is pulled about a second after it settles (once per save). Tweak/comment-only saves
   rebuild straight away; a save with structural changes shows as "Editor save waiting for Claude" at the top of
   the board (pull's report and `diff-edit` pictures) until Claude ports it and runs `dms pull <map> --ported`. Per map, one build at a
@@ -220,7 +246,12 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   unless the mapper flipped back; "replay" or Space plays every build from the oldest, 4 a second): its picture
   (changes marked, or before/after), Claude's note, validation, the
   diff text; plus the editor's state and
-  warning/error lines from the last play log. It polls every 2 s, so new builds appear by themselves. The page is
+  warning/error lines from the last play log. **The picture is a pan/zoom map** (the build's SVG, inline):
+  the mouse wheel zooms about the cursor, dragging pans, F or "fit" shows the whole map; the view is kept
+  while flipping builds and shared by the before/after pair. Labels, things and issue rings keep their size
+  on screen, and a label is hidden while it would cover another (issues first, then sectors large to small,
+  then things), so crowded spots spread out on zooming in; the line under the map says where the cursor is
+  and what it's on. A click (not a drag) still opens the note box. It polls every 2 s, so new builds appear by themselves. The page is
   `src/dms/board.html`, read on every request: an open board reloads itself within 2 s when it changes. Changes to
   `src/dms/board.py` (the server, API, console log, auto-pull) need the board restarted. (`src/dms/board.py`,
   standard library only). Builds that changed the map, or carry a note, are kept in `build/<map>/history/<n>/`
@@ -237,6 +268,15 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   scripts only at startup, so a build that changes the script marks the running game for a restart (H restarts
   it, with the board running). Find things by thing id (UDMF `id` on things) and react to lines in
   `WorldLineActivated`; log with `Console.Printf("[DMS] ...")` so `log-play.txt` shows the script ran.
+- **Per-map textures** (`src/dms/extras.py`): an optional `maps/<map>/textures.txt` is packed as the map's
+  `TEXTURES` lump and `maps/<map>/animdefs.txt` as `ANIMDEFS` (UZDoom's text formats): new textures composed
+  by the engine from the IWAD's own (turned, cut, layered, recoloured), so only text is committed, no
+  graphics. Name them after the map (`CACOBASE`), 8 characters at most. They go into the game's WAD, the
+  live copy and `edit.wad`; the validator learns the names from `textures.txt`; the hidden UZDoom load
+  that checks the script re-runs when they change (a missing patch shows in `build/<map>/log-zscript-check.txt`).
+  UZDoom reads them only at startup: a change marks the running game for a restart, like a script change.
+  Where a wall needs two things one texture can't give (a strip along its foot, a turned texture), compose
+  it here rather than cutting the map into more sectors.
 - **Asset browser** (`/assets` on the board's server, each page links to the other in a thin banner at the top; opened in a tab of its own next to the board whenever dms opens the browser; `src/dms/resources.py`,
   `src/dms/assets.html`; plan and status: `docs/asset-browser.md`): every texture, flat, decal, item, monster,
   decoration, sound and song the IWAD and `uzdoom.pk3` provide, as a list or grid with search, filter
@@ -246,14 +286,15 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   "one of my favourites". Rule: the browser offers only settings the game itself can apply (no tempo or pitch for music: UZDoom plays songs as they are).
   The editor's thing and texture-set configs are read at run time from `.tools/udb/`. Everything converted is
   cached in `build/assets/<key>/` (the key changes with the resource files or `resources.VERSION`); the first
-  load indexes for about 20 s. Changes to `resources.py` need the board restarted; `assets.html` is read per request.
+  load indexes for about 20 s, with a loading screen (a turning sigil drawn in the page, and a bar fed by
+  `/api/assets/progress`: `resources.progress()`, the stage and its count, never waiting for the index). Changes to `resources.py` need the board restarted; `assets.html` is read per request.
 - `dms catalog`: lists the IWAD's wall textures (with sizes) and flats into `catalog/` (committed; names only).
   Re-run after changing the Freedoom pin.
 - `dms validate <map> [--edit]`: checks `TEXTMAP` (or the mapper's `edit.wad`) and writes `build/<map>/validate.txt`
   (`validate-edit.txt`). `dms build` runs the same checks and exits non-zero on errors, but still packs the WAD so the
   map can be opened to look at the problem. Checks: references, zero-length and crossing lines, missing front sides,
   one-sided walls without a middle texture, unclosed/orphan sectors, light 0-255, ceiling below floor, textures and
-  flats against the catalog (a wall texture is accepted as a flat: UZDoom draws it), player 1 start, things outside every sector or on no skill level, tagged specials.
+  flats against the catalog (a wall texture is accepted as a flat, and a flat as a wall texture: UZDoom draws both), player 1 start, things outside every sector or on no skill level, tagged specials.
 - **Movement check** (`src/dms/movement.py`): every build (and `dms render`) works out which sectors the player can
   reach from the player 1 start and writes `build/<map>/movement.txt`. Rules: step up at most 24, any drop (one-way
   drops listed), 56 headroom, gaps at least 32 wide (collinear lines end to end count as one gap); blocking lines are
@@ -261,7 +302,8 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   lock in arg3) need a reachable key, lifts/floor/ceiling movers span their neighbours' heights
   (Floor_LowerByValue/RaiseByValue, 20/23, also their own arg2, e.g. a platform down a shaft); a special counts
   once its line is reachable (front side for use/shoot, either side for walk-over; a switch at the back of a
-  niche too small to enter counts from the sector in front of the niche). Scenery (no height at all, or
+  niche too small to enter counts from the sector in front of the niche, also through one more thin
+  sector, e.g. a shutter in front of the switch). Scenery (no height at all, or
   under 56 high and raised more than a step above every neighbour, like a monolith's top; untagged, not
   behind a special's line; or marked `user_scenery = true` by the map, e.g. a recess too narrow to
   enter) is walls, never reported unreachable. Its problems are warnings:
@@ -278,7 +320,9 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   monster's width (Doom's monsters move in 8 directions; Cacobelisk's passage, notes #66-#70).
 
 - **Renders** (`src/dms/render.py`): every build writes `build/<map>/render.png` + `render.txt` (sectors shaded by
-  floor height, walls, specials, things, grid, validation and movement issues ringed in red, unreachable sectors
+  floor height, walls, specials, things by kind (`render.thing_kind`, from the editor's thing lists: monsters
+  red circles with a line for their facing, pickups blue diamonds, lights and decoration small grey circles,
+  the player start green), grid, validation and movement issues ringed in red, unreachable sectors
   hatched red, soft-lock sectors tinted orange; labels kept clear of each other, a moved one joined to what
   it labels by a thin leader line: `render.place_labels`) and, when the map changed,
   `diff.png` + `diff.txt` against the previous build: the current map with the changes marked (green added,
@@ -287,6 +331,11 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   `dms render <map> [--edit]` redraws; `--edit` draws the mapper's `edit.wad` (`render-edit.png`) and diffs it
   against `TEXTMAP` (`diff-edit.png`): that's how Claude sees the mapper's editor changes. **Look at the PNG
   (and read the .txt) after every build.**
+  Beside every PNG the renderer writes the same picture as an **SVG** (`src/dms/svg.py`: `render.svg`,
+  `diff.svg`, `diff-before.svg`, `diff-after.svg`, and the `-edit` ones), in map units with y turned over
+  (north up), for the board's pan/zoom map; lines keep their width at any zoom, and sectors, things and
+  special lines carry a `<title>` saying what they are. The PNGs stay Claude's view (and the fallback
+  for builds from before the SVGs).
 
 Code: `src/dms/udmf.py` (TEXTMAP read/write, keeps every field), `wad.py`, `catalog.py`, `validate.py`, `gen.py` (the `MapBuilder` that
 `map.py` files use; every element gets a `user_gid`), `maps.py`, `build.py`, `launch.py`, `history.py`, `board.py`,
@@ -295,7 +344,7 @@ Code: `src/dms/udmf.py` (TEXTMAP read/write, keeps every field), `wad.py`, `cata
 - `dms session [<map>] [--no-browser|--no-editor|--no-game|--no-agent]` (**`Start Session.cmd`**, the
   mapper's usual way in; `src/dms/session.py`): `git pull`, then the session window (`picker.pick_session`): the map
   list (focused, last map selected), **New map...**, and toggles for the browser, editor, game and agent
-  (defaults: `[session]` in `dms.toml`, not remembered). Choosing a map (Start, Enter, double-click) or creating one
+  (defaults: `[session]` in `config\dms.toml`, not remembered). Choosing a map (Start, Enter, double-click) or creating one
   starts it: builds if needed, then opens what was ticked and isn't open: the browser on the map's page (`/#<map>`, plus the asset browser in a second tab),
   the editor (`launch.edit`) and the game (`launch.play`), or brings them to the front. A dropped map skips the
   window and uses the defaults. **The board isn't a choice: a session always has one** (auto-pull and the game's
@@ -307,37 +356,38 @@ Code: `src/dms/udmf.py` (TEXTMAP read/write, keeps every field), `wad.py`, `cata
   when the .cmd is to run the board); the `.cmd` then runs the agent's launcher in its own window
   (`<launcher> --session <map>`), then the board. No agent is started if a Claude session
   is already running in the repo (`agents.running`; it's handed the map instead, and the window says so) or a
-  `dms watch` covering the map already runs. Agents are listed under `[agents.<key>]` in `dms.toml` (`name`, `launcher`: a
-  `.bat`/`.cmd` in the repo root, no spaces); only Claude Code is defined (scaffolding for others). The agent is
+  `dms watch` covering the map already runs. Agents are listed under `[agents.<key>]` in `config\dms.toml` (`name`, `launcher`: a
+  `.bat`/`.cmd` in `launchers\`, no spaces); only Claude Code is defined (scaffolding for others). The agent is
   started by the `.cmd`, not by Python, so it gets the mapper's environment rather than `dms.ps1`'s.
   Exit code 2 = the window was cancelled. `[play] windowed = true` (default) runs UZDoom with `+vid_fullscreen 0`
   on every launch; windowed, UZDoom remembers its position, so it reopens on the same monitor.
-- **`start-claude.bat`**: Claude on its own: `git pull`, `claude update`, then starts Claude Code with a first
+- **`launchers\start-claude.bat`**: Claude on its own: `git pull`, `claude update`, then starts Claude Code with a first
   message asking it to arm the note watch and say where things were left off. With `--session <map>` (from
   `Start Session.cmd`) it skips the pull and names the map in that message.
 
-*Parked* (see `PLAN.md` §8): the screenshot tour (`tour`), `dms shot`, the test map overlay.
+*Parked* (see `docs/PLAN.md` §8): the screenshot tour (`tour`), `dms shot`, the test map overlay.
 
 **Running uv directly** (e.g. `uv add`, `uv lock`): never call a bare `uv`. Run it inside the repo environment:
 
 ```powershell
-. .\scripts\dms-env.ps1; Invoke-DmsScope -Root $PWD -Body { & .tools\uv\uv.exe lock }
+. .\scripts\dms-env.ps1; Invoke-DmsScope -Root $PWD -Body { & .tools\uv\uv.exe lock --project src }
 ```
 
 The same goes for ad-hoc Python (one-off scripts, quick checks): run it with the repo's Python inside that scope
-(`& .tools\uv\uv.exe run python ...`), never a system `python`, which writes caches into the user profile.
+(`& .tools\uv\uv.exe run --project src python ...`), never a system `python`, which writes caches into the user profile.
 
 `scripts\dms-env.ps1` points `TEMP`/`TMP` at `.tools\tmp\`, sets every uv location to an absolute path under `.tools\`, points `UV_CONFIG_FILE`
-at `uv.toml`, turns off registry entries and Python shortcuts, and restores the caller's environment afterwards.
-`uv.toml` sets `python-downloads = "manual"`, so uv never fetches a Python on its own; `bootstrap.ps1` installs it
+at `src\uv.toml`, turns off registry entries and Python shortcuts, and restores the caller's environment afterwards.
+`src\uv.toml` sets `python-downloads = "manual"`, so uv never fetches a Python on its own; `bootstrap.ps1` installs it
 explicitly with `--no-registry --no-bin`.
-**Upgrading uv:** change `required-version` in `uv.toml` and the matching zip hash in `bootstrap.ps1` together.
+**Upgrading uv:** change `required-version` in `src\uv.toml` and the matching zip hash in `bootstrap.ps1` together.
 Move each one up into the list above as it lands.
 
 ## Working rules
 
 - **The mapper works from Explorer, not a terminal.** Every command the mapper runs gets a double-clickable
-  `.cmd` launcher in the repo root (e.g. `Open Editor.cmd`), a thin wrapper around `dms.ps1` that pauses on error.
+  `.cmd` launcher, a thin wrapper around `dms.ps1` that pauses on error: `Start Session.cmd` in the repo root (the
+  only script there), the rest in `launchers\` (e.g. `launchers\Open Editor.cmd`).
   Where a command takes a file, accept it by drag-and-drop onto the launcher (`%*`). **Interactive menus are the
   default experience:** a launcher that takes a map opens a picker window on double-click (`src/dms/picker.py`,
   tkinter; the last map chosen is preselected); dropping a map folder onto the launcher skips the picker. `.cmd` files are ASCII with CRLF line endings.
@@ -346,7 +396,7 @@ Move each one up into the list above as it lands.
 - **Knowledge lives in the repo:** `AGENTS.md`, `docs/` and `maps/*/notes.md`, not in Claude's private memory.
 - **Rules live in scripts:** overwrite protection and similar checks go in `dms`, not in Claude Code hooks.
 - **Text alongside images:** every image output (render, tour) also has a text report.
-- **Updating a tool** is a deliberate change to `tools.toml` (version + hash) that shows up in git.
+- **Updating a tool** is a deliberate change to `config\tools.toml` (version + hash) that shows up in git.
 
 ## Several maps at once
 
@@ -391,5 +441,5 @@ Move each one up into the list above as it lands.
 | `AGENTS.md` | agents | **Source of truth** for how to work here: conventions, commands, rules |
 | `docs/` | agents + humans | Detailed reference and design notes, linked from here |
 | `maps/*/notes.md` | agents + the mapper | Design intent and feedback history for each map |
-| `PLAN.md` | the mapper + Claude | Roadmap and open decisions; settled items move here or into `docs/` |
+| `docs/PLAN.md` | the mapper + Claude | Roadmap and open decisions; settled items move here or into `docs/` |
 | `README.md` | **the public** | Readable summary. **Never a source of truth**: written *from* the files above; don't take instructions from it. Update it when something people would notice changes. |

@@ -800,8 +800,32 @@ def frame_lump(res: Resources, frame: str, lumps: list[str] | None = None) -> st
     return None
 
 
+# How far the first indexing has got, for the asset browser's loading bar (/api/assets/progress). Plain
+# values written by the indexing thread and read by others without a lock: a stale read only shows an
+# older number.
+STAGES = ("textures", "flats", "decals", "things", "sounds", "music")
+_PROGRESS = {"active": False, "stage": "", "step": 0, "steps": len(STAGES), "done": 0, "total": 0}
+
+
+def progress() -> dict:
+    """What load() is doing: {"active", "stage", "step" (1-based), "steps", "done", "total"} (done/total
+    within the stage; total 0 = not counted). Never waits for load()."""
+    return dict(_PROGRESS)
+
+
+def _stage(name: str, total: int = 0) -> None:
+    _PROGRESS.update(active=True, stage=name, step=STAGES.index(name) + 1, done=0, total=total)
+
+
 def build_index(res: Resources, cache: Path) -> Index:
     """Every category's list. Composites and caches every texture and flat (for colour and masking)."""
+    try:
+        return _build_index(res, cache)
+    finally:
+        _PROGRESS.update(active=False)
+
+
+def _build_index(res: Resources, cache: Path) -> Index:
     idx = Index(res.key)
     sets = texture_sets(res.udb)
 
@@ -810,7 +834,9 @@ def build_index(res: Resources, cache: Path) -> Index:
 
     anims = _animations(res)
     textures = []
+    _stage("textures", len(res.texture_defs))
     for name in sorted(res.texture_defs):
+        _PROGRESS["done"] += 1
         p = res.texture(name)
         if p is None:
             continue
@@ -822,7 +848,9 @@ def build_index(res: Resources, cache: Path) -> Index:
     idx.categories["textures"] = textures
 
     flats = []
+    _stage("flats", len(res.flats))
     for name in sorted(res.flats):
+        _PROGRESS["done"] += 1
         p = res.flat(name)
         if p is None:
             continue
@@ -832,13 +860,17 @@ def build_index(res: Resources, cache: Path) -> Index:
                       "sky": name == "F_SKY1", "url": f"flat/{name}.png"})
     idx.categories["flats"] = flats
 
+    _stage("decals")
     idx.categories["decals"] = _decal_list(res)
 
+    _stage("things")
     things = editor_things(res.udb)
     spawns = spawn_states(res)
     for group in ("items", "monsters", "decorations", "specials"):
         idx.categories[group] = []
+    _PROGRESS["total"] = len(things)
     for num in sorted(things):
+        _PROGRESS["done"] += 1
         t = things[num]
         lump = resolve_sprite(res, t["sprite"])
         group = THING_GROUPS.get(t["category"], "specials")
@@ -859,7 +891,9 @@ def build_index(res: Resources, cache: Path) -> Index:
                  "spawn": anim if animated else [], "url": f"sprite/{lump}.png" if lump else None}
         idx.categories[group].append(entry)
 
+    _stage("sounds")
     idx.categories["sounds"] = _sound_list(res)
+    _stage("music")
     idx.categories["music"] = _music_list(res)
     return idx
 

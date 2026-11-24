@@ -22,7 +22,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from dms import maps
+from dms import maps, paths
 
 SESSION_FILE = Path("build") / "session.txt"
 PARTS = ("browser", "editor", "game")
@@ -40,11 +40,11 @@ def defaults(settings: dict) -> dict:
 
 
 def launcher(root: Path, agent: dict) -> str:
-    """The agent's launcher: a .bat or .cmd file directly in the repo root, no spaces in its name
+    """The agent's launcher: a .bat or .cmd file directly in launchers/, no spaces in its name
     (checked, since Start Session.cmd runs it through `cmd /c`, which drops the quotes)."""
     name = str(agent["launcher"])
-    if not re.fullmatch(r"[A-Za-z0-9._-]+\.(bat|cmd)", name) or not (root / name).is_file():
-        raise maps.MapError(f"agent launcher {name!r} must be a .bat or .cmd file in the repo root, no spaces")
+    if not re.fullmatch(r"[A-Za-z0-9._-]+\.(bat|cmd)", name) or not (root / paths.LAUNCHERS / name).is_file():
+        raise maps.MapError(f"agent launcher {name!r} must be a .bat or .cmd file in launchers\\, no spaces")
     return name
 
 
@@ -54,7 +54,7 @@ def _start_board(root: Path, port: int) -> bool:
 
     flags = getattr(subprocess, "CREATE_NEW_CONSOLE", 0)
     subprocess.Popen(
-        ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(root / "dms.ps1"),
+        ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(root / paths.DMS_PS1),
          "board", "--no-browser"],
         cwd=root, creationflags=flags, close_fds=True)
     for _ in range(60):  # uv and Python take a few seconds to start

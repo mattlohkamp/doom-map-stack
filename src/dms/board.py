@@ -77,7 +77,13 @@ def map_list(root: Path) -> list[dict]:
     return out
 
 
-EDIT_FILES = ("render-edit.png", "diff-edit.png", "diff-edit-before.png", "diff-edit-after.png")
+EDIT_FILES = ("render-edit.png", "diff-edit.png", "diff-edit-before.png", "diff-edit-after.png",
+              "render-edit.svg", "diff-edit.svg", "diff-edit-before.svg", "diff-edit-after.svg")
+
+
+def _ctype(fname: str) -> str:
+    return ("image/png" if fname.endswith(".png") else "image/svg+xml; charset=utf-8" if fname.endswith(".svg")
+            else "text/plain; charset=utf-8")
 STRUCTURAL_RE = re.compile(r"^structural changes \((\d+)\)", re.MULTILINE)
 
 
@@ -322,6 +328,17 @@ class Watcher:
         if len(lines) == 1:
             lines.append("No replies from Claude since the last start.")
 
+        # A script that doesn't compile would stop the new game at startup (launch.play refuses to start
+        # it): keep the running game rather than close it and leave the mapper with nothing.
+        from dms import scripts
+
+        code = scripts.read(info)
+        errors = scripts.check(info, self.root, info.wad(self.root), code) if code else None
+        if errors:
+            out.append(f"{name}: not restarting the game: zscript.zs doesn't compile ({errors[0]}); "
+                       "it keeps the build it has until Claude fixes the script")
+            return out
+
         launch.stop_game(info, self.root)
         with _say_lock, contextlib.redirect_stdout(io.StringIO()):
             launch.play(self.root, info, skill=started.get("skill", 3), nomonsters=started.get("nomonsters", False),
@@ -489,6 +506,11 @@ def make_handler(root: Path, announce: bool = False):
                     from dms import resources
 
                     self._json(resources.favorites(root))
+                elif parts == ["api", "assets", "progress"]:
+                    # How far the first indexing has got (the page's loading bar); never waits for it.
+                    from dms import resources
+
+                    self._json(resources.progress())
                 elif len(parts) == 3 and parts[:2] == ["api", "assets"]:
                     from dms import resources
 
@@ -519,7 +541,7 @@ def make_handler(root: Path, announce: bool = False):
                     f = info.build_dir(root) / fname if info and fname in EDIT_FILES else None
                     if f is None or not f.is_file():
                         return self._missing()
-                    self._send(HTTPStatus.OK, f.read_bytes(), "image/png", "max-age=31536000, immutable")
+                    self._send(HTTPStatus.OK, f.read_bytes(), _ctype(fname), "max-age=31536000, immutable")
                 elif len(parts) == 4 and parts[0] == "history":
                     # /history/<map>/<entry>/<file>: only the files history.record copies.
                     _, name, entry, fname = parts
@@ -529,8 +551,7 @@ def make_handler(root: Path, announce: bool = False):
                     f = history.history_dir(info, root) / entry / fname
                     if not f.is_file():
                         return self._missing()
-                    ctype = "image/png" if fname.endswith(".png") else "text/plain; charset=utf-8"
-                    self._send(HTTPStatus.OK, f.read_bytes(), ctype, "max-age=31536000, immutable")
+                    self._send(HTTPStatus.OK, f.read_bytes(), _ctype(fname), "max-age=31536000, immutable")
                 else:
                     self._missing()
             except (ConnectionError, OSError):

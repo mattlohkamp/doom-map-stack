@@ -1,4 +1,4 @@
-# Shared by bootstrap.ps1 and dms.ps1 (dot-sourced). ASCII only: Windows PowerShell 5.1
+# Shared by bootstrap.ps1 and dms.ps1 (dot-sourced; all three live in scripts\). ASCII only: Windows PowerShell 5.1
 # reads BOM-less scripts in the ANSI code page.
 #
 # Invoke-DmsScope runs a script block with an environment that keeps uv and Python
@@ -22,8 +22,8 @@ function Set-DmsEnvironment {
     $env:TEMP = $tmp
     $env:TMP = $tmp
 
-    # uv reads only the repo's uv.toml (a user-level %APPDATA%\uv\uv.toml is ignored).
-    $env:UV_CONFIG_FILE = Join-Path $Root 'uv.toml'
+    # uv reads only the repo's src\uv.toml (a user-level %APPDATA%\uv\uv.toml is ignored).
+    $env:UV_CONFIG_FILE = Join-Path $Root 'src\uv.toml'
 
     # Every uv location, as absolute paths (relative paths in uv.toml resolve against
     # the current directory, not the file, so they are set here instead).
@@ -33,7 +33,7 @@ function Set-DmsEnvironment {
     $env:UV_TOOL_DIR = Join-Path $tools 'uv-tools'
     $env:UV_TOOL_BIN_DIR = Join-Path $tools 'uv-tools\bin'
     $env:UV_CREDENTIALS_DIR = Join-Path $tools 'uv-credentials'
-    $env:UV_PROJECT_ENVIRONMENT = Join-Path $Root '.venv'
+    $env:UV_PROJECT_ENVIRONMENT = Join-Path $tools 'venv'
 
     # No registry entries, no python.exe shortcuts in the user profile.
     $env:UV_PYTHON_INSTALL_REGISTRY = '0'
@@ -62,4 +62,24 @@ function Invoke-DmsScope {
 function Get-DmsUv {
     param([Parameter(Mandatory)][string]$Root)
     return (Join-Path $Root '.tools\uv\uv.exe')
+}
+
+# The repo root: the folder above scripts\.
+function Get-DmsRoot {
+    return (Split-Path $PSScriptRoot -Parent)
+}
+
+# The Python project (pyproject.toml, uv.lock, uv.toml, .python-version): src\.
+function Get-DmsProject {
+    param([Parameter(Mandatory)][string]$Root)
+    return (Join-Path $Root 'src')
+}
+
+# True once bootstrap.ps1 has run here: uv, the Python environment and the Doom tools are in .tools\.
+function Test-DmsInstalled {
+    param([Parameter(Mandatory)][string]$Root)
+    foreach ($p in '.tools\uv\uv.exe', '.tools\venv\Scripts\python.exe', '.tools\tools.local.json') {
+        if (-not (Test-Path (Join-Path $Root $p))) { return $false }
+    }
+    return $true
 }

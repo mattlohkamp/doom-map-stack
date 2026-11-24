@@ -17,7 +17,7 @@ import struct
 import tomllib
 from pathlib import Path
 
-from dms import udbcfg
+from dms import paths, udbcfg
 
 UDB_GAME_CONFIG = "UZDoom_DoomUDMF.cfg"
 UDB_GAMEKEY = "uzdoom_doomudmf"  # lowercased config filename without extension
@@ -33,9 +33,9 @@ DEFAULT_SETTINGS = {"play": {"music": False, "windowed": True, "test_automap": T
 
 
 def project_settings(root: Path) -> dict:
-    """dms.toml (committed project settings), over the defaults."""
+    """config/dms.toml (committed project settings), over the defaults."""
     settings = {k: dict(v) for k, v in DEFAULT_SETTINGS.items()}
-    path = root / "dms.toml"
+    path = paths.dms_toml(root)
     if path.exists():
         with path.open("rb") as f:
             for section, values in tomllib.load(f).items():

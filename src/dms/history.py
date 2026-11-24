@@ -18,7 +18,7 @@ from dms.validate import Issue
 
 KEEP = 100
 COPIED = ("render.png", "render.txt", "diff.png", "diff-before.png", "diff-after.png", "diff.txt", "validate.txt",
-          "movement.txt")
+          "movement.txt", "render.svg", "diff.svg", "diff-before.svg", "diff-after.svg")
 
 
 def history_dir(info: MapInfo, root: Path) -> Path:

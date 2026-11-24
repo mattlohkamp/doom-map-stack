@@ -135,7 +135,37 @@ def test_render_and_diff(tmp_path):
     for name in ("diff.png", "diff-before.png", "diff-after.png"):
         assert (tmp_path / name).exists()
     assert render.render_diff(edited, edited, tmp_path / "diff.png") is False
-    assert not any((tmp_path / n).exists() for n in ("diff.png", "diff-before.png", "diff-after.png"))
+    assert not any((tmp_path / n).exists() for n in ("diff.png", "diff-before.png", "diff-after.png", "diff.svg"))
+
+
+def test_svg_renders(tmp_path):
+    # The board's pan/zoom map: an SVG beside every PNG, in map units (y turned over), well-formed, with
+    # what the page needs: a viewBox, sector labels, things, and the diff's marks.
+    import xml.etree.ElementTree as ET
+
+    from dms import render
+    from dms.validate import Issue
+
+    ns = "{http://www.w3.org/2000/svg}"
+    m = MapBuilder()
+    m.room("room <&> \"quoted\"", 0, 0, 512, 512)
+    m.player_start(256, 256)
+    m.thing(2001, 400, 100, "gun")
+    before = m.textmap()
+    render.render(before, tmp_path / "render.png", [Issue("warning", "look here", "x", (64, 64))], unreachable={0})
+    root = ET.parse(tmp_path / "render.svg").getroot()
+    assert [float(v) for v in root.get("viewBox").split()] == [-64, -576, 640, 640]
+    labels = [t.text for t in root.iter(ns + "text") if "lbl" in t.get("class")]
+    assert '0 room <&> "quoted"' in labels and "2001" in labels and "#1" in labels
+    assert len([g for g in root.iter(ns + "g") if (g.get("class") or "").startswith("thing ")]) == 2
+    assert any(g.get("class") == "thing item" for g in root.iter(ns + "g"))    # the shotgun: a diamond
+    assert any(p.get("class") == "unreach" for p in root.iter(ns + "path"))
+
+    edited = udmf.parse((FIXTURES / "hello-room-udb-edited.textmap").read_text(encoding="utf-8"))
+    assert render.render_diff(before, edited, tmp_path / "diff.png") is True
+    for name in ("diff.svg", "diff-before.svg", "diff-after.svg"):
+        marks = [e for e in ET.parse(tmp_path / name).getroot().iter() if e.get("class") in ("ml", "mf", "ring")]
+        assert marks, name
 
 
 def _pixel_colors(path):

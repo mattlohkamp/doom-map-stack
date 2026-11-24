@@ -236,7 +236,27 @@ def check(tm: Textmap) -> Result:
         # A switch at the back of a niche the player can't step into (too low, too shallow) is used
         # from the sector in front of the niche: count it when the front sector, or a neighbour, is
         # reachable (optimistic: the neighbour may be out of use range).
-        return front in reach or (front is not None and bool(neighbours[front] & reach))
+        if front in reach or (front is not None and bool(neighbours[front] & reach)):
+            return True
+        # One more thin sector between (a shutter in front of the switch, itself at the back of a niche):
+        # still within a use's reach, as long as both are thin (cacobelisk's top switch, 2026-11-23).
+        return front is not None and thin(front) and any(
+            thin(n) and neighbours[n] & reach for n in neighbours[front] if n not in reach)
+
+    thin_cache: dict[int, bool] = {}
+
+    def thin(sec: int) -> bool:
+        """No more than half a use's reach (32) across one way: a niche, a slot, a shutter."""
+        if sec not in thin_cache:
+            xs, ys = [], []
+            for ld in lines:
+                if sec in (_side_sector(tm, ld, "sidefront"), _side_sector(tm, ld, "sideback")):
+                    for k in ("v1", "v2"):
+                        v = tm.vertices[ld[k]]
+                        xs.append(v["x"])
+                        ys.append(v["y"])
+            thin_cache[sec] = bool(xs) and min(max(xs) - min(xs), max(ys) - min(ys)) <= 32
+        return thin_cache[sec]
 
     def opens(lock: int, have: set[int]) -> bool:
         if lock in ALL_KEYS:

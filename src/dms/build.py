@@ -94,9 +94,10 @@ def mapinfo(info: MapInfo, handlers: list[str] | tuple = ()) -> str:
 def map_lumps(info: MapInfo, textmap: bytes, zscript: bytes | None = None) -> list[wad.Lump]:
     """The map's WAD. zscript: its per-map script (scripts.py), for the game's WAD; edit.wad goes
     without (the editor doesn't run it)."""
-    from dms import scripts
+    from dms import extras, scripts
 
     lumps = [wad.Lump("MAPINFO", mapinfo(info, scripts.handlers(zscript)).encode("utf-8"))]
+    lumps += extras.lumps(info)   # the map's own textures (TEXTURES, ANIMDEFS): the editor shows them too
     if zscript:
         lumps.append(wad.Lump("ZSCRIPT", zscript))
     return lumps + [wad.Lump("MAP01"), wad.Lump("TEXTMAP", textmap), wad.Lump("ENDMAP")]
@@ -154,9 +155,19 @@ class BuildResult:
         return sum(1 for i in self.issues if i.severity == "error")
 
 
-def check(tm: udmf.Textmap, root: Path, title: str, report_path: Path | None) -> list[Issue]:
-    """Validate a textmap against the catalog, print the result, and write it to report_path."""
+def check(tm: udmf.Textmap, root: Path, title: str, report_path: Path | None,
+          info: MapInfo | None = None) -> list[Issue]:
+    """Validate a textmap against the catalog (and, given `info`, the map's own textures: extras.py),
+    print the result, and write it to report_path."""
     cat = load_catalog(root)
+    if cat is not None and info is not None:
+        from dataclasses import replace
+
+        from dms import extras
+
+        walls, flats = extras.textures(info)
+        if walls or flats:
+            cat = replace(cat, textures={**cat.textures, **walls}, flats=cat.flats | flats)
     issues = validate(tm, cat)
     if cat is None:
         issues.append(Issue("warning", "no texture catalog yet, textures not checked (run `dms catalog`)"))
@@ -193,7 +204,7 @@ def build(info: MapInfo, root: Path, force: bool = False, note: str | None = Non
     if edit_wad_changed(info, root) and not force:
         raise BuildError(
             f"{info.edit_wad(root)} has editor changes that aren't in the map's source yet.\n"
-            "    Bring them back first: `Pull Map.cmd` (or `dms pull` + map name). To discard them, build with --force."
+            "    Bring them back first: `launchers\\Pull Map.cmd` (or `dms pull` + map name). To discard them, build with --force."
         )
 
     if info.source == "generated":
@@ -222,7 +233,7 @@ def build(info: MapInfo, root: Path, force: bool = False, note: str | None = Non
     plural = {"vertex": "vertices"}
     counts = {plural.get(k, k + "s"): len(tm.of(k)) for k in udmf.KINDS}
     print("    " + ", ".join(f"{n} {k}" for k, n in counts.items()))
-    issues = check(tm, root, "validate", info.build_dir(root) / "validate.txt")
+    issues = check(tm, root, "validate", info.build_dir(root) / "validate.txt", info)
     moves = check_movement(tm, info.build_dir(root) / "movement.txt")
     issues = issues + moves.issues
 
@@ -278,13 +289,15 @@ def _refresh_play_wad(info: MapInfo, root: Path, textmap: bytes) -> None:
     latest = history.latest(info, root)
     seq = latest["seq"] if latest else 0
     code = scripts.read(info)
+    from dms import extras
+
     result = live.update_map(info, root, mapinfo(info, scripts.handlers(code)).encode("utf-8"), textmap, seq,
-                             zscript=code or b"")
+                             zscript=code or b"", extra=extras.lumps(info))
     if result == "updated":
         print(f"    updated the running game's play.wad (build #{seq}): press H in the game to reload in place")
     elif result == "restart":
         print("    the running game can't take this build in place (the map outgrew its slot, or zscript.zs"
-              " changed): H in the game will restart it (needs the board)")
+              " or the map's textures changed): H in the game will restart it (needs the board)")
 
 
 def _refresh_edit_wad(info: MapInfo, root: Path, force: bool = False) -> None:
@@ -342,7 +355,7 @@ def needs_build(info: MapInfo, root: Path) -> bool:
     if not out.exists():
         return True
     sources = [info.folder / "map.toml", info.textmap, info.generator, info.folder / "overrides.toml",
-               info.folder / "zscript.zs"]
+               info.folder / "zscript.zs", info.folder / "textures.txt", info.folder / "animdefs.txt"]
     newest = max((p.stat().st_mtime for p in sources if p.exists()), default=0)
     return newest > out.stat().st_mtime
 

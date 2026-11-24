@@ -2,5 +2,5 @@ title = "Cacobelisk"
 kind = "example"        # map | test | example
 status = "draft"
 source = "generated"   # generated (map.py is the source) | hand-edited (TEXTMAP is the source)
-sky = "SKY1"
+sky = "CACOSKY"
 music = "D_ROMER2"

@@ -30,7 +30,7 @@
         border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; color: var(--text); }
   /* Layout rule: the newest build's picture fits in the window without scrolling. Everything
      above it (header, the entry's top line, captions) adds up to at most --chrome. */
-  :root { --chrome: 215px; }
+  :root { --chrome: 200px; }
   main { padding: 12px 24px 40px; overflow: auto; min-width: 0; }
   header .titlerow { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
   header h2 { margin: 0; font-size: 20px; }
@@ -93,6 +93,25 @@
   figure img { display: block; width: auto; height: auto; max-width: 100%; max-height: calc(100vh - var(--chrome));
                border-radius: 6px; border: 1px solid var(--line); background: #000; }
   figcaption { color: var(--dim); font-size: 12px; margin-top: 4px; }
+  /* The pan/zoom map: an inline SVG whose viewBox is the view (wheel zooms, drag pans). */
+  .pics figure.fig-svg { flex: 1 1 0; }
+  .mapview { height: calc(100vh - var(--chrome)); min-height: 300px; border-radius: 6px; border: 1px solid var(--line);
+             background: #18181c; overflow: hidden; cursor: crosshair; touch-action: none; user-select: none; }
+  .mapview.drag { cursor: grabbing; }
+  .mapview svg { display: block; width: 100%; height: 100%; }
+  .linkbtn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; }
+  /* Over the picture, so nothing below it takes room: buttons in its top right corner, and on the map
+     the line saying where the cursor is, along its bottom edge. */
+  .mapwrap { position: relative; }
+  .picbtns { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; z-index: 2; }
+  .picbtn { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border-radius: 5px; cursor: pointer;
+            background: rgba(24,24,28,.78); border: 1px solid var(--line); color: var(--dim); }
+  .picbtn:hover { color: var(--text); border-color: var(--accent); }
+  .picbtn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .readout { position: absolute; left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 1px 6px; border-radius: 4px;
+             background: rgba(24,24,28,.78); color: var(--text); font: 12px/1.5 Consolas, "Cascadia Mono", monospace;
+             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+  .readout:empty { display: none; }
   .nodiff { display: grid; place-items: center; min-height: 120px; border: 1px dashed var(--line); border-radius: 6px;
             color: var(--dim); }
   .issues { margin: 10px 0 0; padding-left: 18px; }
@@ -120,6 +139,12 @@
     <p><b>In the editor:</b> select something (or point at it), then <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd>,
        or <kbd>Ctrl</kbd>+right click, or Tools &gt; Send to Claude.</p>
     <p><b>In the game:</b> <kbd>N</kbd>, then type the note.</p>
+    <p><b>On the map:</b> <span style="color:#ff553c">red circles</span> are monsters (the line shows where
+       they face), <span style="color:#50c8ff">blue diamonds</span> things to pick up,
+       <span style="color:#9682af">small grey circles</span> lights and decoration,
+       <span style="color:#46dc64">green</span> the player start.</p>
+    <p><b>The map:</b> mouse wheel zooms, drag pans, <kbd>F</kbd> fits it again. Labels appear as there's
+       room for them: zoom in on a crowded spot. Point at something to read what it is.</p>
     <p><b>Board keys:</b> <kbd>&larr;</kbd> <kbd>&rarr;</kbd> flip builds, <kbd>End</kbd> latest,
        <kbd>Space</kbd> replay.</p>
   </div>
@@ -257,6 +282,181 @@ function noteItem(n) {
     n.status === "closed" ? el("div", { class: "reply" }, "✓ " + (n.reply || "done")) : null);
 }
 
+// ---- The pan/zoom map. Builds made since the renderer writes SVGs are shown as inline SVG in map units
+// (y down = south). The view (centre and zoom) is shared by every picture of the map and kept while
+// flipping builds, so a spot can be compared across them. Lines keep their width (non-scaling strokes);
+// things, rings and labels are kept a constant size here, and labels that would overlap are hidden.
+const svgText = new Map();
+let mapView = null;  // { cx, cy, z (pixels per map unit) } in SVG coordinates, or null = fit the map
+const LABEL_PX = 12, MIN_THING_PX = 5, MAX_ZOOM = 48;
+
+async function fetchSvg(url) {
+  if (!svgText.has(url)) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(r.status);
+    svgText.set(url, await r.text());
+    if (svgText.size > 450) svgText.delete(svgText.keys().next().value);
+  }
+  return svgText.get(url);
+}
+
+function applyAll() { document.querySelectorAll(".mapview").forEach(b => b._pane && applyView(b._pane)); }
+
+function mountSvg(pane, text) {
+  const root = new DOMParser().parseFromString(text, "image/svg+xml").documentElement;
+  if (root.nodeName !== "svg") { pane.box.textContent = "couldn't read the map"; return; }
+  const svg = document.importNode(root, true);
+  svg.querySelectorAll("script, foreignObject").forEach(n => n.remove());
+  const vb = svg.getAttribute("viewBox").split(/\s+/).map(Number);
+  pane.bounds = { x: vb[0], y: vb[1], w: vb[2], h: vb[3] };
+  pane.things = [...svg.querySelectorAll(".thing > .k")];
+  pane.rings = [...svg.querySelectorAll(".ring")].map(c => ({ el: c, pad: +c.dataset.pad || 0 }));
+  pane.issues = [...svg.querySelectorAll(".issue")].map(c => ({ el: c, k: +c.dataset.k || 0 }));
+  pane.grid = [...svg.querySelectorAll(".gl")].map(t => ({ el: t, gx: t.dataset.gx, gy: t.dataset.gy }));
+  const order = { il: 0, sec: 1, tl: 2 };
+  pane.labels = [...svg.querySelectorAll(".lbl")].map(t => {
+    const kind = t.classList.contains("il") ? "il" : t.classList.contains("tl") ? "tl" : "sec";
+    return { el: t, kind, n: t.textContent.length, p: +t.dataset.p || 0, k: +t.dataset.k || 0,
+             x: +(t.dataset.x ?? t.getAttribute("x")), y: +(t.dataset.y ?? t.getAttribute("y")) };
+  }).sort((a, b) => order[a.kind] - order[b.kind] || b.p - a.p);  // issues, sectors big to small, things
+  pane.svg = svg; pane.lastZ = null;
+  pane.box.replaceChildren(svg);
+  applyView(pane);
+}
+
+function applyView(pane) {
+  const W = pane.box.clientWidth, H = pane.box.clientHeight, svg = pane.svg;
+  if (!svg || !W || !H) return;
+  const b = pane.bounds;
+  pane.fitZ = Math.min(W / b.w, H / b.h);
+  const s = mapView || { cx: b.x + b.w / 2, cy: b.y + b.h / 2, z: pane.fitZ };
+  const z = s.z, vx = s.cx - W / 2 / z, vy = s.cy - H / 2 / z;
+  pane.cur = { vx, vy, z, cx: s.cx, cy: s.cy };
+  svg.setAttribute("viewBox", vx + " " + vy + " " + W / z + " " + H / z);
+  for (const g of pane.grid) {  // grid numbers stay at the top and left edges of the view
+    if (g.gx !== undefined) { g.el.setAttribute("x", +g.gx + 3 / z); g.el.setAttribute("y", vy + 13 / z); }
+    else { g.el.setAttribute("x", vx + 3 / z); g.el.setAttribute("y", -g.gy - 3 / z); }
+  }
+  if (z === pane.lastZ) return;  // panning: sizes and labels stay as they are
+  pane.lastZ = z;
+  svg.style.setProperty("--fs", LABEL_PX / z + "px");
+  svg.style.setProperty("--fsg", 11 / z + "px");
+  const r = Math.max(16, MIN_THING_PX / z), r0 = Math.max(28, 10 / z);
+  for (const k of pane.things) k.setAttribute("transform", "scale(" + r / 16 + ")");
+  for (const c of pane.rings) c.el.setAttribute("r", r + c.pad / z);
+  for (const c of pane.issues) c.el.setAttribute("r", r0 + 7 * c.k / z);
+  // Labels, in pixels at this zoom: each is shown unless it would cover one already shown or a thing.
+  const taken = pane.labels.filter(L => L.kind === "tl").map(L => [L.x * z - r * z, L.y * z - r * z, L.x * z + r * z, L.y * z + r * z]);
+  const h = LABEL_PX + 3;
+  for (const L of pane.labels) {
+    const w = L.n * LABEL_PX * 0.56 + 6;
+    let box;
+    const hit = bx => taken.some(t => bx[0] < t[2] && t[0] < bx[2] && bx[1] < t[3] && t[1] < bx[3]);
+    if (L.kind === "sec") {
+      // Sectors one inside another (an obelisk's sleeve, base and slab) share a middle: a label whose
+      // own spot is taken goes a line or two below or above it, when that's free.
+      let dy = 0;
+      for (const k of [0, 1, -1, 2, -2, 3, -3]) {
+        dy = k * h;
+        box = [L.x * z - w / 2, L.y * z + dy - h / 2, L.x * z + w / 2, L.y * z + dy + h / 2];
+        if (!hit(box)) break;
+      }
+      L.el.setAttribute("y", L.y + dy / z);
+    } else {
+      const x = L.kind === "il" ? L.x + r0 + 8 / z : L.x + r + 3 / z;
+      const y = L.kind === "il" ? L.y - r0 + 17 * L.k / z : L.y;
+      L.el.setAttribute("x", x); L.el.setAttribute("y", y);
+      box = [x * z, y * z - h / 2, x * z + w, y * z + h / 2];
+    }
+    const hide = L.kind !== "il" && hit(box);
+    L.el.style.display = hide ? "none" : "";
+    if (!hide) taken.push(box);
+  }
+}
+
+// A figure with the map at `url` (an SVG the renderer wrote). `payload`: what a click's note is about
+// (null: no notes from this picture). `png`: the same picture as a PNG.
+// Small buttons over a picture's top right corner. Icons drawn here (24 x 24 line art).
+const ICONS = {
+  open: "M14 4h6v6 M20 4l-9 9 M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5",   // an arrow up and out of a box
+  fit: "M9 4H4v5 M15 4h5v5 M9 20H4v-5 M15 20h5v-5",                                           // four corners
+};
+function icon(name) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", ICONS[name]);
+  svg.append(path);
+  return svg;
+}
+function openBtn(href) {
+  return el("a", { class: "picbtn", href, target: "_blank", title: "Open the picture on its own, full size" }, icon("open"));
+}
+
+let noSvg = false;
+function svgPane(url, caption, payload, png, failed) {
+  const box = el("div", { class: "mapview" });
+  const readout = el("span", { class: "readout" });
+  const fig = el("figure", { class: "fig-svg" },
+    el("div", { class: "mapwrap" }, box, readout,
+      el("div", { class: "picbtns" },
+        el("button", { class: "picbtn", title: "Show the whole map again (F)", onclick: () => { mapView = null; applyAll(); } }, icon("fit")),
+        openBtn(png || url))),
+    caption ? el("figcaption", null, caption) : null);
+  const pane = { box, svg: null, readout, payload };
+  box._pane = pane;
+  if (svgText.has(url)) mountSvg(pane, svgText.get(url));  // at once: no blank frame while flipping or replaying
+  else fetchSvg(url).then(t => mountSvg(pane, t)).catch(() => { box.textContent = "couldn't load the map"; if (failed) failed(); });
+  new ResizeObserver(() => applyView(pane)).observe(box);
+
+  const at = ev => {  // the SVG point under the mouse, and where that is in the box
+    const r = box.getBoundingClientRect(), c = pane.cur;
+    return { x: c.vx + (ev.clientX - r.left) / c.z, y: c.vy + (ev.clientY - r.top) / c.z,
+             left: ev.clientX - r.left, top: ev.clientY - r.top, width: r.width, height: r.height };
+  };
+  box.addEventListener("wheel", ev => {
+    if (!pane.cur) return;
+    ev.preventDefault();
+    const p = at(ev), d = ev.deltaY * (ev.deltaMode === 1 ? 16 : 1);
+    const z = Math.min(MAX_ZOOM, Math.max(pane.fitZ * 0.4, pane.cur.z * Math.exp(-d * 0.0015)));
+    mapView = { cx: p.x - (p.left - p.width / 2) / z, cy: p.y - (p.top - p.height / 2) / z, z };  // the point stays under the mouse
+    closeComposer();
+    applyAll();
+  }, { passive: false });
+  let drag = null, frame = 0;
+  box.addEventListener("pointerdown", ev => {
+    if (ev.button !== 0 || !pane.cur) return;
+    drag = { x: ev.clientX, y: ev.clientY, cx: pane.cur.cx, cy: pane.cur.cy, z: pane.cur.z, moved: false };
+    box.setPointerCapture(ev.pointerId);
+  });
+  box.addEventListener("pointermove", ev => {
+    if (!pane.cur) return;
+    if (drag) {
+      const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
+      if (!drag.moved && Math.hypot(dx, dy) < 4) return;
+      if (!drag.moved) { drag.moved = true; box.classList.add("drag"); closeComposer(); }
+      mapView = { cx: drag.cx - dx / drag.z, cy: drag.cy - dy / drag.z, z: drag.z };
+      if (!frame) frame = requestAnimationFrame(() => { frame = 0; applyAll(); });
+      return;
+    }
+    const p = at(ev), hit = ev.target.closest && ev.target.closest(".sec, .thing, line.s");
+    const tip = hit && hit.querySelector("title");
+    readout.textContent = "(" + Math.round(p.x) + ", " + Math.round(-p.y) + ")" + (tip ? "  " + tip.textContent : "");
+  });
+  const end = ev => {
+    const d = drag;
+    drag = null;
+    box.classList.remove("drag");
+    if (!d || d.moved || ev.type !== "pointerup" || !payload || !pane.cur) return;
+    const p = at(ev);
+    openComposer(fig, p.left, p.top, p.width, Math.round(p.x), Math.round(-p.y), payload);
+  };
+  box.addEventListener("pointerup", end);
+  box.addEventListener("pointercancel", end);
+  box.addEventListener("pointerleave", () => { if (!drag) readout.textContent = ""; });
+  return fig;
+}
+
 let composer = null;
 function closeComposer() { if (composer) composer.forEach(x => x.remove()); composer = null; }
 
@@ -264,7 +464,11 @@ function noteAt(ev, v, payload) {
   const img = ev.currentTarget, r = img.getBoundingClientRect();
   const px = (ev.clientX - r.left) * img.naturalWidth / r.width, py = (ev.clientY - r.top) * img.naturalHeight / r.height;
   const x = Math.round(v.minx + px / v.scale), y = Math.round(v.maxy - py / v.scale);
-  const holder = img.parentElement, left = ev.clientX - r.left, top = ev.clientY - r.top;
+  openComposer(img.parentElement, ev.clientX - r.left, ev.clientY - r.top, r.width, x, y, payload);
+}
+
+// The note box at (left, top) inside `holder` (a figure), about map position (x, y).
+function openComposer(holder, left, top, width, x, y, payload) {
   closeComposer();
   const ta = el("textarea", { rows: 3, placeholder: "e.g. make this taller (Enter sends, Shift+Enter new line, Esc cancels)" });
   const status = el("span", { class: "dim" });
@@ -285,7 +489,7 @@ function noteAt(ev, v, payload) {
     else if (k.key === "Escape") closeComposer();
   });
   const pin = el("div", { class: "pin", style: "left:" + left + "px;top:" + top + "px" });
-  const box = el("div", { class: "composer", style: "left:" + Math.max(0, Math.min(left - 20, r.width - 310)) + "px;top:" + (top + 14) + "px" },
+  const box = el("div", { class: "composer", style: "left:" + Math.max(0, Math.min(left - 20, width - 310)) + "px;top:" + (top + 14) + "px" },
     el("div", { class: "dim" }, "Note for Claude about (" + x + ", " + y + ")"), ta,
     el("div", { class: "row" }, el("button", { class: "primary", onclick: send }, "Send"), el("button", { onclick: closeComposer }, "Cancel"), status));
   holder.append(pin, box);
@@ -303,19 +507,23 @@ function entryFor(d, e, fresh, newest) {
     .filter(Boolean).join(" · ");
   // Images with a recorded view can be clicked to send Claude a note about that spot.
   const pic = (f, caption) => {
+    const s = f.replace(".png", ".svg");
+    // The zoomable map when the build has one; the PNG if it can't be had (a board server from before SVGs).
+    if (has(s) && !noSvg) return svgPane(base + s, caption, { map: d.name, build: e.seq, image: s }, base + f,
+                                         () => { noSvg = true; shownKey = ""; if (lastDetail) renderMap(lastDetail); });
     const v = e.views && e.views[f];
     const img = el("img", { src: base + f, alt: caption, loading: "lazy", class: v ? "clickable" : null,
                             title: v ? "Click a spot to send Claude a note about it" : null });
     if (v) img.addEventListener("click", ev => noteAt(ev, v, { map: d.name, build: e.seq, image: f }));
-    return el("figure", null, img,
-      el("figcaption", null, caption, " · ", el("a", { href: base + f, target: "_blank" }, "full size")));
+    return el("figure", null, img, el("div", { class: "picbtns" }, openBtn(base + f)),
+      caption ? el("figcaption", null, caption) : null);
   };
   const none = el("figure", null, el("div", { class: "nodiff" }, e.first ? "First build: nothing to compare with" : "No map change"),
                   el("figcaption", null, "Before"));
   let pics;
   if (viewMode === "changes") {
     pics = has("diff.png")
-      ? el("div", { class: "pics single" }, pic("diff.png", "Now, with the changes marked: green added, yellow changed, red removed"))
+      ? el("div", { class: "pics single" }, pic("diff.png", ""))
       : el("div", { class: "pics single" }, has("render.png") ? pic("render.png", e.first ? "First build" : "No map change") : null);
   } else if (has("diff-before.png") && has("diff-after.png")) {
     pics = el("div", { class: "pics" }, pic("diff-before.png", "Before: red removed, yellow changed"),
@@ -336,7 +544,9 @@ function entryFor(d, e, fresh, newest) {
 }
 
 function pendingFor(p) {
-  const img = (f, caption) => p.images[f] ? el("figure", null,
+  const img = (f, caption) => p.images[f.replace(".png", ".svg")]
+    ? svgPane(p.images[f.replace(".png", ".svg")], caption, null, p.images[f])
+    : p.images[f] ? el("figure", null,
     el("a", { href: p.images[f], target: "_blank" }, el("img", { src: p.images[f], alt: caption })),
     el("figcaption", null, caption)) : null;
   let title, text;
@@ -392,7 +602,11 @@ function toggleReplay() {
   if (!es || es.length < 2) return;
   const want = viewMode === "changes" ? ["diff.png", "render.png"] : ["diff-before.png", "diff-after.png", "render.png"];
   for (const e of es)  // load every picture first, so playback doesn't wait on the network
-    for (const f of want) if (e.files.includes(f)) new Image().src = "/history/" + encodeURIComponent(lastDetail.name) + "/" + e.dir + "/" + f;
+    for (const f of want) {
+      const url = "/history/" + encodeURIComponent(lastDetail.name) + "/" + e.dir + "/", s = f.replace(".png", ".svg");
+      if (e.files.includes(s)) fetchSvg(url + s).catch(() => {});
+      else if (e.files.includes(f)) new Image().src = url + f;
+    }
   closeComposer();
   pinned = es[es.length - 1].dir;
   replayTimer = setInterval(() => {
@@ -427,6 +641,7 @@ document.addEventListener("keydown", k => {
   else if (k.key === "ArrowRight") { flip(-1); k.preventDefault(); }
   else if (k.key === "End") { flip(-1e9); k.preventDefault(); }
   else if (k.key === " " && !k.target.closest("button")) { toggleReplay(); k.preventDefault(); }
+  else if (k.key === "f" || k.key === "F") { mapView = null; applyAll(); }
 });
 
 function renderMap(d) {
@@ -435,6 +650,7 @@ function renderMap(d) {
   if (shownFor !== d.name) {
     main.replaceChildren(el("div", { id: "head" }), el("div", { id: "pending" }), el("div", { id: "timeline" }));
     lastPending = ""; shownKey = ""; shownDir = null; lastLatest = null;
+    mapView = null;  // another map: fit it
     shownFor = d.name; firstLoad = true;
   }
   const es = d.entries, latest = es.length ? es[0].dir : null;
@@ -480,7 +696,7 @@ async function poll() {
     } else document.getElementById("main").replaceChildren(el("p", { class: "empty" }, "No maps yet."));
     document.getElementById("conn").textContent = "";
   } catch (err) {
-    document.getElementById("conn").textContent = "The board server isn't running. Start it again with Open Board.cmd.";
+    document.getElementById("conn").textContent = "The board server isn't running. Start it again with Start Session.cmd (or launchers\\Open Board.cmd).";
   }
 }
 

@@ -378,3 +378,315 @@ light and pickups tuned by ear and eye from the game.*
 - 2026-11-22, note #84 (game): the cistern (and the stairs down) darker and less foggy: near-black fog
   (0x080808, 200), light 32, so the spectres don't stand out against grey mist. The drains keep the hall's
   grey (note #79); to watch for a seam where the two meet, seen from the hall.
+- 2026-11-23, editor save 13:35: the hidden lost soul behind the 2nd west obelisk (note #61) removed. Ported
+  into map.py. (The 26 "moved" lines pull listed with it were the editor rounding coordinates to 3
+  decimals; pull now ignores differences that small.)
+- 2026-11-23, note #1 (game; note numbers start again from 1 today): the small door slides up instead of
+  sinking into the floor: a real door sector (Door_Raise, tag 501, both sides, monsters too), 4 thick,
+  between the frame in front and a recess of the same height behind it (great_door.wicket_back), so only
+  the door's own height shows from either side and the leaf above stays put. Its face is now an upper
+  texture hung from the door's underside (BIGDOOR6, offsets 32 / -14).
+- 2026-11-23, note #2 (game): the wall above the great door didn't match the walls round it (a marble
+  lintel): now the hall's GRAY1, hung from the ceiling and carried on from the wall on its left.
+- 2026-11-23, note #3 (game): the vestibule in the passage's style: A-MOSRK2 on its walls, floor and
+  ceiling. The jambs (in the hall wall's thickness) stay grey; its light (72) and fog are unchanged.
+- 2026-11-23, note #4 (game): the blank wall on the way down (passage_13, left) has a big carving set into
+  it: the green marble skull (MARBFACE, 128 x 128) at the back of a marble alcove (128 wide, 24 deep, sill
+  32 up, light 112), the sill a shelf with two stimpacks (PASSAGE_CARVINGS). Unchecked in the game: the
+  face's light, and whether the stimpacks can be taken from the passage (the shell shelf works the same way).
+- 2026-11-23, note #5 (game): the skull carving looked "too significant": now a patterned marble panel with
+  no face (MARBLE3) and dimmer (light 96, was 112), plainly decorative. Unchecked: how Freedoom's MARBLE3
+  reads in the game; the mapper can pick another in the asset browser.
+- 2026-11-23, note #6 (game): the shell shelf in the passage as a wooden box set into the stone: WOOD1 on its
+  back and sides, FLAT5_2 on its shelf and top; the stone face above and below its mouth is unchanged.
+- 2026-11-23, note #7 (game): the cistern a little brighter (light 48, was 32; fog unchanged); six dim
+  pale-green lights along its east wall (PointLightAttenuated, every 250 from y 1650 to 400, 20 out from the
+  wall, 40 above the water, radius 104/88 alternating) so a spectre crossing in front shows as a shadow;
+  the two southern spectres further south (y 760 and 270, were 880 and 430), the northern one as it was.
+  The lights have no fixture (they read as a glow off the water); to check: whether they want one, and
+  whether the spectres still hide well enough at 48.
+- 2026-11-23, note #8 (game): the wooden niche looked "painted on stone": it now sits in a wooden frame, a
+  wood-lined recess 6 wider all round than the box and 4 deep (passage_2.wall_r.shelf_frame, SHELF_FRAME),
+  the box opening in its back and 24 darker inside; the shells 10 into the box. A ridge standing out from
+  the wall wasn't possible (it would have to run floor to ceiling). Unchecked: that the shells can still
+  be taken from the passage (they are 14 behind the wall now, were 12).
+- 2026-11-23, note #9 (game): gunfire in the hall woke every pinky in the passage (sound carries through all
+  open two-sided lines, so "further back" wouldn't help). Now the two steps after the first pinky's piece
+  block sound (passage_11.step, passage_12.step: sound passes one such line and stops at the second), so
+  that pinky still comes and the pinkies and imps from passage_12 on only hear shots fired past them; the
+  way round through the drain is closed the same way (the vine grates and the cistern's west wall are
+  blocksound). A third imp, deaf (ambush), in the vestibule's back corner behind the left leaf
+  (vestibule.imp_ambush). Unchecked in the game.
+- 2026-11-23, note #10 (game): the mapper's pick for the alcove: GSTSATYR, one face only. The texture is 64
+  wide, so it takes the middle 64 of the 128-wide back wall, with plain GSTONE1 either side (its blocks
+  carried on across the three stretches by x offsets 224 / 0 / 64) and on the alcove's sides; sill and
+  top stay FLOOR7_2, light 96. Unchecked: whether the stone's courses line up across the face's edges
+  in Freedoom's versions of these textures, and whether the marble sill still suits it.
+- 2026-11-23, note #11 (board): the cistern's spectres "hard of seeing" too: asleep until touched or hurt,
+  so a careful player can skirt round them. Doom has no such flag (dormant monsters can't be hurt), so
+  zscript.zs has CacobeliskSleeper, a spectre whose idle state never looks or listens; damage wakes it
+  as it does any monster, and its Tick wakes it when a player comes within 8 of touching it. The
+  handler CacobeliskSleepers swaps the map's spectres (thing id 310, SLEEPER_TID) for it when the level
+  loads (the log says "[DMS] CacobeliskSleepers: 3 spectre(s) asleep"). Compiles; unchecked in the game:
+  that they stay asleep when shot past, wake on a touch, and that the kill count still reads right.
+- 2026-11-23, note #12 (game): the switch obelisk's cacodemon asleep too, a shadow up there until the
+  player alerts it. zscript.zs spawns CacobeliskDozer instead: it never looks (walking up to it doesn't
+  wake it); it wakes when hurt, or when it hears the player make noise after it appeared (gunfire in the
+  hall; shots fired before the obelisk's reveal don't count). Claude's reading of "alerts": noise or
+  damage, not sight. Compiles; unchecked in the game.
+- 2026-11-23, note #13 (game): a torch (short red, like the passage's) in a niche in the vestibule's wall
+  (vestibule.wall_2, the back-left one: 24 wide, 24 deep, 72 high), to explain the room's red glow: the
+  glow light moved from mid-room to just in front of the torch (radius 144, was 112). The deaf imp
+  (note #9) stands about 36 in front of it. Unchecked in the game.
+- 2026-11-23, note #15 (game): the waterfall on the cistern's west wall showed above the drain's slot as
+  well as below: now only below (it runs out of the drain and down); above it, the mossy stone. **Open:**
+  the same note says "gutter violet 5 can be removed I believe" (gutter_e.violet_5, the east gutter's
+  north end, y 1670-1760, past the switch obelisk): untouched; asked whether to remove that stretch of
+  gutter (and its drain, which the cistern's west wall follows) or only its violet tint.
+- 2026-11-23, note #16 (game): the cistern's roof raised out of sight: ceiling 256 (576 above the water;
+  was -128, 192). Unchecked: that it really fades into the dark at light 48, and how the tall stone
+  above the slot reads.
+- 2026-11-23, note #17 (game): at the cistern's south end, a waterlogged wooden platform: an island
+  (x 590-770, y 216-376) just clear of the walls, its boards (FLAT5_2, WOOD1 edges) 4 above the water; on
+  it a dais (96 x 96, 12 up) and at the dais's back a wooden post (64 x 16, 48 high) with the switch
+  (SW1WOOD, rows 64-112) on its north face. **The switch does nothing yet: what it does is the mapper's
+  to say** (it would also answer "where the cistern leads"). "Can we choose water flow direction?": yes:
+  Scroll_Floor on cistern.wall_s (tag 600; CISTERN_FLOW = (0, -8): the picture drifts south, about 9 units
+  a second, the player isn't carried). Unchecked in the game: the drift's direction and speed, and that
+  the switch's ring shows whole on the post. The 3rd spectre moved from the platform's spot to (624, 436).
+- 2026-11-23, note #18 (game): the water flows away from the obelisk hall, slow and lazy (0.12 units a tic):
+  the west gutter and its drain west (tag 610), the east gutter, its violet pieces, its drain and the
+  cistern east (611; the cistern 600), parting under the bridge (the bridge's own water is still). The
+  cistern's water leaves through a new low slot along its east wall (cistern.out: 20 high, a dark channel
+  96 deep behind). The dais switch (Light_ChangeToValue 96 on the platform, dais and post, tag 601, so
+  using it shows) turns the cistern's water south at 0.2. Done by zscript.zs CacobeliskWater, which
+  shifts the floors' texture offsets each tic (the player isn't carried); note #17's Scroll_Floor line is
+  gone. The mapper wrote "west" for the east drain and the cistern as well; Claude read "away from the
+  obelisk room" as east on that side. Two builds of this had a script that didn't compile (a constant
+  TURNED beside a variable turned: names ignore case, again; and AddXOffset takes two arguments).
+  Unchecked in the game: each direction (a sign error would show as water running towards the hall).
+- 2026-11-23, note #19 (game): dim candlelight on the dais ("small torches, if possible"): two candles (34)
+  either side of the switch post; they don't block, and UZDoom's lights.pk3 gives them their glow. The
+  short torches (55-57) are the alternative if candles are too faint.
+- 2026-11-23, note #20 (game): the dais sits up on a grating, like the bridge over the hall's channel: the
+  platform is now a metal grate (FCGRATE2, a 3D floor 12-16 above the water, tag 602, control sector
+  cistern_grate_control outside the map) on bars (MIDBARS3), the water beneath it; the wooden dais (8
+  above the grate) and the post rise through it. The wooden boards of note #17 are gone (only the dais
+  and post are wood). The switch's light change now covers the dais and post only.
+- 2026-11-23, note #22 (board): the answer to note #15's open question: both gutters plain green; no
+  violet in the east gutter any more (all six pieces untinted; they keep their gids gutter_e.violet_N).
+  The rivulet from the switch obelisk across the walkway is part of the gutter's piece 4, so it is green
+  too; the obelisk's own leak (the violet fall from its slit and the spill on its base) is unchanged.
+  **Open:** whether that leak should stay violet, now that it runs into green water, or go as well.
+- 2026-11-23, note #23 (board): the cistern's east drain (cistern.out) has the hall drains' vine grating
+  (MIDVINE1 on both sides of its slot), and its water carries the cistern's tag (600), so it turns south
+  with the cistern's at the switch.
+- 2026-11-23, note #24 (game): the candles forward of the post (y 288, 24 in front of the switch face, at its
+  two edges; were beside the post at y 256), so their light falls on the switch.
+- 2026-11-23, note #25 (board): violet after all (the answer to note #22's open question), but only where
+  the leak meets the gutter: the rivulet across the walkway is a sector of its own again, full violet
+  (gutter_e.violet_4.rivulet), and in the gutter in front of its mouth the violet spreads and fades in
+  four concentric rings (round islands, radii 44, 31, 18, 8 round (394, 1557), from a faint tint to full
+  violet: VIOLET_RINGS). The rest of the gutter is green. The rings are still (they flow east with the
+  gutter's water); making them pulse outwards would be a script. Unchecked in the game.
+- 2026-11-23, note #26 (game): "can the current actually move you?": yes, and it does once the switch is
+  used: zscript.zs CacobeliskWater pushes a player standing in the cistern's water south (0.18 a tic,
+  settling at about 2 units a tic, a quarter of walking speed; not on the grate or the dais, and not
+  monsters). Before the switch the water only looks as if it moves. Unchecked: the strength.
+- 2026-11-23, note #27 (game): "fix up the leak: bits missing the water texture, bits wrongly tinted". No
+  screenshot reached Claude (see below), so two faults found by reading the map: the rivulet's sunken
+  channel had marble banks drawn by the rivulet's own (desaturated) sector, so they came out grey: the
+  rivulet is now flush with the walkway (a film across the floor) and falls the 8 into the gutter at its
+  mouth (WFALL, violet); and the 1-wide lip between the slit and the spill was marble: now liquid
+  (FWATER1 tinted violet; it can't be desaturated). **To check with the mapper: whether these were the
+  bits meant.** Tooling: note screenshots had not been saved since the map was renamed: the game was
+  given build\cacobelisk\shots, and in a console command "\c" plus a letter is a colour code
+  ("buildcobelisk/shots"): launch.py passes the folder with forward slashes now (needs the board
+  restarted, since the board starts the game on H).
+- 2026-11-23, note #28 (game): the bit of channel east of the bridge flowed west (it was part of the west
+  gutter's sector). The mapper's rule: east of the bridge flows east. It is its own sector now
+  (gutter_w.east_of_bridge, tag 611), and the water under the bridge is two halves parting at its middle
+  (x 32): gutter_w.bridge (tag 500 + moreids 610, west) and gutter_w.bridge_e (500 + moreids 611, east).
+  Unchecked: that the script's tag search finds the second tags (moreids), i.e. that the water under
+  the bridge moves at all.
+- 2026-11-23, note #29 (game): "a sliver of blue water" at the leak: the lip of note #27, blue water tinted
+  violet, stayed blue (a tint only takes colour away). Its floor is a plain grey flat (FLAT19) tinted violet
+  now; 1 wide, so its not moving does not show.
+- 2026-11-23, note #30 (game): the rings spread from the point of entry: four half rings centred on the
+  middle of the rivulet's mouth on the gutter's west edge (radii 66, 52, 38, 26; they were whole circles
+  out in the gutter). The innermost holds the mouth, so the fall there is drawn by a desaturated sector
+  and is violet (it was blue: "blue water at delta"). map.py _leak_side.
+- 2026-11-23, note #31 (game): the lip's strip "far too bright; the whole leak the same colour": its violet
+  scaled to the liquid's brightness (0x2E0555: FLAT19 is three times as light as desaturated NUKAGE1).
+  Measured from the textures, not seen: to check in the game.
+- 2026-11-23, note #32 (game): the shadow cacodemon deaf to gunshots too, like the cistern's spectres: it
+  wakes only when hurt or touched (it no longer wakes on hearing the player; note #12's reading of
+  "alerts" was noise or damage). It sits on top of the obelisk, so in practice: when shot.
+- 2026-11-23, note #33 (game): "still a bright violet stripe": darkening the tint (note #31) did not help,
+  probably because the light flat (FLAT19) still caught the obelisk's pulsing light. The lip is now CEIL5_1, a
+  neutral flat as dark as the desaturated liquid (38 against 35), with the full VIOLET tint like the spill.
+  LIP_VIOLET is unused. Still not seen by Claude (no screenshots until the board is restarted).
+- 2026-11-23, note #34 (game): the elevator's switches are shut away once used, so it's plain they are a
+  one-time thing. A second after either is used: the bottom call niche's sill rises to its top (tag 4,
+  Floor_RaiseByValue 32), its face (SUPPORT3, the track's metal; it shows as a metal sill before use)
+  being the panel; the top switch's niche is the way down and can't shut, so its plate is replaced by
+  the niche's own metal (looking up from the bottom, no switch is left). zscript.zs ShutSwitches.
+  Compiles; unchecked in the game.
+- 2026-11-23, note #35 (game): once the secret's target (the valve wheel over the start door) is shot, a
+  block drops over it: the slot's ceiling comes down 16 to the beam's height (Ceiling_LowerByValue on the
+  slot's second tag, 5), leaving the lintel one plain beam. Compiles; unchecked in the game (the face
+  that covers the slot is the line's default wall texture, as on the beams beside it).
+- 2026-11-23, note #36 (game): the top switch must not just vanish (note #34 swapped its plate for metal):
+  a panel comes down in front of it and its pulsing light goes out. The last 2 of the niche in front of
+  the switch is its own sector (niche.shutter, tags 1 and 6): a second after a switch is used its ceiling
+  comes down from the niche's top to its sill, the panel (AQF049, the mapper's pick, a flat used on a
+  wall) riding down with it over the switch's window; the way through below stays open. The validator
+  may not know a flat as a wall texture: see the build's warnings. Compiles; unchecked in the game.
+- 2026-11-23, note #37 (game): the bottom niche's panel ran all the way down the wall (the rising sill's
+  face): now a shutter like the top one: the last 2 of the niche in front of the switch is its own sector
+  (mouth.call_niche.shutter, tag 4) whose ceiling comes down, the panel (AQF049) inside the niche only.
+- 2026-11-23, note #38 (game): "why does my hand turn black and white in the purple water?": the violet is
+  made by desaturating the sector and tinting its floor, and desaturation takes everything drawn in that
+  sector, the weapon in the player's hand included. **Open (offered):** the cure is violet flats of our
+  own (the green liquid recoloured in a TEXTURES lump packed with the map, with ANIMDEFS for its
+  animation), which needs `dms build` to pack those lumps; then no sector is desaturated.
+- 2026-11-23, note #39 (game): a little cloud of dust when the secret panel opens: ten pale, see-through
+  puffs (the bullet puff's smoke, bigger: zscript.zs CacobeliskDust) thrown out of the panel towards the
+  closet's middle, slowing and fading over about two seconds. Compiles; unchecked in the game.
+- 2026-11-23, note #40 (game): the panels snap shut at once (no delay, 8 units a tic; was a second later).
+- 2026-11-23, note #41 (game): the cistern's switch slowly opens a big wooden door (BIGDOOR6, 112 wide, 84
+  high, about 5 s) in the west wall of the stairs down (their 2nd flight), the way forward. Behind it a
+  chamber (144 x 160, mossy stone, lit red) with two shotgunners facing the door and a red light that
+  comes on as the door starts to open (dormant before: thing id 303). The door is the switch's own
+  special (Door_Open, tag 7), so the movement check follows it; zscript.zs does the dais light, the
+  water's turn and the glow. **Open:** what lies beyond the chamber (it's a dead end), i.e. the exit.
+  The current after the switch pushes the player south, away from the door: to check that it reads right.
+- 2026-11-23, note #42 (game): the top switch was "shoved down" with the panel: its plate hung from the
+  ceiling in front of it, now the shutter's. Both switches are anchored to something that doesn't move
+  (the top one to the mouth's ceiling behind it, the bottom one to its floor), offsets worked out so the
+  plate sits in the niche's window as before (53 and -27). Unchecked: that the plates are where they were.
+- 2026-11-23, note #43 (game): the bottom niche's panel is AQF074 (the mapper's pick; AQF049 "isn't quite a
+  fit" there). The top switch's panel stays AQF049 until the mapper says otherwise.
+- 2026-11-23, notes #44, #45 (game): the two switches are twins. Both windows are 32 wide (the panel
+  texture's one 32 x 32 tile, and SW1GRAY's plate): the bottom niche narrowed from 37.7; the top niche,
+  which must stay 48 wide below as the way through, has a cheek of track metal either side of a 32-wide
+  window (niche.cheek_w/e: sectors shut down to the sill until their floors drop with the platform).
+  Both panels are AQF074. No cement: the top switch's grey margins are behind the cheeks, and the bottom
+  niche's sides, floor and ceiling are the track's metal like the top one's. Unchecked in the game.
+- 2026-11-23, note #46 (game): the hall's bridge is wooden (boards FLAT5_2 top and underneath, WOOD1 edges;
+  it was marble), "similar to the waterlogged platform down in the cistern": that platform has been a
+  metal grate since note #20, with only its dais and post in wood. **Open:** whether the cistern's
+  platform should be wooden boards too (one visual language), or stay a grate.
+  The cheeks of the top switch's niche (note #44) are user_scenery: the movement check took them for
+  gaps too narrow to pass; it now reads the way through at the shaft's foot as 32 wide and warns that
+  imps and shotgunners can't follow there (they can: it is 48).
+- 2026-11-23, note #47 (game): the answer to note #46: the cistern's platform is wooden boards too (FLAT5_2,
+  WOOD1 edges; it was a metal grate), with the metal bars (MIDBARS3) only underneath, where it meets the water.
+- 2026-11-23, note #48 (game): the big door is in the opposite (east) wall of the stairs' 2nd flight, its
+  chamber east of the stairs (192 x 192). Six shotgunners: two set on the player the moment the switch is
+  used (thing id 304, zscript.zs), two ordinary, two deaf (ambush) in the corners beside the door. The
+  roused two wait behind the door for the 5 s it takes to open. Compiles; unchecked in the game.
+- 2026-11-23, note #49 (game): riding down, the wall under the top switch showed cement where the track
+  should be: that wall is the switch's own texture (SW1GRAY: the plate, cement round it) all the way
+  down. Once the panel has covered the plate (8 tics after the switch is used), zscript.zs turns that
+  wall to the track's metal (SUPPORT3). Compiles; unchecked in the game.
+- 2026-11-23, note #50 (game): a green armour (2018) behind the switch, on the platform's boards behind the
+  dais at (680, 228), hidden by the post from the north. Unchecked: that it stands on the boards (a 3D
+  floor) rather than in the water under them.
+- 2026-11-23, note #51 (game): the armour was sunk into the boards: a thing on a 3D floor spawns on the
+  sector's real floor (the water's) unless given a height. It has height 16 (the boards' top) now. A
+  lesson for anything else put on the bridge or this platform.
+- 2026-11-23, note #52 (game): trying the big door by hand, before the switch has been used, shows "This
+  door is opened elsewhere." with the "can't use that" grunt: zscript.zs TryBigDoor watches for a use
+  press within 100 of the door's middle, facing it (the door's own lines carry no special). Compiles;
+  unchecked in the game.
+- 2026-11-23, note #53 (board): the big door moved down to the stairs' 3rd flight (east wall), and its
+  chamber about twice as big and less boxy: an irregular nine-sided room about 330 x 280
+  (CISTERN_DOOR_OUTLINE), the six shotgunners spread through it (the deaf two still in the corners
+  beside the door).
+- 2026-11-23, note #54 (game): the track metal turned 90 degrees, as one strip 16 high all round the foot of
+  the start closet's walls and the elevator car's; below the starting floor the shaft's walls are the
+  upright track as before. The game has no turned texture, so the map has its own now
+  (maps/cacobelisk/textures.txt, packed as TEXTURES: a new dms feature, src/dms/extras.py): CACOBASE
+  (GRAY1 with the strip in its bottom rows; on every plain wall of the closet and its coffer, stood on
+  the floor, and on the secret panel's face) and CACOSHFT (the strip, then 256 of upright track; the
+  car's side walls and the blocks' foot on the closet's north wall). The light channels and the start
+  door's recess interrupt the strip. Needs the board restarted (it starts the game, and the game's
+  copy of the map must carry the new lump). Unchecked in the game: everything about how it looks.
+- 2026-11-23, note #55 (game): the floor through the small door (its frame, the door's own floor, the
+  recess behind) is a slight wooden step: 4 up, boards (FLAT5_2), wood risers; it was the default grey
+  floor. The door is still 72 high above the step.
+- 2026-11-23, note #56 (game): "something is fucked about this texturing": the closet's walls showed as
+  missing textures: the board, still running its code from before today's changes, restarted the game
+  with a copy of the map that lacked the new TEXTURES lump (the log: "Unknown middle texture
+  'CACOBASE'"). Nothing wrong in the map; the board has to be restarted.
+- 2026-11-23, note #57 (game): no turning: the track as it is, a strip along the foot of the walls all round,
+  consistent with what shows round the car. CACOBASE is now GRAY1 with SUPPORT3's top 16 rows at its foot
+  (the rows the car's walls show); CACOSHFT is gone (the shaft's walls are plain SUPPORT3 again). It is
+  still the map's own texture: the closet's walls are single surfaces, and a strip on them without one
+  would mean lining every wall with a block as the shaft's are, which the light channels get in the way
+  of. So the board restart is still needed.
+- 2026-11-23, note #58 (game): no more hexagon tiles in the hall: its floor, and the landing's, is dirt
+  (FLAT10), carried on down the shallow banks to the water (the 8-high faces along both gutters, the
+  crossing channel and the rivulet's mouth were marble). The obelisks' bases and altars stay marble; the
+  rivulet, flush with the floor, is unchanged. Rocky alternatives if dirt isn't it: RROCK01-19.
+- 2026-11-23, note #59 (game): the hall is open to the sky: SKY4 (Freedoom's dark starfield with a green
+  nebula; map.toml), its walls 384 high (ceiling 128, was -64). Every sector in the hall takes the sky
+  (the gutters, bases, altars, bridge), and the obelisks' sleeves and slabs too: there is no slot in a
+  ceiling any more, a sleeve is a free-standing pillar until it sinks. The landing (mouth) keeps its
+  low ceiling. Unchecked in the game: the fog against the sky, the tall walls' look, and the reveal
+  (the cacodemon is still hidden inside its sleeve, but now open from above).
+- 2026-11-23, note #61 (game): no skulls on the inside of the great door: the right leaf's back, seen from
+  the vestibule, is plain wood and iron (BIGDOOR5) like the left leaf; its face towards the hall keeps
+  the skulls (BIGDOOR7).
+- 2026-11-23, note #62 (game): the current (after the switch) carries enemies too: every monster that is
+  awake and every body standing or lying in the cistern's water is pushed south like the player. Not a
+  monster still asleep (a sleeping spectre drifting into the player would spoil skirting round it), nor
+  flyers. Compiles; unchecked in the game.
+- 2026-11-23, note #63 (game): the big door's floor is a slight wooden step too (4 up, boards, wood risers),
+  like the small door's. A pattern now: doors stand on a wooden sill.
+- 2026-11-23, note #64 (game): the start's cement "feeling odd": the closet's, car's and shaft blocks' grey
+  walls are PIPEWAL1 (Freedoom's green wall of rusty pipes and conduits), in CACOBASE above the track
+  strip too. Not changed: the light channels, the start door, the switch's niche, the wall below the
+  starting floor (track). The secret panel takes it with the walls round it.
+- 2026-11-23, editor save 15:59: the northmost cistern spectre (cistern.spectre_1) removed. Ported into
+  map.py: two sleeping spectres are left (y 760 and 436).
+- 2026-11-23, chat: the start closet's walls are METAL4 (the mapper's pick, in place of PIPEWAL1 from note #64):
+  CLOSET_SKIN in map.py and the wall in CACOBASE (textures.txt).
+- 2026-11-23, note #65 (game): the sky "like 50% greener": the map's own sky texture CACOSKY (textures.txt):
+  SKY4 with its red and blue halved (Blend "80FF80"), so the stars and nebula go green and black stays
+  black. map.toml sky = "CACOSKY". The tint is one number to change if it wants more or less.
+- 2026-11-23, note #66 (game, with a screenshot): the grey fog made flat grey walls against the black sky.
+  The hall's fog is now a near-black green (0x0A160E) and thinner (240, was 360 grey): the walls fade
+  into darkness, as the sky does, instead of into mist. The drains and the passage's first pieces, which
+  share the hall's fog, go dark with it. Not done (offered): brightness stepping up the walls towards
+  the sky, or tinting the sky to the old grey. To check: that the hall isn't simply too dark now.
+- 2026-11-23, note #67 (game): the walls stuck up too high into the sky: the hall's walls are 256 high now
+  (sky at 0; they were 384). No lower: the obelisks' pillars reach 240 (to -16) before they sink.
+- 2026-11-23, note #68 (game, screenshot): stepping out of the elevator: no bridge. One big sheet of stone
+  (sector "landing", green marble FLOOR7_2, 8 above the dirt) from the foot of the elevator (the mouth's
+  floor is part of it) out over where the channel crossed, x -40 to 104, to 18 past the channel's north
+  bank; the water comes out from under it on either side (west: the west gutter's channel; east: the
+  stretch to the east stream), and the player steps down off its lip into the row of obelisks. The
+  wooden bridge, its bars and its control sector are gone (notes #47, #52, #55, #28, #46). The dirt of
+  note #58 no longer covers the mouth.
+- 2026-11-23, note #69 (game, screenshot): "huge powerful slightly ruined stone" for the tall walls: STONE3
+  (grey blocks, cracked and mossy) at twice its size on every grey surface of the hall, its gutters,
+  the landing and the mouth. Looked at and passed over: BIGBRIK2 (huge dark blocks, not ruined), STONEW5,
+  A-MOSBRI, A-BROCK2. Unchecked: seams where wall stretches meet (their offsets were set for the
+  unscaled grey), and how the mouth's low walls take the big blocks.
+- 2026-11-23, note #70 (game): the sky from SKY3 (the mapper's "p-sky3": red clouds on black), darkened and
+  tinted all green: CACOSKY is now those clouds through the engine's Green translation at 60% over black.
+  Unchecked in the game (the engine loads it); the darkness is the Alpha value in textures.txt.
+- 2026-11-23, note #70 (game): settled as P-SKY3 (the mapper's "p-sky3", 512 x 128) through the engine's
+  Green translation, not darkened further. Getting there broke the map for a few minutes: sky variants
+  the engine rejected were tried on the live map, and the mapper's `dms play` met one (and a race with
+  Claude's own script check, a traceback). Lessons: a Blend colour made only of digits ("808080") is
+  read as a number: write "#808080"; try texture variants on a scratch map, not the one being played;
+  the "hidden" script check's error window is not hidden (the mapper sees it).
+- 2026-11-23, note #71 (game, screenshot): the big walls "decent"; the dark seam to run just above the vines:
+  all the hall's wall parts moved down 16 (offsety -8), so the lowest seam is at about -237, above the
+  grates' top at -240. Unchecked: the direction (if the seam went up instead, the sign is wrong).
+- 2026-11-23, note #72 (game, screenshot): the wooden step under the small door was askew to the door: its
+  boards are turned to the leaf's angle (rotationfloor, about 11 degrees) in the frame, the door's floor
+  and the recess behind. Unchecked: the direction of the turn.

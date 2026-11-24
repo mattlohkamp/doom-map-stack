@@ -120,12 +120,26 @@ class _Geo:
         return ""
 
 
+# The editor saves coordinates with 3 decimals; map.py may produce more (a point worked out on a slanted
+# wall). A difference that small is the editor's rounding, not a move.
+ROUNDING = 0.001
+
+
+def _same_ends(ea, eb) -> bool:
+    if ea is None or eb is None:
+        return ea is eb
+    try:
+        return all(abs(p - q) <= ROUNDING for pa, pb in zip(ea, eb) for p, q in zip(pa, pb))
+    except TypeError:
+        return ea == eb
+
+
 def _same_place(ga: "_Geo", a: udmf.Block, gb: "_Geo", b: udmf.Block) -> bool:
     if a.kind == "thing":
         return (a.get("x"), a.get("y"), a.get("type")) == (b.get("x"), b.get("y"), b.get("type"))
     if a.kind == "linedef":
         ea = ga.ends(a)
-        return ea is not None and ea == gb.ends(b)
+        return ea is not None and _same_ends(ea, gb.ends(b))
     return False
 
 
@@ -187,7 +201,7 @@ def compare(base: udmf.Textmap, edited: udmf.Textmap) -> Changes:
             # Links: a line's ends and sides, a side's sector.
             if kind == "linedef":
                 oe, ne = gb.ends(old), ge.ends(new)
-                if oe != ne:
+                if not _same_ends(oe, ne):
                     ch.structural.append(f"line {gid} moved: {_pt(oe[0])}-{_pt(oe[1])} -> {_pt(ne[0])}-{_pt(ne[1])}"
                                          if oe and ne else f"line {gid}: ends changed")
                 for side in ("sidefront", "sideback"):

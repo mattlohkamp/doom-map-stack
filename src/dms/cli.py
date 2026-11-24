@@ -1,4 +1,4 @@
-"""The `dms` command. Run it as `.\\dms.ps1 <command>` from the repo root."""
+"""The `dms` command. Run it as `.\\scripts\\dms.ps1 <command>` from the repo root."""
 
 import argparse
 import sys
@@ -27,7 +27,7 @@ def cmd_new(args: argparse.Namespace) -> int:
 
     info = maps.new(repo_root(), args.name, kind=args.kind, title=args.title)
     print(f"dms new: created {info.folder} ({info.kind}, {info.source})")
-    print(f"    next: .\\dms.ps1 build {info.name}")
+    print(f"    next: .\\scripts\\dms.ps1 build {info.name}")
     return 0
 
 
@@ -116,13 +116,13 @@ def cmd_render(args: argparse.Namespace) -> int:
     if args.edit:
         tm = build.read_edit_wad_textmap(info, root)
         print(f"dms render {info.name} (edit.wad: the mapper's saved editor version)")
-        issues = build.check(tm, root, "validate", info.build_dir(root) / "validate-edit.txt")
+        issues = build.check(tm, root, "validate", info.build_dir(root) / "validate-edit.txt", info)
         moves = build.check_movement(tm, info.build_dir(root) / "movement-edit.txt")
         build.draw(info, root, tm, issues + moves.issues, source, suffix="-edit",
                    diff_title=f"{info.name}: edit.wad compared with TEXTMAP", moves=moves)
     else:
         print(f"dms render {info.name}")
-        issues = build.check(source, root, "validate", info.build_dir(root) / "validate.txt")
+        issues = build.check(source, root, "validate", info.build_dir(root) / "validate.txt", info)
         moves = build.check_movement(source, info.build_dir(root) / "movement.txt")
         build.draw(info, root, source, issues + moves.issues, None, moves=moves)
     return 0
@@ -293,9 +293,10 @@ def cmd_status(args: argparse.Namespace) -> int:
 def cmd_watch(args: argparse.Namespace) -> int:
     import time
 
-    from dms import agents, board, inbox, maps
+    from dms import agents, board, gamelog, inbox, maps
 
     root = repo_root()
+    crashes_seen: dict = {}
     seen: dict[str, set[int]] = {}
     saves_seen: set[str] = set()
 
@@ -311,6 +312,11 @@ def cmd_watch(args: argparse.Namespace) -> int:
                   f"structural change(s) waiting: port them into map.py (build/{info.name}/pull.txt), "
                   f"then `dms pull {info.name} --ported`", flush=True)
         inbox.ingest_game_log(info, root)  # notes typed in the game
+        # The game stopped on an error (its log says so): tell Claude, so the mapper needn't paste it.
+        errors = gamelog.new_errors(info, root, crashes_seen, first)
+        if errors:
+            print(f"[DMS-CRASH] {info.name}: the game stopped on an error (build/{info.name}/{gamelog.LOG}): "
+                  "fix it, rebuild, and tell the mapper to start the game again\n" + "\n".join(errors), flush=True)
         notes = inbox.notes(info, root)
         known = seen.setdefault(info.name, set())
         for n in notes:

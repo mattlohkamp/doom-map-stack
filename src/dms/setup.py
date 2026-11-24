@@ -1,7 +1,7 @@
-"""`dms setup`: download the Doom tools pinned in tools.toml into .tools/<name>/.
+"""`dms setup`: download the Doom tools pinned in config/tools.toml into .tools/<name>/.
 
 For each tool: download (cached in .tools/downloads/), check the SHA256, extract into a
-staging folder, move it into place, and record it in tools.local.json. Tools already
+staging folder, move it into place, and record it in .tools/tools.local.json. Tools already
 installed at the pinned version are left alone. `--upgrade <name>` reinstalls one tool,
 keeping the files listed in its `preserve` (settings, saves).
 """
@@ -16,6 +16,8 @@ import subprocess
 import tomllib
 import urllib.request
 import zipfile
+
+from dms import paths
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
@@ -156,7 +158,7 @@ def install(tool: Tool, tools_dir: Path, upgrade: bool = False) -> Path:
         found = marker.get("version", "unknown") if marker else "unknown/incomplete"
         raise SetupError(
             f"{tool.name}: .tools/{tool.name} holds version {found}, tools.toml pins {tool.version}.\n"
-            f"    Run `.\\dms.ps1 setup --upgrade {tool.name}` to replace it (keeps: "
+            f"    Run `.\\scripts\\dms.ps1 setup --upgrade {tool.name}` to replace it (keeps: "
             f"{', '.join(tool.preserve) or 'nothing'})."
         )
 
@@ -197,13 +199,17 @@ def write_local(path: Path, entries: dict[str, dict]) -> None:
 
 
 def run(root: Path, upgrade: str | None = None) -> int:
-    tools = load_tools(root / "tools.toml")
+    tools = load_tools(paths.tools_toml(root))
     names = {t.name for t in tools}
     if upgrade and upgrade not in names:
         print(f"dms setup: unknown tool {upgrade!r} (tools.toml has: {', '.join(sorted(names))})")
         return 2
 
-    local_path = root / "tools.local.json"
+    local_path = paths.tools_local(root)
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    old = root / "tools.local.json"  # where it was kept before the root was tidied
+    if old.exists() and not local_path.exists():
+        old.replace(local_path)
     local: dict[str, dict] = {}
     if local_path.exists():
         local = json.loads(local_path.read_text(encoding="utf-8"))
@@ -228,8 +234,8 @@ def run(root: Path, upgrade: str | None = None) -> int:
     if not failed:
         from dms.configure import configure_all
 
-        paths = {name: Path(e["path"]) for name, e in local.items() if e.get("path")}
+        mains = {name: Path(e["path"]) for name, e in local.items() if e.get("path")}
         managed = {name for name, e in local.items() if e.get("managed")}
         print("==> configuring")
-        configure_all(root, paths, managed)
+        configure_all(root, mains, managed)
     return 1 if failed else 0

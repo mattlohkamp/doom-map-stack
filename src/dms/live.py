@@ -93,19 +93,29 @@ def _live_text(state: dict) -> bytes:
     return ("\n".join(lines) + "\n").encode("utf-8")
 
 
+def _startup_digest(zscript: bytes, extra) -> str:
+    """What UZDoom reads only at startup: the script and the map's own textures (extras.py). When it
+    changes, the running game has to restart."""
+    from dms import extras
+
+    h = hashlib.sha256(zscript).hexdigest()
+    return h if not extra else hashlib.sha256((h + extras.digest(list(extra))).encode("ascii")).hexdigest()
+
+
 def pack(info: MapInfo, root: Path, mapinfo: bytes, textmap: bytes, build_seq: int = 0,
-         zscript: bytes = b"") -> Path:
+         zscript: bytes = b"", extra=()) -> Path:
     """Write a new live copy for a game about to start (play-<n>.wad, see play_wad). Returns its path.
-    zscript: the map's script (scripts.py); UZDoom compiles it only at startup, so it isn't rewritten
-    in place."""
+    zscript: the map's script (scripts.py); extra: its own texture lumps (extras.py). UZDoom reads both
+    only at startup, so they aren't rewritten in place."""
     import time
 
     slot = max(MIN_SLOT, 4 * len(textmap))
     name = f"play-{time.time_ns() // 1_000_000}.wad"
     state = {"file": name, "slot": slot, "build": build_seq, "restart": False, "messages": [], "next": 1,
-             "zscript": hashlib.sha256(zscript).hexdigest(),
+             "zscript": _startup_digest(zscript, extra),
              "packed": datetime.now().astimezone().isoformat(timespec="seconds")}
     lumps = [wad.Lump("MAPINFO", _pad(mapinfo, max(MAPINFO_SLOT, len(mapinfo))))]
+    lumps += list(extra)
     if zscript:
         lumps.append(wad.Lump("ZSCRIPT", zscript))
     lumps += [
@@ -137,14 +147,14 @@ def _rewrite(info: MapInfo, root: Path, name: str, data: bytes) -> bool:
 
 
 def update_map(info: MapInfo, root: Path, mapinfo: bytes, textmap: bytes, build_seq: int,
-               zscript: bytes = b"") -> str:
+               zscript: bytes = b"", extra=()) -> str:
     """Put a new build into the running game's play.wad. Returns "updated", or "restart" when the
     game can't take it in place: the map outgrew its slot, or the script changed (UZDoom compiles
     ZScript only at startup); or "none" (no play.wad)."""
     state = _state(info, root)
     if not state or not play_wad(info, root).exists():
         return "none"
-    same_script = state.get("zscript", hashlib.sha256(b"").hexdigest()) == hashlib.sha256(zscript).hexdigest()
+    same_script = state.get("zscript", hashlib.sha256(b"").hexdigest()) == _startup_digest(zscript, extra)
     fits = _rewrite(info, root, "TEXTMAP", textmap) and _rewrite(info, root, "MAPINFO", mapinfo) and same_script
     state = _state(info, root)
     state["build"] = build_seq

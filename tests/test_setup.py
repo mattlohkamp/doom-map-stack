@@ -84,13 +84,15 @@ def test_version_change_needs_upgrade_and_keeps_preserved(tmp_path):
 def test_run_writes_tools_local_and_respects_unmanaged(tmp_path):
     z = tmp_path / "thing.zip"
     sha = make_zip(z, {"thing.exe": b"x"})
-    (tmp_path / "tools.toml").write_text(
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "tools.toml").write_text(
         f'[tools.thing]\nversion = "1"\nurl = "{z.as_uri()}"\nsha256 = "{sha}"\nmain = "thing.exe"\n'
         f'[tools.other]\nversion = "1"\nurl = "{z.as_uri()}"\nsha256 = "{sha}"\nmain = "thing.exe"\n'
     )
-    (tmp_path / "tools.local.json").write_text(json.dumps({"other": {"managed": False, "path": "C:/elsewhere/other.exe"}}))
+    (tmp_path / ".tools").mkdir()
+    (tmp_path / ".tools" / "tools.local.json").write_text(json.dumps({"other": {"managed": False, "path": "C:/elsewhere/other.exe"}}))
     assert setup.run(tmp_path) == 0
-    local = json.loads((tmp_path / "tools.local.json").read_text())
+    local = json.loads((tmp_path / ".tools" / "tools.local.json").read_text())
     assert local["thing"]["managed"] is True
     assert local["other"] == {"managed": False, "path": "C:/elsewhere/other.exe"}
     assert not (tmp_path / ".tools" / "other").exists()
