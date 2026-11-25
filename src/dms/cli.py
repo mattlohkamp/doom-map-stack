@@ -360,6 +360,56 @@ def cmd_watch(args: argparse.Namespace) -> int:
         return 0
 
 
+def cmd_themes(args: argparse.Namespace) -> int:
+    from dms import themes
+
+    root = repo_root()
+    try:
+        if args.action == "list":
+            found = themes.all_themes(root)
+            if not found:
+                print("no themes yet (draft one with `dms themes harvest <map> <name> --gid PATTERN`)")
+            for t in found:
+                print(f"{t.name:20} {t.title}" + (f": {t.description}" if t.description else ""))
+            return 0
+        if args.action == "show":
+            print(themes.show(themes.find(root, args.name)))
+            return 0
+        if args.action == "check":
+            walls, flats = themes.known_names(root)
+            bad = 0
+            for t in themes.all_themes(root):
+                problems = themes.check(t, walls, flats)
+                bad += len(problems)
+                print(f"{t.name}: " + ("ok" if not problems else f"{len(problems)} problem(s)"))
+                for p in problems:
+                    print(f"    {p}")
+            return 1 if bad else 0
+        # harvest
+        from dms import maps, render, udmf
+
+        if not themes.NAME_OK.fullmatch(args.name):
+            print("dms themes: a theme's name is lowercase letters, digits and dashes", file=sys.stderr)
+            return 1
+        info = maps.resolve(root, args.map)
+        folder = themes.themes_dir(root) / args.name
+        if (folder / "theme.toml").exists() and not args.force:
+            print(f"dms themes: {folder / 'theme.toml'} exists (--force replaces it)", file=sys.stderr)
+            return 1
+        print(f"dms themes harvest: map {info.name}, gids {' '.join(args.gid)}")
+        tm = udmf.parse(info.textmap.read_text(encoding="utf-8"))
+        h = themes.harvest(tm, args.gid, args.name, sky=info.sky, thing_kind=render.thing_kind)
+        text = themes.dump(h.theme, header=themes.harvest_report(h, f"maps/{info.name}", args.gid, render.thing_kind))
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "theme.toml").write_text(text, encoding="utf-8", newline="\n")
+        print(themes.show(h.theme))
+        print(f"wrote {folder / 'theme.toml'} (a draft: what was counted is in its header)")
+        return 0
+    except themes.ThemeError as e:
+        print(f"dms themes: {e}", file=sys.stderr)
+        return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="dms", description="Doom map stack.")
     parser.add_argument("--version", action="version", version=f"dms {__version__}")
@@ -454,6 +504,20 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--ported", action="store_true",
                    help="the structural changes are now in map.py: write the tweaks and rebuild")
     p.set_defaults(func=cmd_pull)
+
+    p = sub.add_parser("themes", help="sets of textures and atmosphere that belong together (themes/; docs/themes.md)")
+    tsub = p.add_subparsers(dest="action", metavar="<action>")
+    p.set_defaults(func=cmd_themes, action="list")
+    tsub.add_parser("list", help="the themes in themes/")
+    t = tsub.add_parser("show", help="print one theme")
+    t.add_argument("name")
+    tsub.add_parser("check", help="check every theme: roles, names the game or a map knows, values")
+    t = tsub.add_parser("harvest", help="draft a theme from the sectors of a map whose gids match")
+    t.add_argument("map", help=MAP_HELP)
+    t.add_argument("name", help="the theme's name: lowercase letters, digits and dashes")
+    t.add_argument("--gid", action="append", required=True, metavar="PATTERN",
+                   help="sector gid pattern (fnmatch: closet*, passage_*); repeat for more")
+    t.add_argument("--force", action="store_true", help="replace an existing theme.toml")
 
     return parser
 

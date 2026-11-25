@@ -496,6 +496,14 @@ def make_handler(root: Path, announce: bool = False):
                 elif parts == ["api", "ping"]:
                     # "page": board.html's version, so an open board reloads itself when it changes.
                     self._json({"dms_board": True, "root": str(root), "page": PAGE_FILE.stat().st_mtime_ns})
+                elif parts == ["themes"]:
+                    # The theme viewer (docs/themes.md): its own page, same server, read on every request.
+                    self._send(HTTPStatus.OK, THEMES_FILE.read_text(encoding="utf-8").encode("utf-8"),
+                               "text/html; charset=utf-8")
+                elif parts == ["api", "themes"]:
+                    from dms import themes
+
+                    self._json(themes.for_page(root))
                 elif parts == ["assets"]:
                     # The asset browser (docs/asset-browser.md): its own page, same server.
                     self._send(HTTPStatus.OK, ASSETS_FILE.read_text(encoding="utf-8").encode("utf-8"),
@@ -641,6 +649,7 @@ def serve(root: Path, port: int, open_browser: bool = True, auto_pull: bool = Tr
 PAGE_FILE = Path(__file__).with_name("board.html")
 ASSETS_FILE = Path(__file__).with_name("assets.html")
 SYNTH_FILE = Path(__file__).with_name("assets-synth.js")
+THEMES_FILE = Path(__file__).with_name("themes.html")
 
 
 def page() -> str:

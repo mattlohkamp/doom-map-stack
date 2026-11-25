@@ -361,7 +361,21 @@ Still to build later:
 
 ## 9. Where we left off
 
-*Updated 2026-11-24. A new session starts here.*
+*Updated 2026-11-25. A new session starts here.*
+
+**2026-11-25: themes** (the mapper's idea: a palette of textures that belong together, to keep areas
+consistent; `docs/themes.md` has the plan, five milestones). Milestone 1 built: `themes/<name>/theme.toml`
+(textures by role, things, decals, atmosphere; shared by every map), `dms themes` / `show` / `check` /
+`harvest` (`src/dms/themes.py`). Two themes harvested from Cacobelisk and trimmed by hand: `techbase` (the
+start closet, the tech hall) and `grotto` (the passages, vestibule, cistern). 160 tests. Settled with the
+mapper: atmosphere is part of a theme; off-theme textures warn; the sky, decals and decoration are roles too.
+Then the mapper chose to see the standard scene in the browser, not as a map: **the theme viewer** at
+`/themes` (`src/dms/themes.html`, our own WebGL2: the room as a cutaway, every role labelled with leader lines,
+alternatives cycled per role). Tuned with the mapper from screenshots: inside view by default, views flown
+to, light and fog toggles, faint leader lines lit by hovering a label or a face, labels kept on screen.
+Lesson: Claude had no browser, so a geometry bug (floors with no height, NaN) was found by running the page's
+build code in Node against `/api/themes`: worth doing before handing over any WebGL change.
+**Next:** two themes side by side with a seam, a light-source glow, then choosing in the asset browser.
 
 **2026-11-24, a long session on Cacobelisk (in-game and board notes #73-#140 and chat) and the tools round it.**
 155 tests. `maps/cacobelisk/notes.md` has every note; the short of it:
@@ -403,6 +417,9 @@ proves the engine takes a definition, not how it looks: **measure the mapper's s
 don't cut holes with ceilings there (the slit ended as a 3D floor). A sector a later pass matches by name gets
 changed by it (`monolith_...`). The game's sector numbers in a note are from the build it runs: go by where the
 mapper stood. The 30-minute watch lapses: re-arm at once, a note can land in the gap.
+**Builds were slow** (evening): the movement check took 35 s of a Cacobelisk build (303 sectors), because
+`Textmap.sidedefs`/`.sectors`/`.vertices` scan every block on each call and it called them per line. It now
+works them out once per check (0.9 s, same report). Watch for the same pattern in new code over big maps.
 **Worth building next:** the watch re-arming itself or a longer one; a way for Claude to see the game (a
 screenshot on request) so less is "unchecked"; `dms rename`; a decal lump for maps (a scaled picture on a wall
 without a new texture).

@@ -1,0 +1,42 @@
+# Drafted by `dms themes harvest` from maps/cacobelisk, sectors with gids closet* car* niche* tech_hall* tech_door*
+# (33 sectors), then trimmed by Claude (2026-11-25) from the map's notes: CACOBASE is the wall with the track
+# strip at its foot (wall_base), DOORTRAK lines the light channels, GRAY1 / BROWNWEL / METAL4 on "door" lines were
+# the secret's target and panel, DOOR3 is the dead start door.
+# CACOBASE and CACODOOR are Cacobelisk's own textures (maps/cacobelisk/textures.txt): elsewhere, METAL4 / DOOR1.
+#
+# Counted (walls in map units of length, flats in square units of area):
+#   wall       CACOBASE 55%, METAL4 42%, DOOR3 3%
+#   trim       DOORTRAK 49%, CACOBASE 22%, METAL4 17%, SUPPORT3 12%
+#   door       CACODOOR 44%, GRAY1 44%, BROWNWEL 6%, METAL4 6%
+#   step       SUPPORT3 77%, STEPTOP 23%
+#   floor      FLOOR4_8 99%, A-MOSRK2 0%, SUPPORT3 0%
+#   ceiling    CEIL3_5 99%, SUPPORT3 1%
+#   light      LITERED 100%
+#   switch     SW1GRAY 100%
+#   things     9830 Attenuated Light x16, 9831 Attenuated Pulse Light x2, 2024 Invisibility x1, 1 player 1 start x1
+
+title = "Techbase"
+description = "The forgotten service levels: rusted metal walls, elevator-track metal at their foot and round doors, red emergency light in channels."
+decals = []
+
+[textures]
+wall = ["METAL4"]
+wall_base = ["CACOBASE"]
+trim = ["SUPPORT3", "DOORTRAK"]
+door = ["CACODOOR", "DOOR3"]
+door_frame = ["SUPPORT3"]
+step = ["STEPTOP", "SUPPORT3"]
+floor = ["FLOOR4_8"]
+ceiling = ["CEIL3_5"]
+light = ["LITERED"]
+switch = ["SW1GRAY"]
+
+[things]
+light_source = [9830, 9831]
+
+[atmosphere]
+light = 128
+light_range = [72, 176]
+lightcolor = ""
+fog = ""
+fogdensity = 0

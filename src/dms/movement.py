@@ -34,7 +34,7 @@ import math
 from dataclasses import dataclass, field
 
 from dms.udmf import Block, Textmap
-from dms.validate import Issue, sector_at
+from dms.validate import Issue, sector_at, sector_edges
 
 STEP = 24
 HEIGHT = 56
@@ -115,13 +115,33 @@ def _mid(tm: Textmap, ld: Block) -> tuple[float, float] | None:
     return ((a["x"] + b["x"]) / 2, (a["y"] + b["y"]) / 2)
 
 
-def _side_sector(tm: Textmap, ld: Block, key: str) -> int | None:
+def _side_sectors(tm: Textmap) -> list[int | None]:
+    """Each sidedef's sector (None when it names none that exists). Built once per check: `tm.sidedefs`
+    and `tm.sectors` scan every block on each call, which made a big map's check take 35 s."""
+    n = len(tm.sectors)
+    out: list[int | None] = []
+    for sd in tm.sidedefs:
+        sec = sd.get("sector")
+        out.append(sec if isinstance(sec, int) and 0 <= sec < n else None)
+    return out
+
+
+def _side_sector(side_secs: list[int | None], ld: Block, key: str) -> int | None:
     s = ld.get(key, -1)
-    if isinstance(s, int) and 0 <= s < len(tm.sidedefs):
-        sec = tm.sidedefs[s].get("sector")
-        if isinstance(sec, int) and 0 <= sec < len(tm.sectors):
-            return sec
-    return None
+    return side_secs[s] if isinstance(s, int) and 0 <= s < len(side_secs) else None
+
+
+def _locator(tm: Textmap):
+    """sector_at for things, with the map's sector boundaries worked out once and each thing's
+    sector remembered."""
+    edges = sector_edges(tm)
+    seen: dict[int, int | None] = {}
+
+    def where(t: Block) -> int | None:
+        if id(t) not in seen:
+            seen[id(t)] = sector_at(tm, t["x"], t["y"], edges)
+        return seen[id(t)]
+    return where
 
 
 def _tags(sector: Block) -> set[int]:
@@ -170,8 +190,9 @@ def _gap_widths(tm: Textmap, lines: list[int]) -> dict[int, float]:
 
 def check(tm: Textmap) -> Result:
     sectors, lines = tm.sectors, tm.linedefs
+    ss, where = _side_sectors(tm), _locator(tm)
     player = next((t for t in tm.things if t.get("type") == 1 and "x" in t.fields), None)
-    start = sector_at(tm, player["x"], player["y"]) if player else None
+    start = where(player) if player else None
     res = Result(start)
     if start is None:
         res.report = "movement: no player 1 start inside a sector; nothing checked\n"
@@ -185,7 +206,7 @@ def check(tm: Textmap) -> Result:
     pairs: dict[frozenset, list[int]] = {}
     neighbours: dict[int, set[int]] = {i: set() for i in range(len(sectors))}
     for i, ld in enumerate(lines):
-        f, b = _side_sector(tm, ld, "sidefront"), _side_sector(tm, ld, "sideback")
+        f, b = _side_sector(ss, ld, "sidefront"), _side_sector(ss, ld, "sideback")
         if f is None or b is None or f == b:
             continue
         neighbours[f].add(b)
@@ -222,7 +243,7 @@ def check(tm: Textmap) -> Result:
         return seen
 
     def things_in(secs: set[int]) -> set[int]:
-        return {t.get("type") for t in tm.things if "x" in t.fields and sector_at(tm, t["x"], t["y"]) in secs}
+        return {t.get("type") for t in tm.things if "x" in t.fields and where(t) in secs}
 
     def targets(ld: Block, front: int | None, back: int | None) -> list[int]:
         tag = ld.get("arg0", 0)
@@ -244,15 +265,16 @@ def check(tm: Textmap) -> Result:
             thin(n) and neighbours[n] & reach for n in neighbours[front] if n not in reach)
 
     thin_cache: dict[int, bool] = {}
+    verts = tm.vertices
 
     def thin(sec: int) -> bool:
         """No more than half a use's reach (32) across one way: a niche, a slot, a shutter."""
         if sec not in thin_cache:
             xs, ys = [], []
             for ld in lines:
-                if sec in (_side_sector(tm, ld, "sidefront"), _side_sector(tm, ld, "sideback")):
+                if sec in (_side_sector(ss, ld, "sidefront"), _side_sector(ss, ld, "sideback")):
                     for k in ("v1", "v2"):
-                        v = tm.vertices[ld[k]]
+                        v = verts[ld[k]]
                         xs.append(v["x"])
                         ys.append(v["y"])
             thin_cache[sec] = bool(xs) and min(max(xs) - min(xs), max(ys) - min(ys)) <= 32
@@ -273,7 +295,7 @@ def check(tm: Textmap) -> Result:
             sp = ld.get("special", 0)
             if i in used or not sp or not (sp in DOORS or sp in LIFTS or sp in FLOORS or sp in CEILINGS):
                 continue
-            f, b = _side_sector(tm, ld, "sidefront"), _side_sector(tm, ld, "sideback")
+            f, b = _side_sector(ss, ld, "sidefront"), _side_sector(ss, ld, "sideback")
             if not usable(ld, f, b, reach):
                 continue
             if sp == LOCKED_DOOR and not opens(ld.get("arg3", 0), have):
@@ -305,7 +327,7 @@ def check(tm: Textmap) -> Result:
     # (no height at all), and sectors too low to stand in raised above every neighbour by more than a
     # step (the top of a monolith). They are walls, not places to reach. A too-low corridor at its
     # neighbours' level is still reported.
-    moved = {b for ld in lines if ld.get("special", 0) for b in (_side_sector(tm, ld, "sideback"),)}
+    moved = {b for ld in lines if ld.get("special", 0) for b in (_side_sector(ss, ld, "sideback"),)}
 
     def scenery(i: int) -> bool:
         if sectors[i].get("user_scenery") is True:  # marked by the map: a recess, a light channel...
@@ -330,7 +352,7 @@ def check(tm: Textmap) -> Result:
     one_way = sorted({(a, b) for a in reach for b in moves[a] if a not in moves[b]})
 
     exits = [(i, ld) for i, ld in enumerate(lines) if ld.get("special", 0) in EXITS]
-    exit_secs = {s for _, ld in exits for s in (_side_sector(tm, ld, "sidefront"),) if s is not None}
+    exit_secs = {s for _, ld in exits for s in (_side_sector(ss, ld, "sidefront"),) if s is not None}
     if exit_secs & reach:
         back: dict[int, set[int]] = {i: set() for i in range(len(sectors))}
         for a, bs in moves.items():
@@ -345,14 +367,14 @@ def check(tm: Textmap) -> Result:
                     todo.append(y)
         res.softlocks = reach - escape
 
-    res.issues, res.report = _findings(tm, res, exits, exit_secs, one_way, never_opened, things_in)
-    m_issues, m_report = _monster_fit(tm, res, portals, width, floor, ceil, moves, targets)
+    res.issues, res.report = _findings(tm, res, exits, exit_secs, one_way, never_opened, where)
+    m_issues, m_report = _monster_fit(tm, res, portals, width, floor, ceil, moves, targets, ss, where)
     res.issues += m_issues
     res.report += m_report
     return res
 
 
-def _monster_fit(tm, res, portals, width, floor, ceil, moves, targets):
+def _monster_fit(tm, res, portals, width, floor, ceil, moves, targets, ss, where):
     """The monster fit check (see the module's docstring): warnings and report lines."""
     sectors, lines = tm.sectors, tm.linedefs
     # Sectors as the player can move them, for a monster: movers that stay put once used, and doors and
@@ -364,15 +386,16 @@ def _monster_fit(tm, res, portals, width, floor, ceil, moves, targets):
             continue
         stays = sp in FLOORS or sp in CEILINGS or sp == DOOR_OPEN     # Door_Open doesn't close again
         if stays or any(ld.get(f) for f in MONSTER_FLAGS):
-            movable.update(targets(ld, _side_sector(tm, ld, "sidefront"), _side_sector(tm, ld, "sideback")))
+            movable.update(targets(ld, _side_sector(ss, ld, "sidefront"), _side_sector(ss, ld, "sideback")))
     # Each sector's size (its lines' bounding box), for the dead ends too small to matter.
     box: dict[int, list[float]] = {}
+    verts = tm.vertices
     for ld in lines:
         for key in ("sidefront", "sideback"):
-            s = _side_sector(tm, ld, key)
+            s = _side_sector(ss, ld, key)
             if s is None:
                 continue
-            for v in (tm.vertices[ld["v1"]], tm.vertices[ld["v2"]]):
+            for v in (verts[ld["v1"]], verts[ld["v2"]]):
                 b = box.setdefault(s, [v["x"], v["y"], v["x"], v["y"]])
                 b[0], b[1] = min(b[0], v["x"]), min(b[1], v["y"])
                 b[2], b[3] = max(b[2], v["x"]), max(b[3], v["y"])
@@ -420,7 +443,7 @@ def _monster_fit(tm, res, portals, width, floor, ceil, moves, targets):
         kind = MONSTERS.get(t.get("type"))
         if not kind or "x" not in t.fields:
             continue
-        s = sector_at(tm, t["x"], t["y"])
+        s = where(t)
         if s is None or s not in res.reachable:
             continue                                   # where the player never goes: nothing to chase
         checked += 1
@@ -459,7 +482,8 @@ def _centre(tm: Textmap, s: int):
     return render.centroid(max(polys, key=render.polygon_area)) if polys else None
 
 
-def _findings(tm, res, exits, exit_secs, one_way, never_opened, things_in):
+def _findings(tm, res, exits, exit_secs, one_way, never_opened, where):
+    ss = _side_sectors(tm)
     issues: list[Issue] = []
     warn = lambda msg, where="", pos=None: issues.append(Issue("warning", msg, where, pos))  # noqa: E731
     n = len(tm.sectors)
@@ -472,11 +496,11 @@ def _findings(tm, res, exits, exit_secs, one_way, never_opened, things_in):
         typ = t.get("type")
         what = KEYS.get(typ) or WEAPONS.get(typ) or ITEMS.get(typ)
         if what and "x" in t.fields:
-            s = sector_at(tm, t["x"], t["y"])
+            s = where(t)
             if s is None or s not in res.reachable:
                 warn(f"{what} can't be reached", f"thing {t.get('user_gid') or typ}", (t["x"], t["y"]))
     for i, ld in exits:
-        f = _side_sector(tm, ld, "sidefront")
+        f = _side_sector(ss, ld, "sidefront")
         if f is None or f not in res.reachable:
             warn(f"{EXITS[ld['special']]} can't be reached", f"line {ld.get('user_gid') or i}", _mid(tm, ld))
     for s, sec in enumerate(tm.sectors):

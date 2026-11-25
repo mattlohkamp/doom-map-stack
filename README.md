@@ -61,6 +61,11 @@ stand after Claude's change, and P makes monsters ignore you while you look roun
 **The board** also has an asset browser (a link in its top banner): every texture, thing, sound and song the game
 provides, each map's own, and which of them the maps already use.
 
+**Themes** keep a kind of place looking consistent: a set of textures, light sources and atmosphere that belong
+together (walls, trim, doors, floors, light fixtures, liquid, sky; light and fog), shared by every map. Claude can
+draft one from part of an existing map. The board's themes page shows a theme slotted into a standard room in 3D,
+every surface labelled with its texture.
+
 **Changes made in the editor** are kept: light levels, heights, textures, offsets and things' positions become
 tweaks that survive every rebuild (`maps/<map>/overrides.toml`). Comments left on a sector, line or thing become
 requests in the map's notes. Changes to the map's shape are handed to Claude to bring into the generator.

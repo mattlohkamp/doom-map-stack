@@ -39,6 +39,7 @@ The repo root holds one script, **`Start Session.cmd`**, and the files that have
 | `config\` | `dms.toml` (project settings), `tools.toml` (the pinned Doom tools) |
 | `src\` | The Python project: `pyproject.toml`, `uv.lock`, `uv.toml`, `.python-version`, the `dms` package (`src\dms\`), the editor plugin (`src\udb-plugin\`). uv is always run with `--project src` |
 | `maps\`, `catalog\`, `resources\`, `docs\`, `tests\` | Maps, the IWAD's texture names, the devtools mod, documents (`docs\PLAN.md` is the roadmap), tests |
+| `themes\` | Themes shared by every map: `themes\<name>\theme.toml` (`docs\themes.md`) |
 | `.tools\`, `build\` | Git-ignored: downloads, the Python environment (`.tools\venv\`), `tools.local.json`; build output |
 
 `src/dms/paths.py` has these locations for the code.
@@ -309,6 +310,20 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   `map.toml` (sky, music) and `zscript.zs` (sounds, decals, spawned classes): a green `xN` on each asset,
   an `in use` chip, and **in use first** (on by default): what the maps use comes first, most used first, under a
   divider, counted over every map or one (the `use:` menu; `/assets?map=<name>`, which the board's banner link passes for the map it shows). **For consistency, look there (or call `mapassets.usage`) before picking a new texture or sound.**
+- **Themes** (`src/dms/themes.py`; plan and status: `docs/themes.md`): a theme is a set of textures, things and
+  atmosphere that belong together, the look of one kind of place, shared by every map: `themes/<name>/theme.toml`,
+  textures by **role** (`wall`, `wall_alt`, `wall_base`, `trim`, `door`, `door_frame`, `step`, `floor`, `floor_alt`,
+  `ceiling`, `light`, `switch`, `liquid`, `sky`; the first name of a role is the main one), things (`light_source`,
+  `decoration`), `decals`, and `[atmosphere]` (light, light_range, lightcolor, fog, fogdensity).
+  `dms themes` lists them, `dms themes show <name>` prints one, `dms themes check` checks roles, names (the
+  catalog and the maps' own textures) and values. `dms themes harvest <map> <name> --gid PATTERN...` drafts one
+  from the sectors whose gids match (fnmatch; repeat `--gid`): roles guessed from where each texture sits, what
+  it counted in the file's header; trim the draft by hand. **Before building a new area, pick its theme and
+  take textures from it** (`techbase` and `grotto` come from Cacobelisk). **The theme viewer**: `/themes` on the
+  board's server (a link in each page's banner; `src/dms/themes.html`, read per request; `/api/themes`), a
+  standard room in 3D (our own WebGL2) with the chosen theme slotted into it, every role labelled with a
+  leader line to its surfaces; it polls, so an edited `theme.toml` shows in a few seconds. Planned: choosing
+  in the asset browser, `b.theme()` in `map.py` and a validator warning for off-theme textures.
 - `dms catalog`: lists the IWAD's wall textures (with sizes) and flats into `catalog/` (committed; names only).
   Re-run after changing the Freedoom pin.
 - `dms validate <map> [--edit]`: checks `TEXTMAP` (or the mapper's `edit.wad`) and writes `build/<map>/validate.txt`

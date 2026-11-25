@@ -1,0 +1,43 @@
+# Drafted by `dms themes harvest` from maps/cacobelisk, sectors with gids passage_* side_passage* vestibule* cistern*
+# (89 sectors), then trimmed by Claude (2026-11-25) from the map's notes: WOOD1 is the timber (frames, crates, sills),
+# the big doors are BIGDOOR6 / BIGDOOR5 (counted as walls: their lines carry no special), GSTONE1 and CACOFACE are
+# the carved alcoves, CRATE2 / GRAY1 / SUPPORT3 / DOORTRAK are strays from the great door and its wicket.
+# The torches and the cistern's pale-green glows are the light; the cistern's near-black fog is the atmosphere.
+#
+# Counted (walls in map units of length, flats in square units of area):
+#   wall       A-MOSRK2 65%, A-MOSROK 19%, WOOD1 5%, CRATE2 3%, GRAY1 2%, BIGDOOR5 1%, BIGDOOR6 1%, CACOFACE 1%
+#   trim       A-MOSRK2 63%, A-MOSROK 22%, GSTONE1 4%, WOOD1 4%, BIGDOOR5 3%, SUPPORT3 1%, DOORTRAK 1%, GRAY1 1%
+#   door       WOOD1 100%
+#   step       A-MOSROK 44%, A-MOSRK2 37%, WOOD1 19%
+#   floor      A-MOSRK2 69%, A-MUD 24%, FLAT5_2 4%, FLOOR7_2 1%, CRATOP1 1%, CRATOP2 1%, A-MOSROK 0%, FLOOR4_8 0%
+#   ceiling    A-MOSRK2 85%, A-MOSROK 13%, FLOOR7_2 1%, FLAT5_2 1%, CEIL3_5 0%
+#   switch     SW1WOOD 100%
+#   liquid     NUKAGE1 100%, SFALL1 0%
+#   things     57 Short red firestick x25, 9830 Attenuated Light x14, 3001 Imp x7, 9 Former Sergeant x6, 2015 Armor bonus x5, 3002 Demon x3, 2011 Stimpack x2, 2008 Shotgun shells x2, 58 Spectre x2, 34 Candle x2, 2049 Box of Shells x1, 9831 Attenuated Pulse Light x1
+
+title = "Grotto"
+description = "The cult's tunnels under the hall: mossy rock and mud, braced with timber, lit by torches in rough niches; dark, still green water."
+decals = []
+
+[textures]
+wall = ["A-MOSRK2"]
+wall_alt = ["A-MOSROK", "GSTONE1"]
+trim = ["WOOD1"]
+door = ["BIGDOOR6", "BIGDOOR5"]
+door_frame = ["WOOD1"]
+step = ["A-MOSRK2", "A-MOSROK", "WOOD1"]
+floor = ["A-MOSRK2"]
+floor_alt = ["A-MUD", "FLAT5_2"]
+ceiling = ["A-MOSRK2", "A-MOSROK"]
+switch = ["SW1WOOD"]
+liquid = ["NUKAGE1", "SFALL1"]
+
+[things]
+light_source = [57, 34, 9830]
+
+[atmosphere]
+light = 56
+light_range = [24, 144]
+lightcolor = ""
+fog = "080808"
+fogdensity = 200

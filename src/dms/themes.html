@@ -1,0 +1,846 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DMS themes</title>
+<style>
+  :root { --bg: #16181c; --panel: #1f2228; --line: #33373f; --text: #d8dce3; --dim: #8a909b; --accent: #7fc4ff; --warn: #ffb25a; --bad: #ff6b6b; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, sans-serif; }
+  body { display: grid; grid-template-rows: auto auto 1fr auto; height: 100vh; }
+  .dms-nav { position: sticky; top: 0; z-index: 50; display: flex; gap: 14px; align-items: center; height: 24px;
+             padding: 0 12px; background: #101014; border-bottom: 1px solid #2c2c34; font: 12px/24px "Segoe UI", system-ui, sans-serif; }
+  .dms-nav b { color: #77778a; letter-spacing: .06em; }
+  .dms-nav a { color: #8fb4ff; text-decoration: none; } .dms-nav a:hover { text-decoration: underline; }
+  .dms-nav [aria-current] { color: #e4e4ea; font-weight: 600; text-decoration: none; pointer-events: none; }
+  header { display: flex; align-items: center; gap: 10px; padding: 6px 10px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 14px; margin: 0 4px 0 0; color: var(--dim); font-weight: 600; }
+  select, .btn { background: #262a31; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px; cursor: pointer; font: inherit; }
+  .btn.on { border-color: var(--accent); background: #2c3440; }
+  #desc { color: var(--dim); flex: 1 1 300px; }
+  label.opt { color: var(--dim); display: flex; align-items: center; gap: 4px; user-select: none; }
+  #stage { position: relative; min-height: 0; overflow: hidden; }
+  #gl { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; display: block; }
+  #gl.drag { cursor: grabbing; }
+  #leaders { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  #labels { position: absolute; inset: 0; pointer-events: none; }
+  .lab { position: absolute; width: 196px; display: flex; gap: 7px; align-items: center; padding: 4px 6px; pointer-events: auto;
+         background: rgba(20, 22, 27, .88); border: 1px solid var(--line); border-radius: 5px; cursor: default; }
+  .lab:hover, .lab.hi { border-color: var(--accent); }
+  .lab .pic { width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: #0c0d10; border-radius: 3px; overflow: hidden; }
+  .lab .pic img { max-width: 44px; max-height: 44px; image-rendering: pixelated; }
+  .lab .pic.many { gap: 1px; }
+  .lab .pic.many img { max-width: 21px; max-height: 40px; }
+  .lab .txt { min-width: 0; }
+  #labels.compact .lab { padding: 2px 5px; gap: 5px; }
+  #labels.compact .lab .pic { width: 26px; height: 26px; }
+  #labels.compact .lab .pic img { max-width: 26px; max-height: 26px; }
+  #labels.compact .lab .pic.many img { max-width: 12px; max-height: 24px; }
+  #labels.compact .lab .role { display: inline; margin-right: 5px; }
+  #labels.compact .lab .name { display: inline; }
+  #labels.compact .lab .note { display: none; }
+  .lab .role { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+  .lab .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lab .more { color: var(--accent); font-size: 11px; cursor: pointer; user-select: none; }
+  .lab .note { color: var(--warn); font-size: 11px; }
+  .lab .bad { color: var(--bad); }
+  footer { display: flex; gap: 16px; align-items: flex-start; padding: 5px 10px; background: var(--panel); border-top: 1px solid var(--line);
+           color: var(--dim); font-size: 12px; }
+  #legend { flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 2px 16px; }
+  #legend b { color: var(--text); font-weight: 600; }
+  #legend .bad { color: var(--bad); }
+  #help { flex: 0 1 auto; font-size: 11px; text-align: right; }
+  #msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--dim); font-size: 15px; }
+  #msg:empty { display: none; }
+</style>
+</head>
+<body>
+<nav class="dms-nav"><b>DMS</b><a href="/" target="dms-board">board</a><a href="/assets" target="dms-assets">asset browser</a><a href="/themes" target="dms-themes" aria-current="page">themes</a></nav>
+<header>
+  <h1>Themes</h1>
+  <select id="pick" title="the theme shown (themes/&lt;name&gt;/theme.toml)"></select>
+  <span id="desc"></span>
+  <button class="btn on" id="lighton" title="the theme's light: sector light, distance fade, tint (L). Off: every texture full bright, as it is">light</button>
+  <label class="opt" id="lightbox" title="the sector light, within the theme's light_range"><input id="light" type="range" min="0" max="255" step="1"><span id="lightv"></span></label>
+  <button class="btn on" id="fogon" title="the theme's fog, density approximated (G)">fog</button>
+  <label class="opt"><input id="showlabels" type="checkbox" checked> labels</label>
+  <span>
+    <button class="btn view" data-view="model" title="the room from outside, above">model</button>
+    <button class="btn view" data-view="low" title="from outside at eye level: the ceiling shows">low</button>
+    <button class="btn view" data-view="inside" title="standing in the room, as in the game (F)">inside</button>
+  </span>
+</header>
+<div id="stage">
+  <canvas id="gl"></canvas>
+  <svg id="leaders"></svg>
+  <div id="labels"></div>
+  <div id="msg">loading themes...</div>
+</div>
+<footer>
+  <div id="legend"></div>
+  <div id="help">drag to turn &middot; right-drag or shift-drag to move &middot; wheel to zoom &middot; "&#9656;" on a label: the role's next texture<br>
+    a preview: light and fog are close to the game's, not the same; the game is the judge</div>
+</footer>
+<script>
+"use strict";
+// The theme viewer (docs/themes.md, milestone 3): a standard room, built as a cutaway diorama, with every
+// role of the chosen theme slotted into the surfaces it's for, labelled. Its own small WebGL2 renderer:
+// Doom-style texture alignment (walls by their length and pegging, flats on the 64 grid), sector light
+// with distance fade and the fake contrast of north/south walls, the theme's tint and fog, its sky behind.
+
+const $ = s => document.querySelector(s);
+const h = (tag, attrs = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) k.startsWith("on") ? e.addEventListener(k.slice(2), v) : e.setAttribute(k, v);
+  for (const k of kids.flat()) if (k != null) e.append(k.nodeType ? k : document.createTextNode(k));
+  return e;
+};
+
+// ---------------------------------------------------------------- data
+
+let DATA = null, THEME = null, raw = "";
+const slot = {};                     // role -> which of its textures is shown
+const FALLBACK = { wall_alt: ["wall"], wall_base: ["trim", "wall"], trim: ["wall"], door_frame: ["trim", "wall"],
+                   step: ["trim", "wall"], floor_alt: ["floor"], ceiling: ["floor"] };
+
+function pic(role) {
+  // The picture shown for a role: its own (the slot's pick), else a fallback's. {p, from} or null.
+  for (const r of [role, ...(FALLBACK[role] || [])]) {
+    const list = THEME.textures[r] || [];
+    if (list.length) {
+      const p = list[(r === role ? slot[r] || 0 : 0) % list.length];
+      return { p, from: r };
+    }
+  }
+  return null;
+}
+
+async function load(first) {
+  let text;
+  try { text = await (await fetch("/api/themes", { cache: "no-store" })).text(); }
+  catch { return; }
+  if (text === raw) return;
+  raw = text;
+  DATA = JSON.parse(text);
+  const sel = $("#pick"), want = decodeURIComponent(location.hash.slice(1)) || sel.value;
+  sel.replaceChildren(...DATA.themes.map(t => h("option", { value: t.name }, `${t.title} (${t.name})`)));
+  if (!DATA.themes.length) { $("#msg").textContent = "No themes yet: `dms themes harvest <map> <name> --gid PATTERN`."; return; }
+  $("#msg").textContent = "";
+  sel.value = DATA.themes.some(t => t.name === want) ? want : DATA.themes[0].name;
+  choose(sel.value, first);
+}
+
+function choose(name, resetLight = true) {
+  const same = THEME && THEME.name === name;
+  THEME = DATA.themes.find(t => t.name === name);
+  if (!same) for (const k of Object.keys(slot)) delete slot[k];
+  history.replaceState(null, "", "#" + encodeURIComponent(name));
+  $("#desc").textContent = THEME.description || "";
+  const at = THEME.atmosphere || {};
+  const range = at.light_range || [0, 255];
+  const L = $("#light");
+  L.min = Math.min(range[0], at.light ?? 160); L.max = Math.max(range[1], at.light ?? 160);
+  if (!same || resetLight) L.value = at.light ?? 160;
+  $("#lightv").textContent = L.value;
+  build();
+}
+
+// ---------------------------------------------------------------- GL
+
+const canvas = $("#gl");
+const gl = canvas.getContext("webgl2", { antialias: true });
+if (!gl) $("#msg").textContent = "This browser has no WebGL2.";
+
+function shader(vs, fs) {
+  const p = gl.createProgram();
+  for (const [type, src] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    gl.attachShader(p, s);
+  }
+  gl.linkProgram(p);
+  const u = {};
+  for (let i = 0, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS); i < n; i++) {
+    const name = gl.getActiveUniform(p, i).name;
+    u[name] = gl.getUniformLocation(p, name);
+  }
+  return { p, u };
+}
+
+const WORLD = gl && shader(`#version 300 es
+  in vec3 aPos; in vec2 aUV; in float aBright;
+  uniform mat4 uVP; uniform vec3 uEye; uniform float uBias;
+  out vec2 vUV; out float vBright; out float vDist;
+  void main() { gl_Position = uVP * vec4(aPos, 1.0); vUV = aUV; vBright = aBright; vDist = max(0.0, distance(aPos, uEye) - uBias); }`,
+`#version 300 es
+  precision mediump float;
+  in vec2 vUV; in float vBright; in float vDist;
+  uniform sampler2D uTex; uniform float uLight; uniform vec3 uTint; uniform vec3 uFog; uniform float uFogK;
+  uniform float uFull; uniform float uHi;
+  out vec4 o;
+  void main() {
+    vec4 c = texture(uTex, vUV);
+    if (c.a < 0.5) discard;
+    float L = clamp(uLight + vBright, 0.0, 1.0);
+    float shade = uFull > 0.5 ? 1.0 : clamp(L * 1.25 - vDist * 0.00035, L * 0.45, 1.0);
+    vec3 col = c.rgb * shade * (uFull > 0.5 ? vec3(1.0) : uTint);
+    if (uFogK > 0.0) col = mix(uFog, col, exp(-vDist * uFogK));
+    col = mix(col, vec3(1.0, 0.85, 0.4), uHi);
+    o = vec4(col, 1.0);
+  }`);
+
+const SKY = gl && shader(`#version 300 es
+  in vec2 aPos; void main() { gl_Position = vec4(aPos, 0.999, 1.0); }`,
+`#version 300 es
+  precision highp float;
+  uniform sampler2D uTex; uniform mat4 uInv; uniform vec3 uEye; uniform vec2 uRes; uniform float uHi;
+  out vec4 o;
+  void main() {
+    vec2 ndc = gl_FragCoord.xy / uRes * 2.0 - 1.0;
+    vec4 p = uInv * vec4(ndc, 1.0, 1.0);
+    vec3 d = normalize(p.xyz / p.w - uEye);
+    float u = atan(d.y, d.x) / 6.2831853 * 4.0;
+    float v = clamp(0.62 - asin(d.z) * 0.9, 0.005, 0.995);
+    o = vec4(mix(texture(uTex, vec2(u, v)).rgb, vec3(1.0, 0.85, 0.4), uHi), 1.0);
+  }`);
+
+// Picking: what's under the mouse. Every part drawn again off screen in a colour that stands for its
+// label (see-through pixels of a masked texture let what's behind through, as on screen).
+const PICK = gl && shader(`#version 300 es
+  in vec3 aPos; in vec2 aUV; uniform mat4 uVP; out vec2 vUV;
+  void main() { gl_Position = uVP * vec4(aPos, 1.0); vUV = aUV; }`,
+`#version 300 es
+  precision mediump float;
+  in vec2 vUV; uniform sampler2D uTex; uniform float uId; out vec4 o;
+  void main() { if (texture(uTex, vUV).a < 0.5) discard; o = vec4(uId / 255.0, 0.0, 0.0, 1.0); }`);
+let pickFb = null, pickTex = null, pickDepth = null, pickW = 0, pickH = 0;
+function pickTarget(w, h) {
+  if (pickFb && w === pickW && h === pickH) return;
+  pickW = w; pickH = h;
+  pickFb ||= gl.createFramebuffer(); pickTex ||= gl.createTexture(); pickDepth ||= gl.createRenderbuffer();
+  gl.bindTexture(gl.TEXTURE_2D, pickTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  gl.bindRenderbuffer(gl.RENDERBUFFER, pickDepth);
+  gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, pickFb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, pickTex, 0);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, pickDepth);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+}
+let mouse = null;              // where the mouse is over the canvas (CSS pixels), or null
+let labelHi = null, faceHi = null;
+canvas.addEventListener("pointermove", e => { const r = canvas.getBoundingClientRect(); mouse = [e.clientX - r.left, e.clientY - r.top]; });
+canvas.addEventListener("pointerleave", () => { mouse = null; faceHi = null; });
+
+const skyBuf = gl && gl.createBuffer();
+if (gl) { gl.bindBuffer(gl.ARRAY_BUFFER, skyBuf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW); }
+
+// Textures, by URL; animated ones as a list of frames. A missing one is a checkerboard.
+const TEX = new Map();
+function texture(url) {
+  if (TEX.has(url)) return TEX.get(url);
+  const t = { gl: gl.createTexture(), w: 64, h: 64, ready: false, img: null };
+  gl.bindTexture(gl.TEXTURE_2D, t.gl);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([40, 40, 46, 255]));
+  setParams();
+  TEX.set(url, t);
+  if (url) {
+    const img = new Image();
+    img.onload = () => {
+      t.w = img.naturalWidth; t.h = img.naturalHeight; t.ready = true; t.img = img;
+      gl.bindTexture(gl.TEXTURE_2D, t.gl);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      setParams();
+    };
+    img.src = url;
+  }
+  return t;
+}
+function setParams() {
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+}
+const CHECKER = (() => {
+  if (!gl) return null;
+  const px = new Uint8Array(16 * 16 * 4);
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    const on = ((x >> 3) + (y >> 3)) & 1, i = (y * 16 + x) * 4;
+    px.set(on ? [150, 40, 150, 255] : [30, 30, 34, 255], i);
+  }
+  const t = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 16, 16, 0, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  setParams();
+  return { gl: t, w: 64, h: 64, ready: true };
+})();
+
+function frameOf(p) {
+  // The GL texture for a picture now (animated ones step every 8 tics, as Doom's do).
+  if (!p || p.missing || !p.url) return CHECKER;
+  if (p.anim && p.anim.length > 1) return texture(p.anim[Math.floor(performance.now() / 1000 * 35 / 8) % p.anim.length]);
+  return texture(p.url);
+}
+
+// ---------------------------------------------------------------- the room
+
+// Map units, Doom's axes: x east, y north, z up. The room is 512 x 384, its ceiling at 192; drawn as a
+// dollhouse: every wall faces into the room, so from outside the near walls aren't drawn.
+const ROOM = { w: 512, d: 384, top: 192 };
+const PIECES = new Set(["door", "switch", "light"]);
+let PARTS = [];          // {role, full, verts: Float32Array, buf, n}
+let ANCHORS = {};        // label key -> [[x, y, z] | {screen: [fx, fy]}]
+let SPRITES = [];        // {role, thing, x, y, z}
+
+function sizeOf(role, minW, maxW, minH, maxH) {
+  const got = pic(role);
+  const p = got && got.p;
+  const w = p && !p.missing ? p.width : maxW, ht = p && !p.missing ? p.height : maxH;
+  return [Math.max(minW, Math.min(maxW, w)), Math.max(minH, Math.min(maxH, ht))];
+}
+
+function build() {
+  for (const part of PARTS) gl.deleteBuffer(part.buf);
+  PARTS = []; ANCHORS = {}; SPRITES = [];
+  const parts = {};
+  const mesh = (role, full = false) => (parts[role + (full ? "!" : "")] ||= { role, full, v: [] });
+  const dims = role => { const got = pic(role); const p = got && got.p; return p && !p.missing ? [p.width, p.height] : [64, 64]; };
+  const anchor = (key, ...pts) => (ANCHORS[key] ||= []).push(...pts);
+
+  // A wall from a to b, seen from its right (as a Doom line's front side). peg "top": the texture hangs
+  // from `ref`; "bottom": it stands on `ref`. Its u runs along the line, so pieces on one line line up.
+  function wall(role, ax, ay, bx, by, zb, zt, peg = "top", ref = zt, full = false) {
+    if (zt <= zb) return;
+    const m = mesh(role, full), [W, H] = dims(role);
+    const len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len;
+    // A door, a switch or a light panel is a picture of one thing: it starts at its own left edge.
+    const s0 = PIECES.has(role) ? 0 : ax * ux + ay * uy, s1 = s0 + len;
+    const v = z => peg === "bottom" ? 1 - (z - ref) / H : (ref - z) / H;
+    const b = ax === bx ? 16 / 255 : ay === by ? -16 / 255 : 0;          // Doom's fake contrast
+    const A0 = [ax, ay, zb, s0 / W, v(zb), b], B0 = [bx, by, zb, s1 / W, v(zb), b];
+    const B1 = [bx, by, zt, s1 / W, v(zt), b], A1 = [ax, ay, zt, s0 / W, v(zt), b];
+    m.v.push(...A0, ...B0, ...B1, ...A0, ...B1, ...A1);
+  }
+  // A flat rectangle at height z; up: seen from above (a floor), else from below (a ceiling).
+  function flat(role, x0, y0, x1, y1, z, up = true, full = false) {
+    const m = mesh(role, full), [W, H] = dims(role);
+    const P = (x, y) => [x, y, z, x / W, -y / H, 0];
+    const a = P(x0, y0), b = P(x1, y0), c = P(x1, y1), d = P(x0, y1);
+    m.v.push(...(up ? [...a, ...b, ...c, ...a, ...c, ...d] : [...a, ...c, ...b, ...a, ...d, ...c]));
+  }
+  // A box standing out: its sides face out (sides: which of "nesw"), its top and bottom optional.
+  function box(role, x0, y0, x1, y1, z0, z1, { sides = "nesw", top = null, bottom = null, peg = "top", ref = null } = {}) {
+    const r = ref ?? (peg === "bottom" ? z0 : z1);
+    if (sides.includes("s")) wall(role, x0, y0, x1, y0, z0, z1, peg, r);
+    if (sides.includes("e")) wall(role, x1, y0, x1, y1, z0, z1, peg, r);
+    if (sides.includes("n")) wall(role, x1, y1, x0, y1, z0, z1, peg, r);
+    if (sides.includes("w")) wall(role, x0, y1, x0, y0, z0, z1, peg, r);
+    if (top) flat(top, x0, y0, x1, y1, z1, true);
+    if (bottom) flat(bottom, x0, y0, x1, y1, z0, false);
+  }
+
+  const { w: W, d: D, top: T } = ROOM;
+  const [dw, dh] = sizeOf("door", 64, 128, 64, 128);
+  const [sw, sh] = sizeOf("switch", 32, 64, 64, 128);
+  const [lw, lh] = sizeOf("light", 16, 64, 32, 96);
+  const doorX = 176, nicheX = 400, nicheZ = 64;
+  const pool = [128, 48, 320, 176], dais = [320, 240, 512, 384], daisH = 24;
+
+  // Floor, round the pool.
+  flat("floor", 0, 0, W, pool[1], 0); flat("floor", 0, pool[3], W, D, 0);
+  flat("floor", 0, pool[1], pool[0], pool[3], 0); flat("floor", pool[2], pool[1], W, pool[3], 0);
+  anchor("floor", [460, 110, 0]);
+
+  // The pool: liquid 8 below the floor, its banks trim.
+  flat("liquid", pool[0], pool[1], pool[2], pool[3], -8);
+  wall("trim", pool[0], pool[1], pool[0], pool[3], -8, 0, "top", 0);
+  wall("trim", pool[0], pool[3], pool[2], pool[3], -8, 0, "top", 0);
+  wall("trim", pool[2], pool[3], pool[2], pool[1], -8, 0, "top", 0);
+  wall("trim", pool[2], pool[1], pool[0], pool[1], -8, 0, "top", 0);
+  anchor("liquid", [(pool[0] + pool[2]) / 2, (pool[1] + pool[3]) / 2, -8]);
+  anchor("trim", [pool[2], (pool[1] + pool[3]) / 2, -4]);
+
+  // West wall: wall, then a panel of wall_alt with the switch in front of it, then wall.
+  wall("wall", 0, 0, 0, 96, 0, T, "top", T);
+  wall("wall_alt", 0, 96, 0, 288, 0, T, "top", T);
+  wall("wall", 0, 288, 0, D, 0, T, "top", T);
+  anchor("wall", [0, 48, 140]);
+  anchor("wall_alt", [0, 260, 150]);
+
+  // North wall: wall, the door in its frame, wall, the light niche, wall. Courses hang from the ceiling.
+  wall("wall", 0, D, doorX, D, 0, T, "top", T);
+  wall("door", doorX, D, doorX + dw, D, 0, dh, "top", dh);
+  wall("wall", doorX, D, doorX + dw, D, dh, T, "top", T);
+  wall("wall", doorX + dw, D, nicheX, D, 0, T, "top", T);
+  wall("wall", nicheX, D, nicheX + lw, D, 0, nicheZ, "top", T);
+  wall("wall", nicheX, D, nicheX + lw, D, nicheZ + lh, T, "top", T);
+  wall("wall", nicheX + lw, D, W, D, 0, T, "top", T);
+  anchor("wall", [90, D, 150]);
+  anchor("door", [doorX + dw / 2, D, dh / 2]);
+
+  // The door's frame: two jambs and a lintel, standing 8 out of the wall.
+  box("door_frame", doorX - 16, D - 8, doorX, D, 0, dh + 16, { sides: "swe" });
+  box("door_frame", doorX + dw, D - 8, doorX + dw + 16, D, 0, dh + 16, { sides: "swe" });
+  box("door_frame", doorX, D - 8, doorX + dw, D, dh, dh + 16, { sides: "s", bottom: "door_frame", top: "door_frame" });
+  anchor("door_frame", [doorX - 8, D - 8, dh * 0.6], [doorX + dw / 2, D - 8, dh + 8]);
+
+  // The light niche: recessed 16, the fixture at its back (full bright), lined with trim.
+  wall("light", nicheX, D + 16, nicheX + lw, D + 16, nicheZ, nicheZ + lh, "top", nicheZ + lh, true);
+  wall("trim", nicheX, D, nicheX, D + 16, nicheZ, nicheZ + lh, "top", nicheZ + lh);
+  wall("trim", nicheX + lw, D + 16, nicheX + lw, D, nicheZ, nicheZ + lh, "top", nicheZ + lh);
+  flat("trim", nicheX, D, nicheX + lw, D + 16, nicheZ, true);
+  flat("trim", nicheX, D, nicheX + lw, D + 16, nicheZ + lh, false);
+  anchor("light", [nicheX + lw / 2, D + 16, nicheZ + lh / 2]);
+
+  // A strip along the foot of the walls (wall_base), 4 out, its texture standing on the floor.
+  box("wall_base", 0, 0, 4, D - 8, 0, 16, { sides: "e", top: "wall_base", peg: "bottom", ref: 0 });
+  box("wall_base", 4, D - 4, doorX - 16, D, 0, 16, { sides: "se", top: "wall_base", peg: "bottom", ref: 0 });
+  box("wall_base", doorX + dw + 16, D - 4, dais[0], D, 0, 16, { sides: "sw", top: "wall_base", peg: "bottom", ref: 0 });
+  anchor("wall_base", [4, 150, 8]);
+
+  // The switch, a block 8 out of the west wall, its sides trim.
+  const sy = 192 - sw / 2;
+  wall("switch", 8, sy, 8, sy + sw, 0, sh, "top", sh);
+  box("trim", 0, sy, 8, sy + sw, 0, sh, { sides: "ns", top: "trim" });
+  anchor("switch", [8, sy + sw / 2, sh / 2]);
+  anchor("trim", [4, sy, sh]);
+
+  // The dais in the north-east corner: a step up, its face `step`, its top floor_alt.
+  box("step", dais[0], dais[1], dais[2], dais[3], 0, daisH, { sides: "sw", top: "floor_alt", peg: "bottom", ref: 0 });
+  anchor("step", [dais[0], (dais[1] + dais[3]) / 2, daisH / 2]);
+  anchor("floor_alt", [440, 300, daisH]);
+
+  // A pillar of wall_alt, floor to ceiling.
+  box("wall_alt", 96, 288, 144, 336, 0, T, { sides: "nesw", top: "wall_alt" });
+  anchor("wall_alt", [120, 288, 110]);
+
+  // The ceiling: an L over the back of the room and its west side, out past the pillar; the front is cut
+  // away to look in. Only its underside is drawn, so from above the model view still looks into the room.
+  const ceilY = 224, ceilX = 192;
+  box("trim", ceilX, ceilY, W, ceilY, T, T + 8, { sides: "s" });
+  box("trim", ceilX, 0, ceilX, ceilY, T, T + 8, { sides: "e" });
+  flat("ceiling", 0, ceilY, W, D, T, false); flat("ceiling", 0, 0, ceilX, ceilY, T, false);
+  anchor("ceiling", [340, 300, T]);
+
+  // Things of the theme: sprites stand at set places; a thing with no picture (a dynamic light) is shown
+  // by its label only, pointing at the light fixture.
+  const spots = { light_source: [[336, 256, daisH], [496, 256, daisH], [40, 30, 0]],
+                  decoration: [[470, 50, 0], [40, 340, 0], [250, 220, 0]] };
+  for (const [role, things] of Object.entries(THEME.things || {})) {
+    let i = 0;
+    for (const t of things) {
+      if (t.url && i < (spots[role] || []).length) {
+        const [x, y, z] = spots[role][i++];
+        SPRITES.push({ role, thing: t, x, y, z });
+        anchor("thing:" + role, [x, y, z + 24]);
+      }
+    }
+    if (!ANCHORS["thing:" + role] && things.length) anchor("thing:" + role, [nicheX + lw / 2, D, nicheZ - 8]);
+  }
+  if ((THEME.textures.sky || []).length) anchor("sky", { screen: [0.5, 0.06] });
+
+  for (const m of Object.values(parts)) {
+    const buf = gl.createBuffer();
+    const verts = new Float32Array(m.v);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+    PARTS.push({ role: m.role, full: m.full, buf, n: verts.length / 6 });
+  }
+  makeLabels();
+}
+
+// ---------------------------------------------------------------- camera
+
+const VIEWS = {
+  model: { tx: 256, ty: 200, tz: 40, yaw: -0.85, pitch: 0.6, dist: 980 },
+  low: { tx: 256, ty: 200, tz: 90, yaw: -0.95, pitch: 0.06, dist: 900 },
+  inside: { tx: 200, ty: 260, tz: 60, yaw: -0.8, pitch: 0.02, dist: 330 },
+};
+let cam = { ...VIEWS.inside };
+
+function mul(a, b) {
+  const o = new Float32Array(16);
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+    let s = 0;
+    for (let k = 0; k < 4; k++) s += a[i + k * 4] * b[k + j * 4];
+    o[i + j * 4] = s;
+  }
+  return o;
+}
+function perspective(fovy, aspect, near, far) {
+  const f = 1 / Math.tan(fovy / 2), o = new Float32Array(16);
+  o[0] = f / aspect; o[5] = f; o[10] = (far + near) / (near - far); o[11] = -1; o[14] = 2 * far * near / (near - far);
+  return o;
+}
+function lookAt(e, c, up) {
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const norm = a => { const l = Math.hypot(...a) || 1; return a.map(x => x / l); };
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const z = norm(sub(e, c)), x = norm(cross(up, z)), y = cross(z, x);
+  return new Float32Array([x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0, -dot(x, e), -dot(y, e), -dot(z, e), 1]);
+}
+function invert(a) {
+  const [a00, a01, a02, a03, a10, a11, a12, a13, a20, a21, a22, a23, a30, a31, a32, a33] = a;
+  const b00 = a00 * a11 - a01 * a10, b01 = a00 * a12 - a02 * a10, b02 = a00 * a13 - a03 * a10, b03 = a01 * a12 - a02 * a11;
+  const b04 = a01 * a13 - a03 * a11, b05 = a02 * a13 - a03 * a12, b06 = a20 * a31 - a21 * a30, b07 = a20 * a32 - a22 * a30;
+  const b08 = a20 * a33 - a23 * a30, b09 = a21 * a32 - a22 * a31, b10 = a21 * a33 - a23 * a31, b11 = a22 * a33 - a23 * a32;
+  const det = 1 / (b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06);
+  return new Float32Array([
+    (a11 * b11 - a12 * b10 + a13 * b09) * det, (a02 * b10 - a01 * b11 - a03 * b09) * det, (a31 * b05 - a32 * b04 + a33 * b03) * det, (a22 * b04 - a21 * b05 - a23 * b03) * det,
+    (a12 * b08 - a10 * b11 - a13 * b07) * det, (a00 * b11 - a02 * b08 + a03 * b07) * det, (a32 * b02 - a30 * b05 - a33 * b01) * det, (a20 * b05 - a22 * b02 + a23 * b01) * det,
+    (a10 * b10 - a11 * b08 + a13 * b06) * det, (a01 * b08 - a00 * b10 - a03 * b06) * det, (a30 * b04 - a31 * b02 + a33 * b00) * det, (a21 * b02 - a20 * b04 - a23 * b00) * det,
+    (a11 * b07 - a10 * b09 - a12 * b06) * det, (a00 * b09 - a01 * b07 + a02 * b06) * det, (a31 * b01 - a30 * b03 - a32 * b00) * det, (a20 * b03 - a21 * b01 + a22 * b00) * det]);
+}
+function eye() {
+  return [cam.tx + cam.dist * Math.cos(cam.pitch) * Math.cos(cam.yaw),
+          cam.ty + cam.dist * Math.cos(cam.pitch) * Math.sin(cam.yaw),
+          cam.tz + cam.dist * Math.sin(cam.pitch)];
+}
+
+let drag = null;
+canvas.addEventListener("contextmenu", e => e.preventDefault());
+canvas.addEventListener("pointerdown", e => {
+  drag = { x: e.clientX, y: e.clientY, pan: e.button === 2 || e.shiftKey };
+  canvas.setPointerCapture(e.pointerId); canvas.classList.add("drag");
+});
+canvas.addEventListener("pointermove", e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  drag.x = e.clientX; drag.y = e.clientY;
+  if (drag.pan) {
+    // Move the point looked at against the drag, along the view's right and up, so the room follows the mouse.
+    const k = cam.dist / 900;
+    const r = [-Math.sin(cam.yaw), Math.cos(cam.yaw), 0];
+    const up = [-Math.sin(cam.pitch) * Math.cos(cam.yaw), -Math.sin(cam.pitch) * Math.sin(cam.yaw), Math.cos(cam.pitch)];
+    cam.tx += (-r[0] * dx + up[0] * dy) * k;
+    cam.ty += (-r[1] * dx + up[1] * dy) * k;
+    cam.tz += up[2] * dy * k;
+  } else {
+    cam.yaw -= dx * 0.008;
+    cam.pitch = Math.max(-0.6, Math.min(1.45, cam.pitch + dy * 0.006));
+  }
+});
+canvas.addEventListener("pointerup", () => { drag = null; canvas.classList.remove("drag"); });
+canvas.addEventListener("wheel", e => {
+  e.preventDefault();
+  cam.dist = Math.max(80, Math.min(3000, cam.dist * Math.exp(e.deltaY * 0.0012)));
+}, { passive: false });
+// Going to a view glides there (eased, the short way round); dragging or zooming stops the glide.
+let flight = null;
+function flyTo(view) {
+  const to = { ...VIEWS[view] };
+  const turn = to.yaw - cam.yaw;
+  to.yaw = cam.yaw + Math.atan2(Math.sin(turn), Math.cos(turn));
+  flight = { from: { ...cam }, to, start: performance.now(), ms: 700 };
+}
+function fly(now) {
+  if (!flight) return;
+  const t = Math.min(1, (now - flight.start) / flight.ms);
+  const k = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;      // ease in and out
+  for (const key of Object.keys(flight.to)) cam[key] = flight.from[key] + (flight.to[key] - flight.from[key]) * k;
+  cam.dist = flight.from.dist * Math.pow(flight.to.dist / flight.from.dist, k);   // zoom evenly: distance on a log scale
+  if (t >= 1) flight = null;
+}
+canvas.addEventListener("pointerdown", () => (flight = null));
+canvas.addEventListener("wheel", () => (flight = null));
+for (const b of document.querySelectorAll(".view")) b.addEventListener("click", () => flyTo(b.dataset.view));
+addEventListener("keydown", e => { if (e.key === "f" || e.key === "F") flyTo("inside"); });
+
+// ---------------------------------------------------------------- labels
+
+const ROLE_ORDER = ["sky", "ceiling", "light", "wall", "wall_alt", "door_frame", "door", "switch", "wall_base",
+                    "trim", "step", "floor_alt", "floor", "liquid", "thing:light_source", "thing:decoration"];
+let LABELS = [];
+let hiRole = null;
+
+function makeLabels() {
+  const box = $("#labels");
+  box.replaceChildren();
+  LABELS = [];
+  for (const key of ROLE_ORDER) {
+    if (!ANCHORS[key]) continue;
+    const el = h("div", { class: "lab", onmouseenter: () => (labelHi = key), onmouseleave: () => (labelHi = null) });
+    if (key.startsWith("thing:")) {
+      const role = key.slice(6), things = THEME.things[role] || [];
+      const shown = things.filter(t => t.url).slice(0, 2);
+      el.append(h("div", { class: "pic" + (shown.length > 1 ? " many" : "") }, ...shown.map(t => h("img", { src: t.url, alt: "" }))),
+        h("div", { class: "txt" }, h("div", { class: "role", title: DATA.thing_roles[role] || "" }, role.replace("_", " ")),
+          h("div", { class: "name", title: things.map(t => `${t.type} ${t.title}`).join("\n") }, things.map(t => t.title).join(", "))));
+    } else {
+      const list = THEME.textures[key] || [];
+      const got = pic(key);
+      const p = got && got.p;
+      const name = h("div", { class: "name" + (p && p.missing ? " bad" : "") }, p ? p.name : "-");
+      if (p && p.missing) name.title = "not a texture or flat the game or a map knows";
+      else if (p && p.custom) name.title = `${p.name}: ${p.custom}'s own texture`;
+      const kids = [h("div", { class: "role", title: DATA.roles[key] || "" }, key.replace("_", " ")), name];
+      if (got && got.from !== key) kids.push(h("div", { class: "note" }, `not in this theme: shows ${got.from.replace("_", " ")}`));
+      else if (!got) kids.push(h("div", { class: "note" }, "not in this theme"));
+      if (list.length > 1) kids.push(h("div", { class: "more", title: list.map(x => x.name).join(", "),
+        onclick: () => { slot[key] = ((slot[key] || 0) + 1) % list.length; build(); } },
+        `${(slot[key] || 0) % list.length + 1} of ${list.length} ▸`));
+      el.append(h("div", { class: "pic" }, p && p.url ? h("img", { src: p.url, alt: "" }) : null), h("div", { class: "txt" }, ...kids));
+    }
+    box.append(el);
+    LABELS.push({ key, el, hgt: 0 });
+  }
+  for (const L of LABELS) L.hgt = L.el.offsetHeight;
+  legend();
+}
+
+function legend() {
+  const parts = [];
+  const problems = (DATA.problems || {})[THEME.name] || [];
+  const other = Object.keys(THEME.textures).filter(r => !(r in DATA.roles));
+  if (THEME.decals && THEME.decals.length) parts.push(h("div", {}, h("b", {}, "decals: "), THEME.decals.join(", ")));
+  if (other.length) parts.push(h("div", {}, h("b", {}, "other roles (not in the scene): "), other.join(", ")));
+  const at = THEME.atmosphere || {};
+  parts.push(h("div", {}, h("b", {}, "atmosphere: "),
+    `light ${at.light ?? "-"} (${(at.light_range || []).join("-") || "-"})` +
+    (at.lightcolor ? `, tint #${at.lightcolor}` : "") + (at.fog ? `, fog #${at.fog} density ${at.fogdensity || "default"}` : ", no fog")));
+  for (const p of problems) parts.push(h("div", { class: "bad" }, p));
+  $("#legend").replaceChildren(...parts);
+}
+
+function project(VP, p, W, H) {
+  if (p.screen) return [p.screen[0] * W, p.screen[1] * H];
+  const [x, y, z] = p;
+  const cx = VP[0] * x + VP[4] * y + VP[8] * z + VP[12], cy = VP[1] * x + VP[5] * y + VP[9] * z + VP[13];
+  const cw = VP[3] * x + VP[7] * y + VP[11] * z + VP[15];
+  if (cw <= 1) return null;
+  return [(cx / cw + 1) / 2 * W, (1 - cy / cw) / 2 * H];
+}
+
+function layout(VP, W, H) {
+  const svg = $("#leaders");
+  const show = $("#showlabels").checked;
+  $("#labels").style.display = show ? "" : "none";
+  if (!show) { svg.replaceChildren(); return; }
+  const cols = { left: [], right: [] };
+  for (const L of LABELS) {
+    if (!L.hgt) L.hgt = L.el.offsetHeight;
+    L.pts = ANCHORS[L.key].map(p => project(VP, p, W, H)).filter(Boolean);
+    if (!L.pts.length) { L.el.style.display = "none"; continue; }
+    L.el.style.display = "";
+    L.mx = L.pts.reduce((s, p) => s + p[0], 0) / L.pts.length;
+    L.my = L.pts.reduce((s, p) => s + p[1], 0) / L.pts.length;
+    cols[L.mx < W / 2 ? "left" : "right"].push(L);
+  }
+  // A column taller than the view hands its labels nearest the middle to the other one; if both are
+  // full, every label goes compact (smaller pictures), so none is pushed off the edge.
+  const tall = list => list.reduce((s, L) => s + L.hgt + 6, 0);
+  const room = H - 20;
+  for (const [from, to] of [["left", "right"], ["right", "left"]]) {
+    while (tall(cols[from]) > room && tall(cols[to]) + cols[from][0]?.hgt + 6 <= room) {
+      cols[from].sort((a, b) => Math.abs(a.mx - W / 2) - Math.abs(b.mx - W / 2));
+      cols[to].push(cols[from].shift());
+    }
+  }
+  const compact = tall(cols.left) > room || tall(cols.right) > room;
+  if (compact !== $("#labels").classList.contains("compact")) {
+    $("#labels").classList.toggle("compact", compact);
+    for (const L of LABELS) L.hgt = L.el.offsetHeight;
+  }
+  const lines = [];
+  const lw = 196, pad = 10, gap = 6;
+  for (const [side, list] of Object.entries(cols)) {
+    list.sort((a, b) => a.my - b.my);
+    // Each label level with what it points at, pushed down past the one above, then back up from the
+    // bottom edge; the top edge wins if the column is taller than the view.
+    let y = pad;
+    for (const L of list) { L.y = Math.max(y, L.my - L.hgt / 2); y = L.y + L.hgt + gap; }
+    let limit = H - pad;
+    for (let i = list.length - 1; i >= 0; i--) { list[i].y = Math.min(list[i].y, limit - list[i].hgt); limit = list[i].y - gap; }
+    y = pad;
+    for (const L of list) { L.y = Math.max(L.y, y); y = L.y + L.hgt + gap; }
+    for (const L of list) {
+      const x = side === "left" ? pad : W - pad - lw;
+      L.el.style.transform = `translate(${x}px, ${L.y}px)`;
+      L.el.classList.toggle("hi", hiRole === L.key);
+      const sx = side === "left" ? x + lw : x, sy = L.y + L.hgt / 2;
+      const hi = hiRole === L.key;
+      for (const [px, py] of L.pts) {
+        const kx = side === "left" ? sx + 14 : sx - 14;
+        // Faint until its label or one of its faces is under the mouse.
+        lines.push(`<g opacity="${hi ? 1 : 0.2}"><path d="M${sx},${sy} L${kx},${sy} L${px},${py}" fill="none" stroke="${hi ? "#7fc4ff" : "#dce1eb"}" stroke-width="${hi ? 1.6 : 1}"/>` +
+                   `<circle cx="${px}" cy="${py}" r="${hi ? 3.5 : 2.5}" fill="${hi ? "#7fc4ff" : "#e8ecf2"}" stroke="#000" stroke-width=".8"/></g>`);
+      }
+    }
+  }
+  svg.innerHTML = lines.join("");
+}
+
+// ---------------------------------------------------------------- drawing
+
+function hex(c, fallback) {
+  if (!c || !/^[0-9a-fA-F]{6}$/.test(c)) return fallback;
+  return [0, 2, 4].map(i => parseInt(c.slice(i, i + 2), 16) / 255);
+}
+
+function frame() {
+  requestAnimationFrame(frame);
+  if (!THEME || !gl) return;
+  hiRole = labelHi ?? faceHi;                  // a label under the mouse wins over a face
+  fly(performance.now());
+  const dpr = devicePixelRatio || 1, W = canvas.clientWidth, H = canvas.clientHeight;
+  if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) {
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    for (const L of LABELS) L.hgt = L.el.offsetHeight;
+  }
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  const at = THEME.atmosphere || {};
+  const fogOn = toggles.fog && at.fog;
+  const fog = hex(at.fog, [0.04, 0.045, 0.055]);
+  gl.clearColor(...(fogOn ? fog : [0.045, 0.05, 0.06]), 1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+  const E = eye();
+  const V = lookAt(E, [cam.tx, cam.ty, cam.tz], [0, 0, 1]);
+  const P = perspective(0.9, W / H, 4, 20000);
+  const VP = mul(P, V);
+  const pulse = hi => (hi ? 0.18 + 0.12 * Math.sin(performance.now() / 160) : 0);
+
+  // The sky, behind everything.
+  const sky = (THEME.textures.sky || [])[0];
+  if (sky && !sky.missing) {
+    gl.disable(gl.DEPTH_TEST);
+    gl.useProgram(SKY.p);
+    gl.bindBuffer(gl.ARRAY_BUFFER, skyBuf);
+    const loc = gl.getAttribLocation(SKY.p, "aPos");
+    gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, frameOf(sky).gl);
+    gl.uniform1i(SKY.u.uTex, 0);
+    gl.uniformMatrix4fv(SKY.u.uInv, false, invert(VP));
+    gl.uniform3fv(SKY.u.uEye, E);
+    gl.uniform2f(SKY.u.uRes, canvas.width, canvas.height);
+    gl.uniform1f(SKY.u.uHi, pulse(hiRole === "sky"));
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.disableVertexAttribArray(loc);
+  }
+
+  gl.enable(gl.DEPTH_TEST);
+  gl.enable(gl.CULL_FACE);
+  gl.useProgram(WORLD.p);
+  const u = WORLD.u;
+  gl.uniformMatrix4fv(u.uVP, false, VP);
+  gl.uniform3fv(u.uEye, E);
+  gl.uniform1f(u.uBias, Math.max(0, cam.dist - 320));       // light as if seen from about 320 away, however far the camera is
+  gl.uniform1f(u.uLight, +$("#light").value / 255);
+  gl.uniform3fv(u.uTint, toggles.light ? hex(at.lightcolor, [1, 1, 1]) : [1, 1, 1]);
+  gl.uniform3fv(u.uFog, fog);
+  gl.uniform1f(u.uFogK, fogOn ? (at.fogdensity || 100) / 100000 : 0);
+  gl.uniform1i(u.uTex, 0);
+  gl.activeTexture(gl.TEXTURE0);
+  const aPos = gl.getAttribLocation(WORLD.p, "aPos"), aUV = gl.getAttribLocation(WORLD.p, "aUV"), aB = gl.getAttribLocation(WORLD.p, "aBright");
+  for (const a of [aPos, aUV, aB]) gl.enableVertexAttribArray(a);
+  const draw = (buf, n) => {
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 24, 0);
+    gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 24, 12);
+    gl.vertexAttribPointer(aB, 1, gl.FLOAT, false, 24, 20);
+    gl.drawArrays(gl.TRIANGLES, 0, n);
+  };
+  for (const part of PARTS) {
+    const got = pic(part.role);
+    gl.bindTexture(gl.TEXTURE_2D, frameOf(got && got.p).gl);
+    gl.uniform1f(u.uFull, part.full || !toggles.light ? 1 : 0);
+    gl.uniform1f(u.uHi, pulse(hiRole === part.role));
+    draw(part.buf, part.n);
+  }
+
+  // Sprites: upright, turned to face the camera.
+  gl.disable(gl.CULL_FACE);
+  const rx = -Math.sin(cam.yaw), ry = Math.cos(cam.yaw);
+  for (const s of SPRITES) {
+    const t = texture(s.thing.url);
+    if (!t.ready) continue;
+    const hw = t.w / 2, top = s.z + t.h;
+    const L = [s.x - rx * hw, s.y - ry * hw], R = [s.x + rx * hw, s.y + ry * hw];
+    const v = new Float32Array([L[0], L[1], s.z, 0, 1, 0, R[0], R[1], s.z, 1, 1, 0, R[0], R[1], top, 1, 0, 0,
+                                L[0], L[1], s.z, 0, 1, 0, R[0], R[1], top, 1, 0, 0, L[0], L[1], top, 0, 0, 0]);
+    s.buf ||= gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, s.buf);
+    gl.bufferData(gl.ARRAY_BUFFER, v, gl.DYNAMIC_DRAW);
+    gl.bindTexture(gl.TEXTURE_2D, t.gl);
+    gl.uniform1f(u.uFull, 1);
+    gl.uniform1f(u.uHi, pulse(hiRole === "thing:" + s.role));
+    draw(s.buf, 6);
+  }
+  for (const a of [aPos, aUV, aB]) gl.disableVertexAttribArray(a);
+  if (mouse && !drag) faceHi = pickAt(VP, dpr, sky && !sky.missing);
+  layout(VP, W, H);
+}
+
+function pickAt(VP, dpr, hasSky) {
+  // The label of the face under the mouse: "sky" over the background when the theme has one.
+  pickTarget(canvas.width, canvas.height);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, pickFb);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.clearColor(0, 0, 0, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.DEPTH_TEST);
+  gl.useProgram(PICK.p);
+  gl.uniformMatrix4fv(PICK.u.uVP, false, VP);
+  gl.uniform1i(PICK.u.uTex, 0);
+  gl.activeTexture(gl.TEXTURE0);
+  const aPos = gl.getAttribLocation(PICK.p, "aPos"), aUV = gl.getAttribLocation(PICK.p, "aUV");
+  gl.enableVertexAttribArray(aPos); gl.enableVertexAttribArray(aUV);
+  const keys = [];
+  const id = key => { let i = keys.indexOf(key); if (i < 0) { keys.push(key); i = keys.length - 1; } return i + 1; };
+  const draw = (buf, n) => {
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 24, 0);
+    gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 24, 12);
+    gl.drawArrays(gl.TRIANGLES, 0, n);
+  };
+  gl.enable(gl.CULL_FACE);
+  for (const part of PARTS) {
+    const got = pic(part.role);
+    gl.bindTexture(gl.TEXTURE_2D, frameOf(got && got.p).gl);
+    gl.uniform1f(PICK.u.uId, id(part.role));
+    draw(part.buf, part.n);
+  }
+  gl.disable(gl.CULL_FACE);
+  for (const s of SPRITES) {
+    const t = texture(s.thing.url);
+    if (!t.ready || !s.buf) continue;
+    gl.bindTexture(gl.TEXTURE_2D, t.gl);
+    gl.uniform1f(PICK.u.uId, id("thing:" + s.role));
+    draw(s.buf, 6);
+  }
+  gl.disableVertexAttribArray(aPos); gl.disableVertexAttribArray(aUV);
+  const px = new Uint8Array(4);
+  gl.readPixels(Math.round(mouse[0] * dpr), Math.round(canvas.height - mouse[1] * dpr - 1), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return px[0] ? keys[px[0] - 1] : hasSky ? "sky" : null;
+}
+
+// Light and fog on and off (kept while switching themes).
+const toggles = { light: true, fog: true };
+function toggle(which) {
+  toggles[which] = !toggles[which];
+  $("#" + which + "on").classList.toggle("on", toggles[which]);
+  if (which === "light") $("#lightbox").style.opacity = toggles.light ? "" : ".4";
+}
+$("#lighton").addEventListener("click", () => toggle("light"));
+$("#fogon").addEventListener("click", () => toggle("fog"));
+addEventListener("keydown", e => {
+  if (e.target.closest && e.target.closest("select, input")) return;
+  if (e.key === "l" || e.key === "L") toggle("light");
+  if (e.key === "g" || e.key === "G") toggle("fog");
+});
+$("#pick").addEventListener("change", e => choose(e.target.value));
+$("#light").addEventListener("input", e => ($("#lightv").textContent = e.target.value));
+addEventListener("hashchange", () => { const n = decodeURIComponent(location.hash.slice(1)); if (DATA && n && n !== THEME?.name) { $("#pick").value = n; choose(n); } });
+if (gl) {
+  load(true);
+  setInterval(() => load(false), 3000);       // a theme.toml edited shows within a few seconds
+  requestAnimationFrame(frame);
+}
+</script>
+</body>
+</html>
