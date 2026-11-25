@@ -18,12 +18,14 @@ import sys
 import time
 from pathlib import Path
 
+from dms import project
+
 AGENT_EXES = {"claude": "claude.exe"}
 REQUEST_FILE = Path("build") / "session-request.json"
 
 
 def _dir(root: Path) -> Path:
-    return root / "build" / "agents"
+    return project.build_dir(root) / "agents"
 
 
 def processes() -> dict[int, tuple[int, str]]:

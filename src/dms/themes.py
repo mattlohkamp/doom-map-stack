@@ -57,7 +57,10 @@ SHARE = 0.03       # what's used less than this (of its kind) is left out of the
 
 
 def themes_dir(root: Path) -> Path:
-    return root / "themes"
+    """The current project's themes/ (the mapper's own library comes in docs/projects.md phase 2)."""
+    from dms import project
+
+    return project.path(root) / "themes"
 
 
 @dataclass

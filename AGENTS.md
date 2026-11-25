@@ -105,7 +105,17 @@ It sets the environment and runs `uv run dms <command>`. Any other `.ps1` script
   `LOCKDEFS` gives skull locks lighter map colours than card locks (`dms play` only).
 - Tests: `. .\scripts\dms-env.ps1; Invoke-DmsScope -Root $PWD -Body { & .tools\uv\uv.exe run --locked --project src pytest -q -p no:cacheprovider }`
 
-Map commands take a map name (`maps/<name>`) or a path to a map folder:
+**Projects** (`src/dms/project.py`; plan and status: `docs/projects.md`): maps can live outside the tool, in a
+project folder anywhere (`dms-project.toml`, `maps/<name>/`, `themes/`, a git-ignored `build/` with everything
+generated, game saves included). The tool repo is itself the default project (its example maps; no marker file
+in its root). Which project: `dms --project PATH <command>`, else `DMS_PROJECT`, else the folder the command
+runs in (or the nearest above with a `dms-project.toml`), else the tool repo; `cli.main` decides once and sets
+`DMS_PROJECT`, and library code reads only that (`project.path(root)`), never the current folder. A map knows its
+project (`MapInfo.project`: the folder above its `maps/`), so `info.build_dir(root)` is in it. `dms project`
+shows the current one. Still to come: layered user settings, `dms project init`, Start Session's project
+picker, Claude in the project folder, Cacobelisk moved out.
+
+Map commands take a map name (`maps/<name>` in the current project) or a path to a map folder:
 - `dms new <name> [--kind map|test|example]`: creates `maps/<name>/` with `map.toml`, `map.py` (one room) and `notes.md`.
 - `dms list`: the maps in `maps/`.
 - `dms build <map> | --all [--force] [--note TEXT]`: generated maps run `map.py` and write `TEXTMAP` (first line: a hash of the
@@ -114,7 +124,7 @@ Map commands take a map name (`maps/<name>`) or a path to a map folder:
   editor changes not brought back yet; `--force` discards them.
 - `dms play [<map>] [--skill N] [--nomonsters]` (**`launchers\Play Map.cmd`**): builds if the sources changed, starts UZDoom.
   Console log: `build/<map>/log-play.txt` (read it after a play session; UZDoom 5 names logs `log-<name>.txt`
-  in its working directory, so play runs UZDoom from `build/<map>/`). Saves: `.tools/uzdoom/saves/<map>/`.
+  in its working directory, so play runs UZDoom from `build/<map>/`). Saves: `build/<map>/saves/` in the map's project (moved there from `.tools/uzdoom/saves/<map>/` on the next play).
   **A quiet look round:** key **P** in the game (`dms_peaceful_key`, rebindable; the devtools mod's `DmsPeaceful`)
   turns peaceful monsters on and off: they don't notice the player, and any after the player anyway are sent
   back to idling; "Peaceful (P)" shows in the corner. It sticks through H and restarts: each change is logged
@@ -439,7 +449,7 @@ Move each one up into the list above as it lands.
 - **Named by name:** maps are identified by a name (`light-test2`), never by slot.
   Built on its own, a map always goes into the MAP01 slot of its own WAD.
 - **Self-contained:** everything a map owns (sources, notes, per-map resources, build output, feedback,
-  UZDoom saves in `.tools\uzdoom\saves\<map>\`) is kept under its name.
+  UZDoom saves in `build\<map>\saves\`) is kept under its name, in its project.
 - **Map name always explicit:** every map command requires the name and prints which map it's acting on.
   No hidden "current map" setting.
 - **Shared code stays safe:** `src/` and `resources/devtools/` are shared. TEXTMAP is committed, so a generator

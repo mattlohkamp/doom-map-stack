@@ -1,0 +1,2 @@
+# Property tweaks pulled from the editor (dms pull). Every build applies them after map.py,
+# keyed by gid: [<kind>."<gid>"] then UDMF fields. Rewritten by `dms pull`.

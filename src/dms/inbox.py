@@ -19,6 +19,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+from dms import project
 from dms.maps import MapInfo
 
 FILENAME = "inbox.jsonl"
@@ -306,7 +307,7 @@ WATCH_FRESH = 10  # seconds
 
 
 def watch_path(root: Path) -> Path:
-    return root / "build" / WATCH_FILE
+    return project.build_dir(root) / WATCH_FILE
 
 
 def mark_listening(root: Path, map_names: list[str] | None) -> None:

@@ -31,6 +31,18 @@ def cmd_new(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_project(args: argparse.Namespace) -> int:
+    from dms import maps, project
+
+    root = repo_root()
+    p = project.current(root)
+    print(f"project: {p.title}")
+    print(f"    {p.path}" + ("  (the tool repo's example project)" if p.path.resolve() == root.resolve() else ""))
+    found = maps.all_maps(root)
+    print(f"    maps: {', '.join(m.name for m in found) or 'none yet'}")
+    return 0
+
+
 def cmd_list(args: argparse.Namespace) -> int:
     from dms import maps
 
@@ -413,7 +425,13 @@ def cmd_themes(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="dms", description="Doom map stack.")
     parser.add_argument("--version", action="version", version=f"dms {__version__}")
+    parser.add_argument("--project", metavar="PATH",
+                        help="the project folder (with dms-project.toml) to act on; default: DMS_PROJECT, "
+                             "else the folder this runs in or the nearest above it, else the tool repo")
     sub = parser.add_subparsers(dest="command", metavar="<command>")
+
+    p = sub.add_parser("project", help="show the project commands act on (docs/projects.md)")
+    p.set_defaults(func=cmd_project)
 
     p = sub.add_parser("setup", help="download and configure the Doom tools in .tools/")
     p.add_argument("--upgrade", metavar="TOOL", help="re-install TOOL after bumping tools.toml")
@@ -525,6 +543,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     from dms.build import BuildError
     from dms.maps import MapError
+    from dms.project import ProjectError, choose
     from dms.pull import PullError
 
     parser = build_parser()
@@ -533,8 +552,9 @@ def main(argv: list[str] | None = None) -> int:
         parser.print_help()
         return 0
     try:
+        choose(repo_root(), args.project)     # every command below acts on this project (DMS_PROJECT)
         return args.func(args)
-    except (BuildError, MapError, PullError) as e:
+    except (BuildError, MapError, PullError, ProjectError) as e:
         print(f"dms: {e}", file=sys.stderr)
         return 1
 

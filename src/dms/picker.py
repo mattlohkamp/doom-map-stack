@@ -14,20 +14,20 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from dms import maps
+from dms import maps, project
 
-LAST_PICK = Path("build") / "last-map.txt"
+LAST_PICK = "last-map.txt"     # in the project's build folder
 
 
 def _last(root: Path) -> str | None:
     try:
-        return (root / LAST_PICK).read_text(encoding="utf-8").strip() or None
+        return (project.build_dir(root) / LAST_PICK).read_text(encoding="utf-8").strip() or None
     except FileNotFoundError:
         return None
 
 
 def remember(root: Path, name: str) -> None:
-    path = root / LAST_PICK
+    path = project.build_dir(root) / LAST_PICK
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(name + "\n", encoding="utf-8")
 
@@ -87,7 +87,7 @@ def _ask_new_map(root: Path, parent) -> maps.MapInfo | None:
         name = name.strip()
         if not maps.NAME_RE.match(name):
             messagebox.showerror("dms", f"{name!r}: use lowercase letters, digits and dashes.", parent=parent)
-        elif (root / "maps" / name).exists():
+        elif (maps.maps_dir(root) / name).exists():
             messagebox.showerror("dms", f"There's already a map called {name}.", parent=parent)
         else:
             break

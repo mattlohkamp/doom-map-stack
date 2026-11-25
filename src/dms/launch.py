@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -78,7 +79,7 @@ def open_editor(root: Path, wad: Path | None = None, map_slot: str | None = None
 def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False,
          spawn: list[float] | None = None, message: str | None = None) -> int:
     """Build the map if its sources changed, then start UZDoom on it. Returns immediately.
-    The console output goes to build/<map>/log-play.txt; saves go to .tools/uzdoom/saves/<map>/.
+    The console output goes to build/<map>/log-play.txt; saves go to build/<map>/saves/ in the map's project.
     The game's process id and options go to build/<map>/play.json (for a reload in place).
     spawn [x, y, z, angle, pitch]: put the player there on arrival; message: shown on arrival
     ("|" separates lines). Both are how the board reloads the map in place (resources/devtools).
@@ -118,7 +119,10 @@ def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False,
     out_wad = live.pack(info, root, by_name.get("MAPINFO", b""), by_name["TEXTMAP"], latest["seq"] if latest else 0,
                         zscript=by_name.get("ZSCRIPT", b""), extra=extras.lumps(info))
     log = build_dir / "log-play.txt"
-    saves = uzdoom.parent / "saves" / info.name
+    saves = info.build_dir(root) / "saves"          # with the map's project (docs/projects.md)
+    old = uzdoom.parent / "saves" / info.name       # where they were kept before projects
+    if old.is_dir() and not saves.exists():
+        shutil.move(str(old), str(saves))
     saves.mkdir(parents=True, exist_ok=True)
     # The devtools mod: key N = a note for Claude (resources/devtools/zscript.zs). Its screenshots go
     # to build/<map>/shots/, where dms finds the one taken for each note.

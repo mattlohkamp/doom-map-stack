@@ -12,6 +12,8 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
+from dms import project
+
 KINDS = ("map", "test", "example")
 SOURCE_MODES = ("generated", "hand-edited")
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
@@ -31,6 +33,7 @@ class MapInfo:
     source: str
     sky: str
     music: str
+    project: Path | None = None     # the project it belongs to (project.of_map): its build output goes there
 
     @property
     def textmap(self) -> Path:
@@ -41,7 +44,8 @@ class MapInfo:
         return self.folder / "map.py"
 
     def build_dir(self, root: Path) -> Path:
-        return root / "build" / self.name
+        """build/<map>/ in the map's own project (`root` only when the project isn't known)."""
+        return (self.project or root) / "build" / self.name
 
     def wad(self, root: Path) -> Path:
         return self.build_dir(root) / f"{self.name}.wad"
@@ -51,7 +55,8 @@ class MapInfo:
 
 
 def maps_dir(root: Path) -> Path:
-    return root / "maps"
+    """The current project's maps/ (project.path)."""
+    return project.path(root) / "maps"
 
 
 def load(folder: Path) -> MapInfo:
@@ -70,6 +75,7 @@ def load(folder: Path) -> MapInfo:
         source=cfg.get("source", "generated"),
         sky=cfg.get("sky", "SKY1"),
         music=cfg.get("music", ""),
+        project=project.of_map(folder),
     )
     if info.kind not in KINDS:
         raise MapError(f"{cfg_path}: kind must be one of {', '.join(KINDS)}")

@@ -23,7 +23,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
 
-from dms import history, inbox
+from dms import history, inbox, project
 from dms.build import edit_wad_changed, editor_state
 from dms.launch import pid_alive
 from dms.maps import MapInfo, all_maps
@@ -495,7 +495,8 @@ def make_handler(root: Path, announce: bool = False):
                         say("board opened in a browser")
                 elif parts == ["api", "ping"]:
                     # "page": board.html's version, so an open board reloads itself when it changes.
-                    self._json({"dms_board": True, "root": str(root), "page": PAGE_FILE.stat().st_mtime_ns})
+                    self._json({"dms_board": True, "root": str(root), "project": str(project.path(root)),
+                                "page": PAGE_FILE.stat().st_mtime_ns})
                 elif parts == ["themes"]:
                     # The theme viewer (docs/themes.md): its own page, same server, read on every request.
                     self._send(HTTPStatus.OK, THEMES_FILE.read_text(encoding="utf-8").encode("utf-8"),
@@ -587,11 +588,13 @@ def make_handler(root: Path, announce: bool = False):
 
 
 def _running_here(port: int, root: Path) -> bool | None:
-    """True: our board for this repo is already on the port; False: something else is; None: free."""
+    """True: our board for this repo and this project is already on the port; False: something else is (another
+    program, or a board for another project); None: free."""
     try:
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/ping", timeout=1) as r:
             data = json.loads(r.read())
-        return bool(data.get("dms_board")) and Path(data.get("root", "")) == root
+        return (bool(data.get("dms_board")) and Path(data.get("root", "")) == root
+                and Path(data.get("project") or root) == project.path(root))
     except (OSError, ValueError):
         return None
 
