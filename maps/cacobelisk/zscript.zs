@@ -1282,3 +1282,201 @@ class CacobeliskVioletTorch : Actor
 		A_AttachLight('CacobeliskViolet', DynamicLight.RandomFlickerLight, Color(170, 60, 255), 48, 60, DYNAMICLIGHT.LF_ATTENUATE, (0, 0, 40), 0.2);
 	}
 }
+
+// 2026-11-26 (chat): the station's drones, the lost soul gone machine. The mapper wanted a variant of the lost soul,
+// human/robot instead of bio/alien, that doesn't charge: it stares for a moment, then fires. Then (same day) two
+// kinds: the cyan drone (CacobeliskDrone: frail, a fan of three small fast bolts, one at the player and one
+// either side) and the stronger red one (CacobeliskRedDrone: two shotgun blasts to kill, two bigger, slower,
+// harder bolts, both on target). Their sprites are the map's own (sprites/CBDC*, CBDR*, bolts CBBC*, CBBL*;
+// drawn by art/drone_sprites.py after Freedoom's chaingunner and revenant). map.py places lost souls with
+// DRONE_TID or RED_DRONE_TID; CacobeliskDrones swaps them when the level loads, so the editor and the movement
+// check see a lost soul there.
+class CacobeliskDrone : Actor
+{
+	const STARE_TICS = 4;        // each look while it stares; eight of them, a little under a second
+	const SPREAD = 7;            // degrees between the cyan drone's bolts
+
+	Default
+	{
+		Monster;
+		+FLOAT
+		+NOGRAVITY
+		+NOBLOOD                 // a machine: bullets strike sparks
+		+DONTFALL
+		Health 25;               // two or three pistol or chaingun bullets (5, 10 or 15 each)
+		Radius 14;
+		Height 40;
+		Mass 50;
+		Speed 8;
+		PainChance 160;
+		MinMissileChance 160;    // fires a little more readily than most (200 is the usual)
+		SeeSound "baby/sight";
+		ActiveSound "baby/active";
+		PainSound "baby/pain";
+		DeathSound "weapons/rocklx";
+		Obituary "%o was picked off by a station drone.";
+		Tag "Station drone";
+	}
+
+	// One look while it stares: turn to the player, and give up (back to chasing) if they're gone from sight.
+	state DroneStare()
+	{
+		A_FaceTarget();
+		if (!target || target.health <= 0 || !CheckSight(target))
+			return ResolveState("See");
+		return ResolveState(null);
+	}
+
+	States
+	{
+	Spawn:
+		CBDC AB 8 A_Look;
+		Loop;
+	See:
+		CBDC AABB 3 A_Chase;
+		Loop;
+	Missile:
+		// It stops, turns to the player and stares, its visor charging, then fans out three bolts.
+		CBDC C 0 A_StartSound("misc/chat", CHAN_VOICE);
+		CBDC CDCDCDCD STARE_TICS { return DroneStare(); }
+		CBDC E 4 Bright
+		{
+			A_SpawnProjectile("CacobeliskDroneBolt", 20);
+			A_SpawnProjectile("CacobeliskDroneBolt", 20, 0, SPREAD);
+			A_SpawnProjectile("CacobeliskDroneBolt", 20, 0, -SPREAD);
+		}
+		CBDC D 6;
+		Goto See;
+	Pain:
+		CBDC F 3;
+		CBDC F 3 A_Pain;
+		Goto See;
+	Death:
+		MISL B 8 Bright A_Scream;
+		MISL C 6 Bright A_NoBlocking;
+		MISL D 4 Bright;
+		Stop;
+	}
+}
+
+// The red drone: two shotgun blasts to bring down (a blast is 35-105, about 70; one reaches 90 only rarely), and
+// two bolts, one after the other, both aimed at the player.
+class CacobeliskRedDrone : CacobeliskDrone
+{
+	Default
+	{
+		Health 90;
+		PainChance 96;           // flinches less than the cyan one
+		Obituary "%o was shot down by a red station drone.";
+		Tag "Red station drone";
+	}
+
+	States
+	{
+	Spawn:
+		CBDR AB 8 A_Look;
+		Loop;
+	See:
+		CBDR AABB 3 A_Chase;
+		Loop;
+	Missile:
+		CBDR C 0 A_StartSound("misc/chat", CHAN_VOICE);
+		CBDR CDCDCDCD STARE_TICS { return DroneStare(); }
+		CBDR E 4 Bright A_SpawnProjectile("CacobeliskRedDroneBolt", 20);
+		CBDR D 8 A_FaceTarget;
+		CBDR E 4 Bright A_SpawnProjectile("CacobeliskRedDroneBolt", 20);
+		CBDR D 6;
+		Goto See;
+	Pain:
+		CBDR F 3;
+		CBDR F 3 A_Pain;
+		Goto See;
+	}
+}
+
+// The cyan drone's bolt: small and quick (three times an imp's fireball); it stings rather than hurts: 3 to 6.
+class CacobeliskDroneBolt : Actor
+{
+	Default
+	{
+		Projectile;
+		Radius 4;
+		Height 6;
+		Speed 30;
+		FastSpeed 40;
+		DamageFunction (Random(3, 6));
+		RenderStyle "Add";
+		Alpha 0.9;
+		SeeSound "baby/attack";
+		DeathSound "baby/shotx";
+		Decal "PlasmaScorchLower";
+	}
+
+	States
+	{
+	Spawn:
+		CBBC AB 2 Bright;
+		Loop;
+	Death:
+		CBBC CDE 3 Bright;
+		Stop;
+	}
+}
+
+// The red drone's bolt: bigger, slower (twice an imp's fireball), a little harder: 6 to 10.
+class CacobeliskRedDroneBolt : CacobeliskDroneBolt
+{
+	Default
+	{
+		Radius 6;
+		Height 8;
+		Speed 20;
+		FastSpeed 28;
+		DamageFunction (Random(6, 10));
+	}
+
+	States
+	{
+	Spawn:
+		CBBL AB 2 Bright;
+		Loop;
+	Death:
+		CBBL CDE 3 Bright;
+		Stop;
+	}
+}
+
+class CacobeliskDrones : EventHandler
+{
+	const DRONE_TID = 330;       // map.py DRONE_TID: lost souls that are cyan drones
+	const RED_DRONE_TID = 331;   // map.py RED_DRONE_TID: ... red drones
+
+	override void WorldLoaded(WorldEvent e)
+	{
+		int cyan = Swap(DRONE_TID, "CacobeliskDrone");
+		int red = Swap(RED_DRONE_TID, "CacobeliskRedDrone");
+		Console.Printf("[DMS] CacobeliskDrones: %d cyan and %d red drone(s) in the station", cyan, red);
+	}
+
+	int Swap(int tid, class<Actor> kind)
+	{
+		Array<Actor> found;
+		let it = Level.CreateActorIterator(tid);
+		Actor a;
+		while (a = it.Next())
+			if (!(a is "CacobeliskDrone"))
+				found.Push(a);
+		for (int i = 0; i < found.Size(); i++)
+		{
+			let old = found[i];
+			let d = Actor.Spawn(kind, old.pos, NO_REPLACE);
+			if (!d)
+				continue;
+			d.angle = old.angle;
+			d.ChangeTid(tid);
+			old.ClearCounters();
+			old.Destroy();
+		}
+		return found.Size();
+	}
+}

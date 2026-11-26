@@ -301,6 +301,13 @@ Map commands take a map name (`maps/<name>` in the current project) or a path to
   (`maps/<map>/textures/NOTICE.txt`, see Licensing). Lessons for the text way: one change per `Patch` (the
   engine kept only the Blend of a Translation + Blend); a patch can't be scaled or feathered; a scratch load
   only proves the engine accepts a definition, not how it looks.
+  **Sprites of a map's own** (2026-11-26): `maps/<map>/sprites/NAME.png` (sprite lump names: `CBDRA1`,
+  `CBDRA2A8`, `CBBLA0`; a 4-character prefix after the map, not one the IWAD or `uzdoom.pk3` uses) are packed
+  between `SS_START` and `SS_END` for the actors in its `zscript.zs`, offsets in each PNG's `grAb` chunk; the
+  asset browser shows them as the actor's picture. Draw them with a script in `maps/<map>/art/` so they can be
+  redrawn (Cacobelisk's `drone_sprites.py`), and say in `sprites/NOTICE.txt` where they came from. A custom
+  monster is placed in `map.py` as a stock thing with a thing id and swapped for its class when the level loads
+  (Cacobelisk's `CacobeliskDrones`), so the editor and the movement check still know roughly what it is.
 - **Asset browser** (`/assets` on the board's server, each page links to the other in a thin banner at the top, the place for further tools' pages too; dms opens only the board, the mapper clicks over; `src/dms/resources.py`,
   `src/dms/assets.html`; plan and status: `docs/asset-browser.md`): every texture, flat, decal, item, monster,
   decoration, sound and song the IWAD and `uzdoom.pk3` provide, as a list or grid with search, filter

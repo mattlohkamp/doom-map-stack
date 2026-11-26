@@ -170,7 +170,8 @@ _NOT_ACTORS = {"eventhandler", "staticeventhandler", "thinker", "object", "gener
 
 def parse_actors(text: str) -> list[dict]:
     """The actor classes in a map's script: {"class", "parent", "frames": [[sprite + letter, tics]],
-    "radius", "height"} (frames: its Spawn state, empty when it has none of its own)."""
+    "radius", "height", "monster"} (frames: its Spawn state, empty when it has none of its own; monster: True when
+    its Default says `Monster;` or `+ISMONSTER`, None when it doesn't say, so the parent's counts)."""
     text = _strip_comments(text)
     found = list(_CLASS.finditer(text))
     out = []
@@ -190,7 +191,8 @@ def parse_actors(text: str) -> list[dict]:
             frames += [[fm.group(1).upper() + letter, int(fm.group(3))] for letter in fm.group(2).upper()]
         size = {k: int(v.group(1)) if (v := re.search(rf"(?<![\w.]){k}\s+(\d+)", body, re.I)) else None
                 for k in ("radius", "height")}
-        out.append({"class": m.group(1), "parent": m.group(2), "frames": frames, **size})
+        monster = True if re.search(r"(?<![\w.])Monster\s*;|\+\s*ISMONSTER\b", body, re.I) else None
+        out.append({"class": m.group(1), "parent": m.group(2), "frames": frames, **size, "monster": monster})
     return out
 
 
@@ -198,7 +200,7 @@ def _stamp(root: Path) -> tuple:
     """Changes when any file this module reads does."""
     out = []
     for info in maps.all_maps(root):
-        own = [f for _, f in extras.pictures(info)]
+        own = [f for _, f in extras.pictures(info) + extras.sprites(info)]
         for f in [info.folder / name for name in ("TEXTMAP", "map.toml", "zscript.zs", "textures.txt", "animdefs.txt")] + own:
             if f.is_file():
                 st = f.stat()
@@ -260,7 +262,7 @@ def picture_file(root: Path, map_name: str, name: str) -> tuple[bytes, str] | No
     if ext != "png" or not NAME_OK.fullmatch(stem or ""):
         return None
     info = next((i for i in maps.all_maps(root) if i.name == map_name), None)
-    for own, f in extras.pictures(info) if info else ():      # a picture of the map's own: the file itself
+    for own, f in (extras.pictures(info) + extras.sprites(info)) if info else ():   # the map's own: the file itself
         if own == stem.upper():
             return f.read_bytes(), "image/png"
     p = picture(root, map_name, stem)
@@ -310,24 +312,28 @@ def _custom(root: Path) -> dict[str, list[dict]]:
         script = info.folder / "zscript.zs"
         actors = parse_actors(script.read_text(encoding="utf-8", errors="replace")) if script.is_file() else []
         own = {a["class"].lower(): a for a in actors}
+        own_sprites = {n: f"/asset-custom/{info.name}/{n}.png?v={f.stat().st_mtime_ns}" for n, f in extras.sprites(info)}
         for a in actors:
             # Its looks and size: its own, else the nearest parent's that has them (the map's, then the game's).
             frames, radius, height, parent, base = a["frames"], a["radius"], a["height"], a["parent"].lower(), None
+            monster = a["monster"]
             for _ in range(8):
                 if parent in own:
                     up = own[parent]
                     frames, radius, height = frames or up["frames"], radius or up["radius"], height or up["height"]
+                    monster = monster or up["monster"]
                     parent = up["parent"].lower()
                 else:
                     base = by_class.get(parent)
                     break
-            group = base[0] if base and base[0] != "specials" else "decorations"
+            group = "monsters" if monster else base[0] if base and base[0] != "specials" else "decorations"
             lump, picture_url, anim = None, None, []
             for frame, tics in frames:
-                mine = next((n for n in sprites if n[:5] == frame), None)
+                mine = next((n for n in sprites if n[:5] == frame), None) \
+                    or next((n for n, _ in extras.sprites(info) if n[:5] == frame), None)   # sprites/NAME.png
                 theirs = None if mine else resources.frame_lump(res, frame)
                 if mine or theirs:
-                    anim.append([url(mine) if mine else f"sprite/{theirs}.png", tics])
+                    anim.append([(own_sprites[mine] if mine in own_sprites else url(mine)) if mine else f"sprite/{theirs}.png", tics])
                     if lump is None:
                         lump, picture_url = mine or theirs, anim[-1][0]
             if lump is None and base:

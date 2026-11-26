@@ -363,6 +363,19 @@ Still to build later:
 
 *Updated 2026-11-26. A new session starts here.*
 
+**2026-11-26, later: released v0.23.0, enemy edits.** The mapper asked for a lost soul variant that is
+human/robot rather than bio/alien and stares, then shoots instead of charging. Built in Cacobelisk as **the
+station drones** (zscript.zs `CacobeliskDrone`, `CacobeliskRedDrone`; `maps/cacobelisk/notes.md`): a floating
+metal sphere with a visor slit, its look after Freedoom's chaingunner and revenant (the mapper's pointer). The
+cyan drone has 25 health and fires a fan of three small fast bolts; the red one has 90 (two shotgun blasts) and
+fires two slower, harder bolts. Three cyan and one red in the pump hall. Mapper: "they're perfect".
+*Tools:* a map's own sprites (`maps/<map>/sprites/`, AGENTS.md); custom monsters placed as stock things with a
+thing id and swapped at load; the asset browser files script monsters under Monsters. *Lessons:* Freedoom's
+palette has no cyan: keep glowing colours out of palette quantization (true colour shows in the hardware
+renderer). Sprites drawn by a script (`art/drone_sprites.py`, a small ray tracer) redraw in a minute, so colour
+variants are cheap. **Next:** the mapper said "a few things" for enemies: ask what else; the open items below
+still stand.
+
 **2026-11-26: released v0.22.0**, after a long session on Cacobelisk (in-game notes #85-#152 of 11-25/26, and chat;
 `maps/cacobelisk/notes.md` has every one). The map gained: the west gutter gone and the cliff edge wandering in, with
 dead trees and a railing with a real top; a secret wall with a chaingun in the main passage; a storage room off the

@@ -11,6 +11,11 @@ A map may also bring pictures of its own: maps/<map>/textures/NAME.png (NAME: 8 
 digits, _ and -). They are packed between TX_START and TX_END, UZDoom's namespace for whole textures, and
 can be used on walls and as flats. Unlike the text lumps these are graphics in the repo: a picture made
 from the game's own (Freedoom's) must have Freedoom's licence notice beside it (AGENTS.md, Licensing).
+
+And sprites of its own: maps/<map>/sprites/NAME.png, packed between SS_START and SS_END for the actors in its
+zscript.zs. NAME is a sprite lump name: 4 characters, a frame letter and a rotation (0, or 1-8), optionally a
+second frame and rotation drawn mirrored (CBDRA2A8). A PNG's offsets come from its grAb chunk, as UZDoom reads
+them (x: from its left edge to the actor's centre, y: from its top to the actor's feet).
 """
 
 from __future__ import annotations
@@ -44,6 +49,17 @@ def pictures(info: MapInfo) -> list[tuple[str, Path]]:
     return [(f.stem.upper(), f) for f in sorted(d.glob("*.png")) if PICTURE_NAME.fullmatch(f.stem)]
 
 
+SPRITE_NAME = re.compile(r"[A-Za-z0-9_\-]{4}[A-Za-z][0-9]([A-Za-z][0-9])?")
+
+
+def sprites(info: MapInfo) -> list[tuple[str, Path]]:
+    """The map's own sprites: (NAME, file) for each maps/<map>/sprites/NAME.png, in name order."""
+    d = folder(info) / "sprites"
+    if not d.is_dir():
+        return []
+    return [(f.stem.upper(), f) for f in sorted(d.glob("*.png")) if SPRITE_NAME.fullmatch(f.stem)]
+
+
 def picture_size(data: bytes) -> tuple[int, int]:
     """A PNG's width and height (from its header)."""
     import struct
@@ -61,6 +77,9 @@ def lumps(info: MapInfo) -> list[wad.Lump]:
     own = pictures(info)
     if own:
         out += [wad.Lump("TX_START")] + [wad.Lump(name, f.read_bytes()) for name, f in own] + [wad.Lump("TX_END")]
+    spr = sprites(info)
+    if spr:
+        out += [wad.Lump("SS_START")] + [wad.Lump(name, f.read_bytes()) for name, f in spr] + [wad.Lump("SS_END")]
     return out
 
 

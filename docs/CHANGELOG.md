@@ -3,6 +3,17 @@
 The tool's versions: `major.minor.fix`, plus `+docN` for a commit that changes only documents (AGENTS.md has the
 rules). Below 1.0 while the tool is used only here. Releases are git tags (`v0.21.0`).
 
+## v0.23.0 (2026-11-26): a map's own sprites
+
+- **Map sprites**: `maps/<map>/sprites/NAME.png` (sprite lump names, offsets in each PNG's `grAb` chunk) are packed
+  between `SS_START` and `SS_END` for the actors in the map's `zscript.zs` (`extras.py`). Drawn by a script in
+  `maps/<map>/art/`, with a `sprites/NOTICE.txt` saying where they came from.
+- **Asset browser**: a map's script monsters (a `Monster;` line, or `+ISMONSTER`, inherited from the map's own
+  classes) are listed under Monsters, not Decorations; its own sprites are their pictures, and redrawing them
+  refreshes the page (the cache watches `sprites/`).
+- Cacobelisk: the station drones, a lost soul gone machine that stares, then fires: the cyan drone (three bolts in
+  a fan, 25 health) and the red one (two bigger, slower bolts, 90 health), drawn by `art/drone_sprites.py`.
+
 ## v0.22.0 (2026-11-26): a measuring tool, sturdier checks
 
 - **Asset browser**: a measuring tool on the 2D audition plane ("measure", or Shift + drag): a rectangle's size in

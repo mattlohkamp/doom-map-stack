@@ -1,0 +1,12 @@
+The pictures in this folder are this map's own sprites (packed by dms between SS_START and SS_END:
+src/dms/extras.py).
+
+CBDC*.png  The cyan station drone (zscript.zs CacobeliskDrone): idle A-B, staring C-D, firing E, pain F.
+CBBC*.png  Its bolt: in flight A-B, popping C-E.
+CBDR*.png  The red station drone (CacobeliskRedDrone), the same frames.
+CBBL*.png  Its bigger bolt.
+
+Drawn from scratch by ../art/drone_sprites.py (a small ray tracer; re-run it to redraw them). The metal is in
+Freedoom's palette; the glowing parts are in true colour. The design follows Freedoom's chaingunner (a red visor
+slit in a grey helmet) and revenant (small red lights), but no Freedoom pixels are copied. Their death uses
+Freedoom's own rocket explosion (MISL), which stays in the IWAD.

@@ -118,3 +118,29 @@ def test_a_maps_own_pictures_are_packed_and_known(tmp_path):
     assert [lump.name for lump in extras.lumps(info)] == ["TX_START", "MYSTAR", "TX_END"]
     walls, flats = extras.textures(info)
     assert walls == {"MYSTAR": (2, 3)} and flats == {"MYSTAR"}     # usable on walls and as a flat
+
+def test_a_maps_own_sprites_are_packed(tmp_path):
+    from dms import extras, maps
+
+    info = maps.new(tmp_path, "a")
+    d = info.folder / "sprites"
+    d.mkdir()
+    for name in ("abcdA1", "ABCDA2A8", "ABCDB0", "toolong", "ABCD", "NOTICE"):
+        (d / f"{name}.png").write_bytes(b"\x89PNG")
+    (d / "NOTICE.txt").write_text("where they came from")
+    assert [n for n, _ in extras.sprites(info)] == ["ABCDA1", "ABCDA2A8", "ABCDB0"]   # sprite lump names only
+    assert [lump.name for lump in extras.lumps(info)] == ["SS_START", "ABCDA1", "ABCDA2A8", "ABCDB0", "SS_END"]
+    assert extras.textures(info) == ({}, set())                                      # not textures
+
+
+def test_script_monsters_are_known_by_their_default():
+    from dms import mapassets
+
+    text = """
+    class MyBot : Actor { Default { Monster; +FLOAT Health 25; } States { Spawn: ABCD AB 8; Loop; } }
+    class MyBigBot : MyBot { Default { Health 90; } }
+    class MyFlagged : Actor { Default { +ISMONSTER } }
+    class MyLamp : Actor { Default { Radius 8; } }   // no Monster line: not a monster
+    """
+    got = {a["class"]: a["monster"] for a in mapassets.parse_actors(text)}
+    assert got == {"MyBot": True, "MyBigBot": None, "MyFlagged": True, "MyLamp": None}   # MyBigBot: from its parent

@@ -1337,3 +1337,21 @@ light and pickups tuned by ear and eye from the game.*
 - 2026-11-26, note #152 (game, screenshot): the storage room's door was set back in a track-lined frame on the room's side
   but flush with the corridor's wall: now a recess 8 deep on the corridor's side too (store.door.recess: DOORTRAK
   sides, the wooden step, a wood riser), the door 8 further in, the room's frame behind it as before. Unchecked.
+- 2026-11-26 (chat): **the station drone**, a new monster: the mapper wanted a variant of the lost soul that is
+  human/robot rather than bio/alien and, instead of charging, stares for a moment and then fires a small, fast,
+  low-damage projectile. A floating metal sphere with a red visor slit, a crest, side pods with red lights and a
+  thruster (the look after Freedoom's chaingunner and revenant, the mapper's pointer), drawn by
+  `art/drone_sprites.py` into `sprites/` (the map's own sprites, a new dms feature). zscript.zs
+  `CacobeliskDrone`: 60 health (25 after the mapper tried them: "two or three pistol or chaingun shots"), speed 8, floats, no blood; on attack it stops, beeps (misc/chat), faces the player
+  and stares for 32 tics with its visor charging, giving up if it loses sight; then a bolt
+  (`CacobeliskDroneBolt`: speed 30, 3-6 damage, red, plasma scorch). Dies in the rocket's explosion. Three in the
+  main pump hall, 72 up, off the pit and under the catwalks (map.py STATION_DRONES; placed as lost souls with
+  DRONE_TID, swapped at load by `CacobeliskDrones`). Compiles; needs a restart. Unchecked in the game.
+- 2026-11-26 (chat): **the drones in two kinds.** The mapper loved them; then: health down to two or three pistol or
+  chaingun shots (25). Then two kinds: the **cyan drone** (`CacobeliskDrone`, the three in the hall: cyan visor and
+  lights, a fan of three small fast bolts, one at the player and one 7 degrees either side, `CacobeliskDroneBolt`
+  speed 30, 3-6) and the **red drone** (`CacobeliskRedDrone`, one at the hall's east side, STATION_RED_DRONES,
+  RED_DRONE_TID 331: 90 health, two shotgun blasts; pain chance 96; two bigger, slower bolts, both aimed, 12 tics
+  apart, `CacobeliskRedDroneBolt` speed 20, 6-10). Sprites CBDC/CBBC (cyan) and CBDR/CBBL (red). Freedoom's palette
+  has no cyan: the glowing parts are left in true colour (UZDoom's hardware renderer shows them so; the software
+  renderer would turn them blue). Compiles; needs a restart. Unchecked in the game.

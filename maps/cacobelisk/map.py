@@ -2238,6 +2238,13 @@ STATION_BOXES = ((-480, 384, -416, 448, 64, "CRATE1"), (-480, 448, -416, 512, 96
                  (-224, 656, -160, 720, 48, "CRATE2"), (-480, 656, -416, 736, 64, "CRATE3"))
 STATION_BACK_TUNNEL = (-336, -272)
 STATION_BOX_GUARDS = ((3004, -300, 600), (3004, -220, 540), (9, -380, 560))   # note #145: two zombiemen and a shotgunner, facing the door (east)
+# 2026-11-26 (chat): the station's drones (zscript.zs CacobeliskDrone): placed as lost souls (3006) with DRONE_TID,
+# swapped for drones when the level loads. In the main pump hall, off the pit and clear of the catwalks (their
+# underside is 136 up), hovering HEIGHT above the floor, facing the way in (west). (x, y) from STATION's origin.
+DRONE_TID, RED_DRONE_TID = 330, 331        # the cyan drones (CacobeliskDrone) and the red (CacobeliskRedDrone)
+STATION_DRONES = ((520, 280), (820, -300), (1000, 150))
+STATION_RED_DRONES = ((1000, -150),)
+STATION_DRONE_HEIGHT = 72
 BACK_TUNNEL_Y, BACK_TUNNEL_WIDE, BACK_TUNNEL_X = 3120, 64, -770
 # Note #136 (2026-11-26): a narrow access tunnel: lower (72), rusty brown underfoot and overhead, and now and then a
 # candle in a small niche in its north wall (every BACK_TUNNEL_CANDLES along the long stretch), its feeble glow
@@ -2705,6 +2712,12 @@ def station(m: MapBuilder, hall, C3, C2, floor: int) -> None:
                 m.sidedefs[ld["sidefront"]]["texturemiddle"] = "BROWN96"
     for k, (type_, gx, gy) in enumerate(STATION_BOX_GUARDS):           # note #145
         m.thing(type_, origin[0] + gx, origin[1] + gy, f"station.boxes.guard_{k + 1}", angle=0)
+    for k, (gx, gy) in enumerate(STATION_DRONES):                  # 2026-11-26: the drones
+        d = m.thing(3006, origin[0] + gx, origin[1] + gy, f"station.hall.drone_{k + 1}", angle=180)
+        m.things[d].fields.update(id=DRONE_TID, height=STATION_DRONE_HEIGHT)
+    for k, (gx, gy) in enumerate(STATION_RED_DRONES):
+        d = m.thing(3006, origin[0] + gx, origin[1] + gy, f"station.hall.red_drone_{k + 1}", angle=180)
+        m.things[d].fields.update(id=RED_DRONE_TID, height=STATION_DRONE_HEIGHT)
     for k, c in enumerate(niches):                                  # note #136: a candle in each niche
         m.thing(34, c, yh + nd // 2, f"station.back_tunnel.candle_{k + 1}")
     raster(m, "station", origin, floor, station_zones(),
