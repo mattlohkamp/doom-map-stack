@@ -1,6 +1,6 @@
 [project]
 name = "dms"
-version = "0.21.0"
+version = "0.22.0"
 description = "Doom map stack: write, check and play UDMF maps for UZDoom"
 license = "MIT"
 requires-python = ">=3.14"

@@ -152,6 +152,20 @@ class CacobeliskElevator : EventHandler
 		}
 	}
 
+	bool IsShutter(Sector s)
+	{
+		if (s == null)
+			return false;
+		let it = Level.CreateSectorTagIterator(SHUTTER_TAG);
+		int i;
+		while ((i = it.Next()) >= 0)
+		{
+			if (Level.sectors[i] == s)
+				return true;
+		}
+		return false;
+	}
+
 	void LockSwitches(Line used)
 	{
 		TextureID off = TexMan.CheckForTexture("SW1GRAY", TexMan.Type_Wall);
@@ -160,7 +174,9 @@ class CacobeliskElevator : EventHandler
 		for (int i = 0; i < Level.Lines.Size(); i++)
 		{
 			Line l = Level.Lines[i];
-			if (l.args[0] == CAR_TAG && l.special == Floor_LowerByValue)
+			// Note #120: both switches are Floor_MoveToValue now: the top one is the line in front of the shutter.
+			if (l.args[0] == CAR_TAG && (l.special == Floor_LowerByValue || l.special == Floor_MoveToValue)
+				&& IsShutter(l.frontsector))
 				upperSwitch = l;
 			if (l == used || l.args[0] != CAR_TAG
 				|| (l.special != Floor_LowerByValue && l.special != Floor_MoveToValue))
@@ -1025,6 +1041,46 @@ class CacobeliskWater : EventHandler
 
 // Note #39 (2026-11-23): dust from the secret panel: the bullet puff's smoke, bigger, pale and see-through,
 // drifting where it is thrown, slowing and fading out over about two seconds.
+// Note #90 (2026-11-26): the main passage's secret wall (map.py PASSAGE_SECRET) spits out a little puff of
+// dust as it starts to lift, out of its foot into the passage, like the start's secret panel (note #39).
+class CacobeliskPassageSecret : EventHandler
+{
+	const DOOR_TAG = 10;        // map.py PASSAGE_SECRET_TAG
+	const PUFFS = 8;
+
+	const SHORTCUT_TAG = 12;    // map.py STORE_SHORTCUT_TAG: the storage room's shortcut box
+	const SHUTTER_TAG = 15;     // map.py STORE_SWITCH_SHUTTER_TAG: the panel in front of its switch
+
+	override void WorldLineActivated(WorldEvent e)
+	{
+		Line ln = e.ActivatedLine;
+		// Note #149 (2026-11-26): the shortcut's switch is one use: a panel snaps down over it, as at the elevator.
+		if (ln != null && ln.special == Floor_LowerByValue && ln.args[0] == SHORTCUT_TAG)
+		{
+			Level.ExecuteSpecial(Ceiling_LowerByValue, null, null, false, SHUTTER_TAG, 64, 32);
+			Console.Printf("[DMS] CacobeliskPassageSecret: the shortcut opens; its switch is shut away");
+			return;
+		}
+		if (ln == null || ln.special != Door_Open || ln.args[0] != DOOR_TAG)
+			return;
+		Vector2 mid = ln.v1.p + ln.delta / 2;
+		Vector2 outw = (ln.delta.y, -ln.delta.x).Unit();     // the front side's way: into the passage
+		Vector2 along = ln.delta.Unit();
+		double z0 = ln.frontsector.floorplane.ZAtPoint(mid);
+		for (int n = 0; n < PUFFS; n++)
+		{
+			Vector2 spot = mid + outw * 6 + along * FRandom(-18, 18);
+			Actor puff = Actor.Spawn("CacobeliskDust", (spot.x, spot.y, z0 + FRandom(2, 20)), NO_REPLACE);
+			if (puff != null)
+			{
+				Vector2 v = outw * FRandom(0.3, 1.0) + along * FRandom(-0.3, 0.3);
+				puff.vel = (v.x, v.y, FRandom(0.02, 0.2));
+			}
+		}
+		Console.Printf("[DMS] CacobeliskPassageSecret: the wall lifts");
+	}
+}
+
 class CacobeliskDust : Actor
 {
 	Default

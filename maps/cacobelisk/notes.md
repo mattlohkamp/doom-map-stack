@@ -1049,3 +1049,291 @@ light and pickups tuned by ear and eye from the game.*
   hall is just beyond): the niche stops about 12 short of the hall's wall.
 - 2026-11-24, note #140 (game): the imp behind the gap spotted the player through the crack too easily: he stands with
   his back to the doors now (not deaf: he still wakes at gunfire). The other still faces them.
+- 2026-11-25, note #85 (game, screenshot): looking under the vines into the outflow channel (cistern.out), the
+  torch outcrops were flat wall on that side: each now bulges into the channel too (`cistern.torch_N.behind_*`):
+  a rough back like its front (slanted flanks with a knee), half to three quarters as deep as the front, so the
+  channel (96 deep) stays open behind it. Unchecked in the game.
+- 2026-11-25, chat: the techbase's floor SLIME14 and ceiling AQF053 (were the defaults FLOOR4_8 / CEIL3_5), across
+  the board: every techbase sector that had the default (the start closet, its channels, lintels and secret, the
+  car, the shaft blocks, the tech door and tech room with its channels; map.py TECH_FLOOR, TECH_CEILING,
+  TECHBASE_GIDS). The track-metal niches keep their SUPPORT3. themes/techbase takes them as its main floor and
+  ceiling (the old ones kept as alternatives). Unchecked in the game. Then the ceiling SLIME15 instead (the
+  mapper liked it better than AQF053), and the floor FLAT5_4, then FLOOR0_3; then the ceiling FCGRATE2 to try.
+- 2026-11-25, note #86 (game): the west gutter is gone: the hall's dirt runs to the west wall's pier and the cliff's
+  railing, and the landing's west side meets the dirt. The railing is sunk 44 now (was 36 into the water, 8
+  lower), so its top is still 28 above the floor. Left: the short stretch east of the landing
+  (gutter_w.east_of_bridge), coming out from under it into the east stream; the cliff's drain keeps the west
+  flow tag (the script moves nothing visible there). (A first build of this went out unchanged, build #123: the
+  edit's file write failed once with "Invalid argument", the hiccup in docs/PLAN.md; fine on retry.) Unchecked
+  in the game.
+- 2026-11-26, note #87 (game): a secret wall in the main passage: the right wall of its 10th piece (passage_10.wall_r,
+  48 long, where it turns towards the 11th; the note named passage_12.wall_l_b, a line number from an older build:
+  taken by the point the mapper aimed at) is a door (tag 10, Door_Open on use, `secret` on the automap) in the
+  side passage's green mossy rock (A-MOSRK2: a shade off the main passage's A-MOSROK); behind it an alcove 48 wide,
+  56 deep, a chaingun that counts as the map's second secret when taken (map.py passage_secret). The movement
+  check warns that monsters can't follow into the alcove: a dead end, fine. Build #125 had the door's sectors
+  unclosed (sides drawn the wrong way round) and reached the game's copy; #126 is right. Unchecked in the game.
+- 2026-11-26, note #88 (game): no stone slab at the elevator's foot: the landing and the mouth under it are the hall's
+  dirt (FLAT10), level with the hall (LANDING_UP 0; the slab was FLOOR7_2, 8 up, note #68). The landing's sector
+  stays, so the water east of it still comes out from beside it; its edge down to that water is a dirt bank.
+  Unchecked in the game: the step out of the elevator (the car lands at the floor's height now).
+- 2026-11-26, note #89 (game, screenshot): the cliff railing has a top, so it doesn't read as a flat picture: a strip
+  4 wide just beyond the bars (cliff_ledge: the dirt runs on under it, then the cliff's edge) carries a 3D floor
+  4 thick whose top is the railing's top (28 above the floor), the bars' own texture (MIDBARS3) on its top,
+  underside and edge (control sector cliff_cap_control, tag 403, at (720, -96), where the bridge's was).
+  Unchecked in the game: how MIDBARS3 reads as a flat, and whether 4 wide is enough.
+- 2026-11-26, note #90 (game): the passage's secret wall lifts only to a doorway's height: the alcove behind is 68
+  high (PASSAGE_SECRET_HIGH), so the door opens to 64 (a door opens to the lowest ceiling beside it, less 4); it
+  went all the way up to the passage's ceiling. As it starts to lift, eight puffs of dust come out of its foot
+  into the passage (zscript.zs CacobeliskPassageSecret, the start panel's CacobeliskDust). Compiles; unchecked in
+  the game.
+- 2026-11-26, editor save (auto-pulled): the panel over the tech door set to SUPPORT3 (overrides.toml, sidedef
+  tech_door.mouth.front): the mapper taking the lamp out. Note #91 does the same in map.py, so the override is
+  now redundant (left in place; it can go).
+- 2026-11-26, note #91 (game, screenshot): no lamp over the tech door (notes #108, #124: CACOBAR, full bright, the
+  pulsing light; textures.txt keeps CACOBAR and CACOLAMP, unused). Instead an upright lamp set into each post
+  (map.py post_lamp): a stripe of the track's metal (8), a channel 16 wide and 8 deep from 8 up to the door's
+  top (72) with the red tube (LITERED) at its back, full bright, the channel tinted like the start's light
+  channels, a small pulsing red light in front (radius 32-64), another stripe (8). The posts are 32 wide now
+  (were 16), the room's far wall with them ((56, 352) to (-72, 352)). Unchecked in the game.
+- 2026-11-26, note #92 (game): a big wooden door in the side passage's 5th piece (left wall): BIGDOOR6, 112 wide, on a
+  wooden sill like the cistern's, DOORTRAK jambs, a Door_Raise (tag 11, 150 tics open) anyone opens, monsters too.
+  Behind it a bulbous storage chamber (map.py storage_chamber, STORE_OUTLINE: about 480 x 400, 160 high, the
+  side passage's green rock, light 72 and its fog) with nine wooden boxes (WOOD1 / FLAT5_2, 32-96 high, in loose
+  clusters, gaps wide enough for pinkies) and two pinkies and four imps among them, facing the door. All deaf
+  (ambush): gunfire in the corridor doesn't bring them out (the shut door blocks sound too); they wake on seeing
+  the player. Unchecked in the game: everything; whether they stay put until the door opens and they see you.
+  Also found while building it: Claude had the door specials off by one. Note #87's secret wall was a Door_Raise
+  (12) with no delay, so it shut again at once and the dust script (which listens for Door_Open) never ran: it
+  is Door_Open (11) now. Fixed in the same build (#134).
+- 2026-11-26, note #93 (game, screenshot): the tech door's underside is plain dark metal (CEIL5_1, TECH_DOOR_UNDER): it
+  had taken the techbase ceiling (FCGRATE2, the grate being tried) along with the room.
+- 2026-11-26, note #94 (game, screenshot): the small door in the great door: the ceilings of its frame, of the door
+  itself (its underside) and of the recess behind are wooden boards (FLAT5_2, turned with the leaf like the
+  floor; they were grey FLOOR4_8). Both in build #135; unchecked in the game.
+- 2026-11-26, note #95 (game): the techbase ceiling BROWNGRN (a 64 x 128 wall texture used as a flat), in place of
+  FCGRATE2 (TECH_CEILING; themes/techbase lists it first). The tech door's underside stays dark metal (note #93).
+  Unchecked in the game: how a 64 x 128 wall reads as a ceiling.
+- 2026-11-26, note #96 (game, screenshot): the two thin strips either side of the elevator shaft, seen from the hall
+  (mouth.pillar_w / pillar_e: the shaft's blocks, 8 wide), are the track metal (SUPPORT3) like the shaft's walls;
+  they were the hall's big stone. Unchecked in the game.
+- 2026-11-26, note #97 (game): the storage chamber made easy to move round: six boxes in two clusters (the boxes of a
+  cluster touch, one line between them), each cluster at least 59 from the walls and 70 from the other, the space in
+  front of the door clear (laid out and checked by script before building). Pickups: 50 health (a medikit, two
+  stimpacks, five health bonuses), 50 armour (fifty armour bonuses in short trails round the room: the game has no
+  single 50 armour), a box of shells. The six monsters moved to suit, still deaf, still facing the door. The room
+  is very dark in the mapper's screenshot (light 72 with the side passage's fog): to ask whether it wants a torch.
+  Unchecked in the game.
+- 2026-11-26, note #98 (game): a lit torch in a rough niche in the side passage's 5th piece, right wall (across from
+  the storage door; SIDE_TORCHES). Unchecked in the game.
+- 2026-11-26, note #99 (game, screenshot): the track strips either side of the shaft's foot (note #96) twice as wide, 16
+  (were 8), so the track shows whole: each runs on over the shaft's block to its outer edge (x -8 and 72; the block's
+  own 8 of wall there is gone). The mouth's walls start from those edges: the east one from (72, 200); the west one
+  from (-8, 200), so the bottom call switch's niche was moved onto the new line (window (-18.98, 207.84) to
+  (-45.02, 226.44), its sides (-5, -7) square to it; no longer whole units). Unchecked in the game: the call
+  niche's look after the move.
+- 2026-11-26, note #100 (game, screenshot): the start closet's lowered ceiling strip round the coffer (the closet
+  sector's own ceiling; the coffer covers the rest) and the 8-high step faces looking in from the coffer are the
+  track metal (SUPPORT3). The coffer's ceiling stays the techbase ceiling. Unchecked in the game.
+- 2026-11-26, notes #101, #102 (game): wooden boxes against the side passage's walls (map.py SIDE_BOXES, wall_box: WOOD1 /
+  FLAT5_2, 1 off the wall so it needn't be cut, no deeper than 40 so pinkies pass): two against the 3rd piece's
+  left wall (56 x 40 x 48 high, 40 x 32 x 32), one beside the 5th piece's torch (40 x 32 x 40). Unchecked in the game.
+- 2026-11-26, note #103 (game): no armour in the storage room (the fifty bonuses are gone); the health and the shells
+  are up on the boxes, where walking up to a box picks them up: only the boxes 48 high or less (a pickup up there
+  is touched while it is lower than the player's 56), 10 in from a side the player can reach: the medikit on the
+  32-high box, a stimpack on each 48-high one, five health bonuses near their edges, the shells on the east
+  48-high box. Unchecked in the game: that each one is picked up from the floor.
+- 2026-11-26, note #104 (game, screenshot): the strips at the shaft's foot (note #99, 16 wide) still cut the track off.
+  The mapper asked for a measuring tool rather than a guess: the asset browser's 2D plane has one now (a "measure"
+  tick, or Shift + drag: a rectangle with its size in map units and the texel it starts on; Esc clears it;
+  src/dms/assets.html). The strips stay at 16 until the mapper gives the width.
+- 2026-11-26, note #105 (game, screenshot): the 8-high step faces round the start closet's coffer (seen looking up from
+  the coffer) in the track turned on its side, its lines running along the edge: CACOTRKH (textures.txt: SUPPORT3
+  rotated 90, 128 x 64; map.py TRACK_TURNED). The engine's load check takes it. The lowered ceiling strip itself is
+  unchanged (SUPPORT3 as a flat). A textures change: H restarts the game. Unchecked in the game: which 8 rows of
+  the turned track show (offsety picks them).
+- 2026-11-26, note #106 (game): without the water the west side felt empty. The cliff's edge (railing, cap and all) now
+  comes in towards the west obelisks now and then (map.py CLIFF_EDGE: ten points between the pier's stretch and the
+  north wall, as far in as x -280, about 100 from the obelisks' bases at -176, so there's still room to walk), and
+  three dead trees stand on that side (CLIFF_TREES): a large brown tree (54) at either end, a grey burnt one (43) in
+  the middle ("tray tree" read as grey). Unchecked in the game: how the bends read, the railing round them.
+- 2026-11-26, note #107 (game, screenshot; measured by the mapper): the track strips at the shaft's foot 24 wide (were 16).
+  The shaft's blocks are 16 thick (x_out -16 and 80, were -8 and 72); the mouth's walls start from there; the
+  closet's two corner cuts end there too ((-24, 120) to (-16, 128), (80, 128) to (88, 120)); the bottom call
+  niche moved onto its wall again (window (-23.71, 206.43) to (-48.29, 226.91), sides (-5, -6)). Unchecked in the game.
+- 2026-11-26, note #108 (game, screenshot): the railing's cap (note #89) was streaked with grey on the new bends: MIDBARS3
+  used as a flat drew its bars across it. The cap's top, underside and edge are now CACORAIL (textures.txt: only
+  MIDBARS3's brown top rail, its rows 0-7, stacked into a 64 x 64 square), and the railing's bars carry on along the
+  bends (each stretch's x offset is its distance along the edge). A textures change: H restarts the game. Unchecked.
+- 2026-11-26, note #109 (game, screenshot): the two thin jambs of the way out at the shaft's foot (niche.side_w / side_e,
+  8 deep, between the cheeks and the shaft's blocks) in the door track (DOORTRAK, map.py JAMB_TRACK), not the
+  elevator's. The sill (track metal on top, STEPTOP faces) is unchanged. Unchecked in the game.
+- 2026-11-26, note #110 (game, screenshot): the top switch's wall like the car's other two walls: the tech wall (METAL4,
+  CLOSET_SKIN) either side of the switch (the cheeks' faces were the elevator track) and the track's strip (SUPPORT3,
+  16 high, pegged like the side walls' strip) along its foot, under the cheeks and the niche (it was STEPTOP, the
+  brown step face: notes #20, #22). The same face is the step up into the way out at the shaft's foot, so that step
+  shows the track's strip now too. The switch's own window (track-lined, note #24) is unchanged. Unchecked in the game.
+- 2026-11-26, note #111 (game, screenshot): a flickering, crossing pattern along the railing's inside: the bars' top rail
+  (the railing line's middle texture) and the cap's edge (the 3D floor's side, drawn on the same line) were in the
+  same place and fought. The bars are sunk 4 more (CLIFF_RAIL_SUNK 48), so their rail sits just under the cap; the
+  cap stays where it was (top 28 above the floor). The rail now reads as the cap's 4 over the bars' own 8. Claude's
+  reading of the cause, from the picture; unchecked in the game.
+- 2026-11-26, note #112 (game, screenshot): the back of the storage room is a wall of crowded boxes, no going back there:
+  the room now ends at their fronts (STORE_OUTLINE from (208, 300) round to (-201, 330)), and five boxes of their own
+  heights (56, 72, 80, 112, 128: none climbable) fill the space to the old back walls (STORE_BACK; one line between
+  neighbours, the old walls behind them). The two monsters that stood back there (a pinky, an imp) moved forward,
+  as did the other pinky (out of the boxes' way). Unchecked in the game.
+- 2026-11-26, note #113 (game): two tall red torches (46) flank the storage door on the inside (STORE_DOOR_TORCHES, 84
+  either side of its middle, 44 in). Unchecked in the game: the light they give the dark room.
+- 2026-11-26, note #114 (game, screenshot): the tech room's ceiling (BROWNGRN as a flat) has two stripes along the room;
+  they sat about 7 south of the door's middle (measured from the full-size screenshot: the far wall 128 wide over
+  about 690 pixels). ypanningceiling 7 (TECH_HALL_CEIL_PAN) should move them north onto it; the direction is
+  Claude's reading of the engine (a flat's v runs against world y), not seen: if they moved the wrong way, -7.
+- 2026-11-26, note #115 (game, screenshot): the way from the tech room into the station is an arch: 64 wide in the middle
+  of the end wall (it was a plain opening 128 wide), its top stepped up to the middle in columns 8 deep (72, 88, 96,
+  88, 72 high), then a passage 64 wide that widens to the station's 128 at its end. Either side of the arch a window
+  slit in the end wall (8 wide, 24 to 48 above the floor, so a zombie's shots at about 36 go through) onto a guard
+  post behind (64 x about 90), a zombieman (3004) in each facing the room. The link is 64 longer for them, so the
+  whole station is 64 further east (map.py ENTRY_*, STATION_ENTRY_DEEPER). The arch's 8-wide shoulders and the guard
+  posts are user_scenery; the movement check still reads the arch as 32 wide and warns that imps and pinkies can't
+  follow through it: wrong, it is 64 under at least 72. Unchecked in the game.
+- 2026-11-26, note #116 (game): half of the shotgunner room's six guards are zombiemen (3004), one of each kind: guard 2
+  (roused at the switch: the script wakes them by thing id, so it works for either), guard 4 (ordinary), guard 6
+  (deaf). The other three stay shotgunners, one of each kind (CISTERN_DOOR_ZOMBIES). Unchecked in the game.
+- 2026-11-26, note #117 (game, screenshot): from inside the storage room the door's face ran up the room's full 160 and
+  BIGDOOR6 repeated above it. A frame on the room's side now (store.door.frame: 8 deep, its top level with the
+  passage's ceiling, boards above, DOORTRAK sides, the room's rock over it), so the door shows the same height from
+  both sides, one count of its texture. Build #157 had the frame unclosed (its sides drawn the wrong way round) and
+  reached the game's copy for a minute; #158 is right. Unchecked in the game.
+- 2026-11-26, note #118 (game, screenshot): a beam of the hall's green light falling through the crack between the great
+  door's leaves: a wedge on the vestibule's floor (CRACK_BEAM: 12 wide at 60 in from the doorway, 56 wide at 176), in
+  three bands whose floors are lit 136, 112, 92 and tinted green (color_floor 0x9CFFB0, the floor only; no dynamic
+  light). The first try (build #159) started at 36 and cut through the swung leaves (their backs reach about 50 in):
+  validation errors, and it reached the game's copy for a minute; #160 is right. The movement check now warns that
+  monsters can't cross the beam's bands: wrong (they're floor, same heights as round them); its monster-fit flood
+  treats every narrow sector as a gap, even one level with its neighbours: worth fixing in movement.py.
+  Unchecked in the game.
+- 2026-11-26, note #119 (game, screenshot): the cap's top was still striped: CACORAIL repeated all 8 of the rail's rows,
+  and its darker rows 5-7 read as diagonal stripes on the bends. It repeats only the top 4 (the plain brown) every 4
+  now: one solid colour. A textures change: H restarts the game. Unchecked in the game.
+- 2026-11-26, note #120 (game, screenshot): sent down from the top, the lift left a 16 step at the bottom (the niche's
+  floor, 16 up, went down 256 with the car: Floor_LowerByValue); sent from the bottom it didn't (Floor_MoveToValue to
+  -256). The top switch is Floor_MoveToValue to -256 now too, so both end flush. zscript.zs found the top switch by
+  its special: it now finds it as the switch in front of the shutter (IsShutter). Compiles; H restarts the game.
+  Unchecked in the game: the ride from the top, the switches locking each other, the shutter, the track swap.
+- 2026-11-26, note #121 (game): the side passage lighter by the storage door so the door can be seen: its 5th piece 96
+  (was 56), the 4th and 6th 72 (SIDE_LIGHT_AT). Also in that build: the movement check knows Floor_MoveToValue (37)
+  now (src/dms/movement.py: to arg2, negative if arg3), which note #120's top switch needed (without it only 5
+  sectors read as reachable). Unchecked in the game.
+- 2026-11-26, note #122 (game, screenshot): the storage door's frame on the room side (note #117) is the door's wooden step
+  too: 4 up (WICKET_STEP), boards, a wood riser facing the room; it was level with the room's floor. Unchecked.
+- 2026-11-26, note #123 (game, screenshot): the cistern's walls are STARG3, massive stone sewer works, in place of the
+  passages' mossy rock (A-MOSRK2): every wall surface seen from the cistern, its outcrops, their torch hollows and the
+  outflow channel (CISTERN_WALL, a pass after cistern()). Floors and ceilings unchanged; the stairs down keep the rock.
+  Unchecked in the game: how STARG3 sits on the outcrops' slanted flanks.
+- 2026-11-26, note #124 (game, screenshot): the stripes still weren't centred. Measured properly this time (the room is
+  256 wide, not 128 as note #114 assumed): BROWNGRN as a flat makes two bands (each a pair of ridges 32 apart, 128
+  between the bands), and at ypanningceiling 7 they sat 36-67 and 162-196 from the south wall: 13 short of
+  symmetric about the room's middle (the door's). Comparing with note #114's screenshot, 7 had moved them 7 north,
+  so the sign was right: ypanningceiling 20 now (bands about 64 either side of the middle). Unchecked in the game.
+- 2026-11-26, note #125 (game, screenshot; "did you forget?"): note #115's arch was too narrow (64) and its slits upright.
+  The arch is 128 wide now (the passage behind it the station's full width all the way), stepped 88, 104, 112 high;
+  the slits horizontal, 40 wide and 16 high at eye height (28 to 44: the zombies' shots pass), onto the guard posts,
+  which moved out beside the wider passage (u 72-136). Unchecked in the game.
+- 2026-11-26, note #126 (game, screenshot): the station's catwalks were lower than the doors' frames (88-96 against 128): now
+  136-144 (STATION_CATWALK), and both back stairways climb to them in 8 steps of 18, 24 deep (they were 6 of 16, 32
+  deep), their landings and the doors onto the catwalk at 144. Unchecked in the game: the steeper stairs.
+- 2026-11-26, note #128 (game): STARG3 in the cistern taken back: its walls are the mossy rock again (CISTERN_WALL is
+  PASSAGE_TEXTURE, so note #123's pass changes nothing; kept so a different stone is one word away).
+- 2026-11-26, note #127 (game; the route asked of the mapper first: the box room near the station, a switch behind
+  the box wall): west off the station's north corridor's end, a short hall and a door (door_boxes, monsters too) into
+  a box room (384 x 384, BROWN96, six crates 48-96 high: STATION_BOXES). From the box room's north wall a long back
+  tunnel (64 wide, 96 high, BROWN96, light 96): north, three steps up to the storage room's level (52), then west
+  above everything (y 3088-3152) and down to a small chamber behind the storage room's box wall (store.backway,
+  behind STORE_BACK's middle box). A wooden switch on the chamber's side wall sinks that box to the floor
+  (Floor_LowerToLowest, tag 12): the shortcut into the storage room, opened from behind only. Builds #170 had the
+  tunnel not meeting the box room (the raster drew the room's north wall whole: the mouth is now a cell of its own,
+  boxes_exit) and reached the game's copy for a minute; #171 is right. Everything reachable. Unchecked in the game.
+- 2026-11-26, note #129 (game): each guard post has a door at its back (the end away from the slit) onto the passage into
+  the station, in the 8 of rock between them: 48 wide, Door_Raise (tags 13, 14), players and monsters, so the
+  zombies can come after the player (ENTRY_GUARD_DOOR). The posts are no longer scenery. The movement check warns that
+  pinkies can't get through those 48-wide doors: true, and only into the posts (dead ends). Unchecked in the game.
+- 2026-11-26, note #130 (game): the light eases from the tech room (128) into the station (176): the arch's columns 144,
+  the passage behind them 160. Unchecked in the game.
+- 2026-11-26, note #131 (game, screenshot): a frame where the station's south service passage (STARG3) opens into the
+  storage room (BROWN96): a cell 16 deep in the track's metal (STATION_FRAME), posts 8 wide either side (80 clear),
+  a lintel at 112. Unchecked in the game.
+- 2026-11-26, note #132 (game, screenshot): the shotgunner room wider: its north side out 64 (CISTERN_DOOR_OUTLINE
+  (-224, 270), (-240, 100)), its south-east corner out 48 ((262, 280); the rest of the south side can't move: the
+  cistern's outflow channel is just beyond), and four more boxes, a mix: three wooden grotto boxes (WOOD1 / FLAT5_2:
+  a pair on the north side, 48 and 32 high, one by the far wall) and a base container (CRATE3) in front of the door,
+  cover from the guards. Laid out and checked by script against the walls and the guards. Unchecked in the game.
+- 2026-11-26, note #133 (game, screenshot): a seam at the top of the cistern stairs, where the main passage's greyer rock
+  (A-MOSROK, note #133 of 11-24) met the green rock. The grey rock now carries on: every wall surface of the stairs
+  down, the cistern (its outcrops, hollows, outflow channel) and the shotgunner room that was the green rock
+  (CISTERN_WALL, the pass after cistern() widened to every "cistern..." sector). Floors and ceilings unchanged; the
+  vestibule and the side passage keep the green rock. Unchecked in the game.
+- 2026-11-26, note #134 (game): the elevator car's floor a little recessed, 4 below the closet's (CAR_RECESS), in AQF072
+  (CAR_FLOOR; it had the techbase floor). The track strip shows on the 4 from the car's side. It still ends level
+  with the floor below (Floor_MoveToValue). Unchecked in the game.
+- 2026-11-26, note #135 (game, screenshot): the big stone above and below the bottom call switch's niche didn't line up with
+  the wall beside it: the niche's mouth line is offset by its distance along the wall (as hall_walls does for the
+  hall's walls) and pegged like a plain wall (dontpegtop, dontpegbottom), and the wall past the niche
+  (mouth.wall_w2) is offset too. Unchecked in the game: if it's still off by half, the offsets want halving (the
+  stone is drawn at twice its size).
+- 2026-11-26, crash after note #135: UZDoom stopped loading the map ("Integer value expected for key 'Offsetx'"): a
+  sidedef's own offsetx must be a whole number (the per-part offsetx_top etc. may be fractions); note #135 wrote
+  distances to 2 decimals. Rounded (build #179), and the validator now reports a fractional sidedef offsetx/offsety
+  as an error (src/dms/validate.py).
+- 2026-11-26, note #136 (game, screenshot): the back tunnel as a narrow access tunnel: 72 high (was 96), rusty brown floor
+  and ceiling (SLIME16, SLIME15; it had FLAT5_4 and CEIL5_1), and a candle (34) in a small niche (16 wide, 8 deep)
+  in the long stretch's north wall every 320, their feeble glow UZDoom's own (BACK_TUNNEL_*). Unchecked in the game.
+- 2026-11-26, note #137 (game, screenshot): the box room's door an ordinary door, 72 high in CACODOOR (the tech door's), and
+  the short hall to it 96 high: they had the station's big 128 (door() takes a height and texture now).
+- 2026-11-26, note #138 (game, screenshot): the tech door the same from inside the tech room as from the shotgunner room:
+  the 32 of wall either side of it are posts of the track's metal, each with an upright red lamp set into it (a
+  channel 8 deep, the red tube full bright, a pulsing red light in front: post_lamp, now mirrorable with back=True),
+  and the frame's metal (SUPPORT3) over the door. Unchecked in the game.
+- 2026-11-26, note #139 (game): the glimpse over the shortcut box from the storage room should hint at another place: the
+  chamber behind it (store.backway) is the base's now: METAL4 walls, the techbase floor and ceiling, a grey switch
+  (SW1GRAY; it was wood and grotto rock), while the wall over the box, seen from the storage room, stays the grotto's
+  rock (its chamber side is METAL4). The back tunnel keeps its brown walls and rusty flats (note #136). Unchecked.
+- 2026-11-26, note #140 (game, screenshot): the guard posts' doors (note #129) were too tall (the station's 128) and opened
+  onto the passage under the arch. Now each is an ordinary door (72 high, CACODOOR, 48 wide) in the post's back wall,
+  reached from the station's service passage behind it by a short way (station.guard_n.way / _s) through a cell of
+  the raster's own (service_guard_n / _s); nothing opens onto the arch's passage. Unchecked in the game.
+- 2026-11-26, note #141 (game, screenshot): the back tunnel's three steps (24 deep, under a 72 ceiling) couldn't be climbed:
+  the player, 32 across, stood on two at once and the lower one's ceiling was too low over the higher's floor. The
+  way north and the corner are level now, and the rise (52) is in the long stretch: four steps of about 10, each 64
+  long, just west of the corner (BACK_TUNNEL_STEPS); the candle niches start west of them. Unchecked in the game.
+- 2026-11-26, note #142 (game, screenshot): the shortcut box sinks to an 8 step above the floor, not flush, so its wood
+  still has a face (Floor_LowerByValue by its height less STORE_SHORTCUT_STEP; it was Floor_LowerToLowest). Unchecked.
+- 2026-11-26, note #143 (game): a prize on top of the shortcut box: a box of bullets (2048), a box of shells (2049) and a
+  green armour (2018) (STORE_SHORTCUT_PRIZE). At 56 up they can't be touched from the floor (the player is 56 tall);
+  they come down with the box when it sinks. Unchecked in the game.
+- 2026-11-26, note #144 (game, screenshot): the short hall from the station's north corridor to the box room's door is as
+  low as the door (76: the door opens to 4 under its lowest neighbour, so 72), a side route you duck into (it was 96).
+- 2026-11-26, note #145 (game): two zombiemen and a shotgunner stand guard in the station's box room, among the crates,
+  facing its door (STATION_BOX_GUARDS; not deaf). Unchecked in the game.
+- 2026-11-26, note #146 (game): the back tunnel's climb as long steps, one halfway between each pair of candles: a candle,
+  a step up, the next candle, ... evenly (about 10 each) until the storage room's level past the last candle; the way
+  north and the corner level (it was four 64-long steps by the corner, note #141). Unchecked in the game.
+- 2026-11-26, note #147 (game, screenshot): the shortcut's switch (SW1GRAY on the chamber's 96-high wall) hung from the
+  ceiling, so its plate sank into the floor: the line is lower unpegged now, the texture standing on the floor and the
+  plate at chest height.
+- 2026-11-26, note #148 (game, screenshot): "the boxes disappear when the shortcut lowers, the armour stays": not a fault,
+  Claude's reading: the mapper stood at the box's back as it sank, so the bullets and shells, within touching reach
+  (they sit 22-38 from the box's back), were picked up as they came down (the shells read 50/50 in the shot); the
+  green armour stays because it isn't taken while armour is at 100% or more (106% in the shot). Nothing changed.
+- 2026-11-26, note #149 (game, screenshot): the shortcut's switch set into a niche like the elevator's: a 32 x 32 window
+  (24 up) of SW1GRAY's plate, track metal round it, and in front of the switch a shutter (tag 15) whose ceiling
+  zscript.zs brings down once the switch is used (CacobeliskPassageSecret: on Floor_LowerByValue on tag 12), the panel
+  (AQF074, the bottom niche's) riding down over it: one use, plainly. Compiles; H restarts the game. Unchecked.
+- 2026-11-26, notes #150, #151 (game, screenshots; #148's reading was wrong): the bullets and shells on the shortcut box
+  stayed up in the air when it sank. A thing rests on the highest floor under its square (radius 20 each way, square
+  to the map, not the room, which is turned: it reaches 28 at a slant), and theirs reached over the taller boxes
+  either side (112, 128), which held them up. They sit 31 in from the box's sides now (STORE_SHORTCUT_PRIZE); the
+  armour was already clear. Lesson: keep pickups on a mover a radius and a half from any higher neighbour.
+- 2026-11-26, note #152 (game, screenshot): the storage room's door was set back in a track-lined frame on the room's side
+  but flush with the corridor's wall: now a recess 8 deep on the corridor's side too (store.door.recess: DOORTRAK
+  sides, the wooden step, a wood riser), the door 8 further in, the room's frame behind it as before. Unchecked.

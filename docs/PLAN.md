@@ -361,7 +361,25 @@ Still to build later:
 
 ## 9. Where we left off
 
-*Updated 2026-11-25. A new session starts here.*
+*Updated 2026-11-26. A new session starts here.*
+
+**2026-11-26: released v0.22.0**, after a long session on Cacobelisk (in-game notes #85-#152 of 11-25/26, and chat;
+`maps/cacobelisk/notes.md` has every one). The map gained: the west gutter gone and the cliff edge wandering in, with
+dead trees and a railing with a real top; a secret wall with a chaingun in the main passage; a storage room off the
+side passage (a wall of boxes at its back, deaf monsters, pickups on boxes) and a long back tunnel to it from a new box
+room in the station, ending in a switch that sinks a box as a shortcut; the station's entrance as an arch with window
+slits onto zombie guard posts; catwalks above the doors; techbase floors and ceilings tried in turn (now FLOOR0_3,
+BROWNGRN); many texture and alignment fixes. **Open:** the switch obelisk's steps 2 and 3, an exit, the station's
+machines and monsters (as before).
+*Tools:* the asset browser's measuring tool; the validator catches fractional sidedef offsets (one crashed the game);
+the movement check knows Floor_MoveToValue. *Lessons:* a thing rests on the highest floor under its square (radius
+each way, square to the map): pickups on a moving box near a taller one stay up in the air; keep a radius and a half
+clear. Several builds reached the game's copy broken for a minute (unclosed sectors from lines drawn the wrong way
+round, a polygon cutting through a door leaf): use `_edges` for every new outline, it turns them round. Writing
+`map.py` failed with "Invalid argument" about ten times (fine on retry): **dms should retry its own file writes**.
+**Worth building next:** that retry; the movement check treating sectors level with their neighbours as open floor
+(the crack's light beam and the arch's shoulders read as narrow gaps); `dms validate` (alone) doesn't know a map's
+own textures, though `dms build`'s validation does.
 
 **2026-11-25, end of session: released v0.21.0** (`main`, tag `v0.21.0`; `docs/CHANGELOG.md`, with the whole history
 mapped onto versions). The version scheme is in AGENTS.md ("Versions and releases").

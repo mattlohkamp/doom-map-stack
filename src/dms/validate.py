@@ -112,6 +112,12 @@ def validate(tm: Textmap, catalog: Catalog | None = None) -> list[Issue]:
         if not isinstance(v.get("x"), (int, float)) or not isinstance(v.get("y"), (int, float)):
             err("vertex without x/y", _name("vertex", i, v))
     used_verts, used_sides = set(), set()
+    # A sidedef's own offsets must be whole numbers: UZDoom stops on a fraction ("Integer value expected for key
+    # 'Offsetx'"), though the per-part ones (offsetx_top ...) may be fractions (cacobelisk, 2026-11-26).
+    for i, sd in enumerate(sides):
+        for key in ("offsetx", "offsety"):
+            if isinstance(sd.get(key), float):
+                err(f"{key} = {sd.get(key)} is a fraction: UZDoom needs a whole number there", _name("sidedef", i, sd))
 
     def mid(ld):
         a, b = ld.get("v1"), ld.get("v2")

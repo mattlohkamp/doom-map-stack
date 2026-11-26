@@ -3,6 +3,16 @@
 The tool's versions: `major.minor.fix`, plus `+docN` for a commit that changes only documents (AGENTS.md has the
 rules). Below 1.0 while the tool is used only here. Releases are git tags (`v0.21.0`).
 
+## v0.22.0 (2026-11-26): a measuring tool, sturdier checks
+
+- **Asset browser**: a measuring tool on the 2D audition plane ("measure", or Shift + drag): a rectangle's size in
+  map units and the texel it starts on; Esc clears it.
+- **Validator**: a sidedef's own `offsetx`/`offsety` must be a whole number (UZDoom stops loading the map on a
+  fraction); reported as an error.
+- **Movement check**: knows Floor_MoveToValue (37): to arg2, negative if arg3.
+- Test-play music on by default (`config/dms.toml` `[play] music = true`).
+- Cacobelisk: notes #85-#152 (see its notes.md); themes/techbase's floor and ceiling (FLOOR0_3, BROWNGRN).
+
 ## v0.21.0 (2026-11-25): projects, phase 1
 
 - **Projects**: maps can live in a project folder anywhere (`dms-project.toml`, `maps/`, `themes/`, a `build/` with

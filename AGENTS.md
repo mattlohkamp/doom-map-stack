@@ -304,7 +304,8 @@ Map commands take a map name (`maps/<name>` in the current project) or a path to
 - **Asset browser** (`/assets` on the board's server, each page links to the other in a thin banner at the top, the place for further tools' pages too; dms opens only the board, the mapper clicks over; `src/dms/resources.py`,
   `src/dms/assets.html`; plan and status: `docs/asset-browser.md`): every texture, flat, decal, item, monster,
   decoration, sound and song the IWAD and `uzdoom.pk3` provide, as a list or grid with search, filter
-  chips and sort; textures auditioned side by side on a 2D plane and on 3D boxes (offsets and scale as UDMF);
+  chips and sort; textures auditioned side by side on a 2D plane and on 3D boxes (offsets and scale as UDMF), with a measuring
+  tool on the plane ("measure", or Shift + drag: a rectangle's size in map units and the texel it starts on; Esc clears);
   sounds with the engine's controls; songs played by our own browser synth (`src/dms/assets-synth.js`) through UZDoom's soundfont.
   Favourites (starred by the mapper) are kept in `build/asset-favorites.json`: look there when asked to use
   "one of my favourites". Rule: the browser offers only settings the game itself can apply (no tempo or pitch for music: UZDoom plays songs as they are).
@@ -340,13 +341,16 @@ Map commands take a map name (`maps/<name>` in the current project) or a path to
   (`validate-edit.txt`). `dms build` runs the same checks and exits non-zero on errors, but still packs the WAD so the
   map can be opened to look at the problem. Checks: references, zero-length and crossing lines, missing front sides,
   one-sided walls without a middle texture, unclosed/orphan sectors, light 0-255, ceiling below floor, textures and
-  flats against the catalog (a wall texture is accepted as a flat, and a flat as a wall texture: UZDoom draws both), player 1 start, things outside every sector or on no skill level, tagged specials.
+  flats against the catalog (a wall texture is accepted as a flat, and a flat as a wall texture: UZDoom draws both), player 1 start, things outside every sector or on no skill level, tagged specials,
+  a sidedef's own `offsetx`/`offsety` that isn't a whole number (UZDoom stops loading the map on one; the per-part
+  `offsetx_top` etc. may be fractions).
 - **Movement check** (`src/dms/movement.py`): every build (and `dms render`) works out which sectors the player can
   reach from the player 1 start and writes `build/<map>/movement.txt`. Rules: step up at most 24, any drop (one-way
   drops listed), 56 headroom, gaps at least 32 wide (collinear lines end to end count as one gap); blocking lines are
   walls. Doors (11-13; tag 0 = the sector behind) open to the lowest neighbouring ceiling - 4, locked doors (13,
   lock in arg3) need a reachable key, lifts/floor/ceiling movers span their neighbours' heights
-  (Floor_LowerByValue/RaiseByValue, 20/23, also their own arg2, e.g. a platform down a shaft); a special counts
+  (Floor_LowerByValue/RaiseByValue, 20/23, also their own arg2, e.g. a platform down a shaft; Floor_MoveToValue, 37,
+  its arg2, negative if arg3); a special counts
   once its line is reachable (front side for use/shoot, either side for walk-over; a switch at the back of a
   niche too small to enter counts from the sector in front of the niche, also through one more thin
   sector, e.g. a shutter in front of the switch). Scenery (no height at all, or

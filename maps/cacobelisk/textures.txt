@@ -143,3 +143,36 @@ WallTexture "CACOSKY2", 512, 128
 // (The ordinary obelisks' star, CACOSTAR, was drawn here from 191 small patches of MARBFAC2 (note #120); it is a
 // picture now: textures/CACOSTAR.png, from the mapper's own artwork. CACOFACE, the eye in the satyr's stone, is
 // a picture too: textures/CACOFACE.png.)
+
+// Note #105 (2026-11-26): the elevator track turned on its side, its lines running along: for the 8-high step faces
+// round the start closet's coffer (map.py TRACK_TURNED). SUPPORT3 is 64 x 128, so turned it is 128 x 64.
+WallTexture "CACOTRKH", 128, 64
+{
+	Patch "SUPPORT3", 0, 0 { Rotate 90 }
+}
+
+// Note #108 (2026-11-26): the cliff railing's cap: MIDBARS3's top rail (its rows 0-7, the brown bar) and nothing else,
+// stacked eight times into a 64 x 64 square, for the cap's top, underside and edge (MIDBARS3 itself, used as a
+// flat, drew its bars as grey streaks across the cap, worst on the bends). Each patch draws the rail in its own
+// 8 rows and covers the bars the one before it left there; drawn top to bottom.
+// Note #119: still striped on the cap's top (the rail's darker rows 5-7, every 8, read as diagonal stripes on the
+// bends): now only its top 4 rows (the plain brown), every 4, so it's one solid colour.
+WallTexture "CACORAIL", 64, 64
+{
+	Patch "MIDBARS3", 0, 0
+	Patch "MIDBARS3", 0, 4
+	Patch "MIDBARS3", 0, 8
+	Patch "MIDBARS3", 0, 12
+	Patch "MIDBARS3", 0, 16
+	Patch "MIDBARS3", 0, 20
+	Patch "MIDBARS3", 0, 24
+	Patch "MIDBARS3", 0, 28
+	Patch "MIDBARS3", 0, 32
+	Patch "MIDBARS3", 0, 36
+	Patch "MIDBARS3", 0, 40
+	Patch "MIDBARS3", 0, 44
+	Patch "MIDBARS3", 0, 48
+	Patch "MIDBARS3", 0, 52
+	Patch "MIDBARS3", 0, 56
+	Patch "MIDBARS3", 0, 60
+}

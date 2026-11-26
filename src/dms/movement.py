@@ -46,6 +46,7 @@ DOOR_OPEN = 11                            # opens and stays open
 LIFTS = {60, 61, 62, 63, 64, 65, 206, 207}  # Plat_*
 FLOORS = set(range(20, 39))              # Floor_* and stairs (raise/lower/move)
 FLOOR_LOWER_BY_VALUE, FLOOR_RAISE_BY_VALUE = 20, 23   # move by arg2, not to a neighbour's height
+FLOOR_MOVE_TO_VALUE = 37                  # to arg2 (negative if arg3), whatever the neighbours' heights
 CEILINGS = {40, 41, 42, 43, 44, 45, 69, 97, 104, 168, 169}
 EXITS = {74: "exit (to a map)", 75: "exit (to a map)", 243: "exit", 244: "secret exit"}
 BLOCKING_FLAGS = ("blocking", "blockplayers", "blockeverything")
@@ -316,6 +317,9 @@ def check(tm: Textmap) -> Result:
                         lo = min(lo, floor[s].lo - ld.get("arg2", 0))
                     elif sp == FLOOR_RAISE_BY_VALUE:
                         hi = max(hi, floor[s].hi + ld.get("arg2", 0))
+                    elif sp == FLOOR_MOVE_TO_VALUE:              # cacobelisk's lift, 2026-11-26
+                        to = -ld.get("arg2", 0) if ld.get("arg3", 0) else ld.get("arg2", 0)
+                        lo, hi = min(lo, to), max(hi, to)
                     changed |= floor[s].widen(lo, hi)
                 elif sp in CEILINGS:
                     changed |= ceil[s].widen(min(ceil[n].lo for n in nb), max(ceil[n].hi for n in nb))

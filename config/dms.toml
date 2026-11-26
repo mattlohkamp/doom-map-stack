@@ -4,7 +4,7 @@
 [play]
 # Music when test-playing (F9 in the editor, and later `dms play`). false = UZDoom runs with
 # -nomusic for that launch only; sound effects stay on and nothing is saved in UZDoom's settings.
-music = false
+music = true
 # Test-play in a window (true) or full screen (false); set on every launch. In a window, UZDoom
 # remembers where it was, so it reopens on the same monitor.
 windowed = true

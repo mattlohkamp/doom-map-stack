@@ -465,6 +465,7 @@ function renderControls(el) {
     (lightOut = h("span", { class: "dim" }, audit.light)),
     h("label", {}, "background", h("select", { onchange: e => { audit.bg = e.target.value; redraw(); } }, ...["black", "grey", "checker"].map(b => h("option", { selected: audit.bg === b }, b)))),
     auditionMode === "plan" ? h("label", {}, h("input", { type: "checkbox", checked: audit.guides, onchange: e => { audit.guides = e.target.checked; redraw(); } }), "player + door for scale") : null,
+    auditionMode === "plan" ? h("label", { title: "drag on the plane to measure a rectangle in map units (or hold Shift while dragging); Esc clears it" }, h("input", { type: "checkbox", checked: !!audit.measure, onchange: e => { audit.measure = e.target.checked; save(); } }), "measure") : null,
     auditionMode === "cube" ? h("label", {}, h("input", { type: "checkbox", checked: audit.spin, onchange: e => { audit.spin = e.target.checked; save(); } }), "turn") : null,
     auditionMode === "cube" ? h("label", { title: "one box, a different picked texture on each face" }, h("input", { type: "checkbox", checked: audit.perface, onchange: e => { audit.perface = e.target.checked; save(); renderSide(); } }), "one box, a texture per face") : null,
     h("label", { title: "a change to one applies to all" }, h("input", { type: "checkbox", checked: audit.link, onchange: e => { audit.link = e.target.checked; save(); } }), "link settings"),
@@ -540,13 +541,17 @@ function img(url, then) {
 let plan = { cx: 0, cy: 0, z: 2 }, canvas = null;
 function planView(stage) {
   canvas = h("canvas");
-  stage.append(canvas, h("div", { class: "hint" }, "wheel: zoom · drag: pan · double-click: fit"));
+  stage.append(canvas, h("div", { class: "hint" }, "wheel: zoom · drag: pan · shift+drag (or \"measure\"): measure · Esc: clear · double-click: fit"));
   plan.z = audit.zoom || 2;
   const ro = new ResizeObserver(drawPlan); ro.observe(canvas);
   let drag = null;
   const world = e => { const r = canvas.getBoundingClientRect(); return [plan.cx + (e.clientX - r.left - r.width / 2) / plan.z, plan.cy + (e.clientY - r.top - r.height / 2) / plan.z]; };
   canvas.onmousedown = e => {
     const [wx, wy] = world(e), d = doorRect();
+    if (e.shiftKey || audit.measure) {     // note #104: measure a rectangle, in map units (1 = a texel at scale 1)
+      measure = { x0: Math.round(wx), y0: Math.round(wy), x1: Math.round(wx), y1: Math.round(wy) };
+      drag = { measure: true }; drawPlan(); return;
+    }
     if (d && wx >= d.x0 && wx <= d.x1 && wy >= d.y0 && wy <= d.y1)   // grab the door, not the view
       drag = { door: true, x: e.clientX, y: e.clientY, dx: audit.door.x, dy: audit.door.y };
     else drag = { x: e.clientX, y: e.clientY, cx: plan.cx, cy: plan.cy };
@@ -556,6 +561,10 @@ function planView(stage) {
       const [wx, wy] = world(e), d = doorRect();
       canvas.style.cursor = d && wx >= d.x0 && wx <= d.x1 && wy >= d.y0 && wy <= d.y1 ? "move" : "";
       return;
+    }
+    if (drag.measure) {
+      const [wx, wy] = world(e);
+      measure.x1 = Math.round(wx); measure.y1 = Math.round(wy); drawPlan(); return;
     }
     if (drag.door) {
       const snap = v => Math.round(v / 8) * 8;   // the editor's default grid
@@ -575,6 +584,9 @@ function planView(stage) {
   canvas.ondblclick = () => fitPlan(true);
   fitPlan(false);
 }
+// Note #104 (2026-11-26): the measuring rectangle (map units), until Esc or the next one.
+let measure = null;
+window.addEventListener("keydown", e => { if (e.key === "Escape" && measure) { measure = null; drawPlan(); } });
 // The door overlay's settings; x is the door's left edge, y its bottom (0 = the strips' floor line).
 audit.door ||= { on: false, tex: "BIGDOOR2", w: 0, h: 0, x: null, y: 0, track: true };
 async function ensureTextures() {
@@ -661,6 +673,25 @@ function drawPlan() {
     ctx.fillStyle = "#ffcf5a"; ctx.font = "11px system-ui"; ctx.textBaseline = "bottom";
     ctx.shadowColor = "#000"; ctx.shadowBlur = 3;
     ctx.fillText(`${audit.door.tex} ${d.x1 - d.x0}x${d.y1 - d.y0} (drag me)`, toX(d.x0), toY(d.y0) - 2); ctx.shadowBlur = 0;
+  }
+  // Note #104: the measuring rectangle: its size in map units, and where it starts in the texture under it
+  // (the texel it starts on, offsets and scale applied: what offsetx / offsety would put there).
+  if (measure) {
+    const mx0 = Math.min(measure.x0, measure.x1), mx1 = Math.max(measure.x0, measure.x1);
+    const my0 = Math.min(measure.y0, measure.y1), my1 = Math.max(measure.y0, measure.y1);
+    ctx.fillStyle = "#5ad1ff22"; ctx.fillRect(toX(mx0), toY(my0), (mx1 - mx0) * z, (my1 - my0) * z);
+    ctx.strokeStyle = "#5ad1ff"; ctx.lineWidth = 1; ctx.setLineDash([]);
+    ctx.strokeRect(toX(mx0) + 0.5, toY(my0) + 0.5, Math.max(0, (mx1 - mx0) * z - 1), Math.max(0, (my1 - my0) * z - 1));
+    let where = "";
+    const i = Math.floor(mx0 / sw), pk = picks[i];
+    if (pk && my0 >= -sh && my0 <= 0) {
+      const mod = (v, n) => ((v % n) + n) % n;
+      const tx = mod(Math.round((mx0 - i * sw) * pk.sx + pk.ox), pk.width), ty = mod(Math.round((my0 + sh) * pk.sy + pk.oy), pk.height);
+      where = `  from ${pk.name} texel ${tx}, ${ty}`;
+    }
+    ctx.fillStyle = "#5ad1ff"; ctx.font = "bold 12px system-ui"; ctx.textBaseline = "bottom";
+    ctx.shadowColor = "#000"; ctx.shadowBlur = 3;
+    ctx.fillText(`${mx1 - mx0} x ${my1 - my0}${where}`, toX(mx0), toY(my0) - 3); ctx.shadowBlur = 0;
   }
   ctx.fillStyle = "#fff8"; ctx.font = "11px system-ui"; ctx.textBaseline = "top"; ctx.fillText(`zoom ${z.toFixed(2)}x`, W - 80, 6);
 }
