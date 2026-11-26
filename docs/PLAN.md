@@ -363,6 +363,14 @@ Still to build later:
 
 *Updated 2026-11-25. A new session starts here.*
 
+**2026-11-25, end of session: released v0.21.0** (`main`, tag `v0.21.0`; `docs/CHANGELOG.md`, with the whole history
+mapped onto versions). The version scheme is in AGENTS.md ("Versions and releases").
+**Next, in order:** `docs/projects.md` phase 2 (layered settings: `user\` in the tool repo, project settings on top),
+phase 3 (`dms project init`, Start Session choosing a project, Claude started in the project folder with a generated
+`CLAUDE.md` and hooks, AGENTS.md split into tool rules and `docs/mapping.md`), phase 4 (Cacobelisk split out with
+its history: ask the mapper where its repo lives), then the themes viewer's next steps (two themes side by side
+with a seam, a light-source glow). Cacobelisk's open questions are unchanged (its notes.md, and below).
+
 **2026-11-25: themes** (the mapper's idea: a palette of textures that belong together, to keep areas
 consistent; `docs/themes.md` has the plan, five milestones). Milestone 1 built: `themes/<name>/theme.toml`
 (textures by role, things, decals, atmosphere; shared by every map), `dms themes` / `show` / `check` /

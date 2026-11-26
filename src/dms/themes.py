@@ -253,6 +253,13 @@ def for_page(root: Path) -> dict:
                 "masked": bool(t.get("masked")), "custom": t.get("custom"),
                 "anim": [a for a in anim if a] if anim and all(anim) else None}
 
+    def thing(ty: int) -> dict:
+        """A thing type with its picture and, if it moves when idle (a torch's flame), its Spawn state's
+        frames: [[url, tics]...] (resources.py works them out for the asset browser)."""
+        t = things.get(ty, {})
+        anim = [[url(f"sprite/{lump}.png"), tics] for lump, tics in (t.get("spawn") or [])]
+        return {"type": ty, "title": t.get("title", f"thing {ty}"), "url": url(t.get("url")), "anim": anim or None}
+
     out = []
     walls, flats = set(pools["textures"]), set(pools["flats"])
     problems = {}
@@ -261,9 +268,7 @@ def for_page(root: Path) -> dict:
         out.append({
             "name": theme.name, "title": theme.title, "description": theme.description,
             "textures": {role: [picture(role, n) for n in names] for role, names in theme.textures.items()},
-            "things": {role: [{"type": ty, "title": things.get(ty, {}).get("title", f"thing {ty}"),
-                               "url": url(things.get(ty, {}).get("url"))} for ty in types]
-                       for role, types in theme.things.items()},
+            "things": {role: [thing(ty) for ty in types] for role, types in theme.things.items()},
             "decals": theme.decals, "atmosphere": theme.atmosphere})
     return {"themes": out, "problems": problems, "roles": ROLES, "thing_roles": THING_ROLES}
 

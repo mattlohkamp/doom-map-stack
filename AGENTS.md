@@ -444,6 +444,19 @@ Move each one up into the list above as it lands.
 - **Text alongside images:** every image output (render, tour) also has a text report.
 - **Updating a tool** is a deliberate change to `config\tools.toml` (version + hash) that shows up in git.
 
+## Versions and releases
+
+The tool is versioned `major.minor.fix`, plus `+docN` (agreed with the mapper 2026-11-25):
+- **minor**: new functionality, or a change in how something works (below 1.0, breaking changes are minor too);
+- **fix**: only corrections;
+- **`+docN`**: only documents changed (no code, no behaviour, no fix); numbered from 1 after each release
+  (`0.21.0+doc1`, `+doc2`), reset by the next one. Map-only commits count as `+doc` while maps share this repo.
+- **major** stays 0 until the tool is meant for people outside this repo.
+
+A release: the version in `src/pyproject.toml` and `src/dms/__init__.py` (then `uv lock`, so `--locked` runs
+still work), an entry in `docs/CHANGELOG.md`, a commit, and an annotated tag `vX.Y.Z` pushed with `main`.
+`dms --version` prints it.
+
 ## Several maps at once
 
 - **Named by name:** maps are identified by a name (`light-test2`), never by slot.

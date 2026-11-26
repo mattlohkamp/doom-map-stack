@@ -1,7 +1,8 @@
 # Projects: maps outside the tool (plan, building)
 
 *Planned 2026-11-25 with the mapper. Status: phase 1 built (project core, `--project`, build output and saves
-in the project; tried on a scratch project from outside and from inside its folder); phase 2 next.*
+in the project; tried on a scratch project from outside and from inside its folder), released in v0.21.0;
+phase 2 next.*
 
 Until now the tool (doom-map-stack) and the maps it builds (hello-room, Cacobelisk) share one repo, so
 one history mixes tool releases with map work, and a map can't be kept, shared or versioned on its

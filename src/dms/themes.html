@@ -278,6 +278,21 @@ const CHECKER = (() => {
   return { gl: t, w: 64, h: 64, ready: true };
 })();
 
+function spriteTexture(thing) {
+  // A thing's picture now: its idle (Spawn) frames in turn, each for its tics at 35 a second, as the game
+  // shows them; the still picture until a frame has loaded (all are asked for when the room is built).
+  const still = texture(thing.url);
+  const frames = thing.anim;
+  if (!frames || frames.length < 2) return still;
+  const total = frames.reduce((s, f) => s + Math.max(1, f[1]), 0);
+  let tic = Math.floor(performance.now() / 1000 * 35) % total;
+  for (const [url, tics] of frames) {
+    tic -= Math.max(1, tics);
+    if (tic < 0) { const t = texture(url); return t.ready ? t : still; }
+  }
+  return still;
+}
+
 function frameOf(p) {
   // The GL texture for a picture now (animated ones step every 8 tics, as Doom's do).
   if (!p || p.missing || !p.url) return CHECKER;
@@ -435,6 +450,7 @@ function build() {
       if (t.url && i < (spots[role] || []).length) {
         const [x, y, z] = spots[role][i++];
         SPRITES.push({ role, thing: t, x, y, z });
+        for (const [url] of t.anim || []) texture(url);          // load every frame now, so none blinks in
         anchor("thing:" + role, [x, y, z + 24]);
       }
     }
@@ -756,7 +772,7 @@ function frame() {
   gl.disable(gl.CULL_FACE);
   const rx = -Math.sin(cam.yaw), ry = Math.cos(cam.yaw);
   for (const s of SPRITES) {
-    const t = texture(s.thing.url);
+    const t = spriteTexture(s.thing);
     if (!t.ready) continue;
     const hw = t.w / 2, top = s.z + t.h;
     const L = [s.x - rx * hw, s.y - ry * hw], R = [s.x + rx * hw, s.y + ry * hw];
@@ -806,7 +822,7 @@ function pickAt(VP, dpr, hasSky) {
   }
   gl.disable(gl.CULL_FACE);
   for (const s of SPRITES) {
-    const t = texture(s.thing.url);
+    const t = spriteTexture(s.thing);
     if (!t.ready || !s.buf) continue;
     gl.bindTexture(gl.TEXTURE_2D, t.gl);
     gl.uniform1f(PICK.u.uId, id("thing:" + s.role));
