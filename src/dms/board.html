@@ -676,10 +676,11 @@ function renderMap(d) {
   firstLoad = false;
 }
 
-// Reload when board.html changes on disk (Claude edited the page), unless a note is being typed.
+// Reload when board.html changes on disk (Claude edited the page) or the server restarted with new code (live
+// updates: the board restarts itself when dms's code changes), unless a note is being typed.
 let pageVersion = null;
 async function checkPage() {
-  const v = (await (await fetch("/api/ping")).json()).page;
+  const p = await (await fetch("/api/ping")).json(), v = `${p.page}|${p.code}`;
   if (pageVersion === null) pageVersion = v;
   else if (v !== pageVersion && !composer && !replayTimer) location.reload();
 }

@@ -72,7 +72,8 @@ def cmd_board(args: argparse.Namespace) -> int:
     root = repo_root()
     port = args.port or int(project_settings(root)["board"]["port"])
     auto_pull = bool(project_settings(root)["board"]["auto_pull"])
-    return board.serve(root, port, open_browser=not args.no_browser, auto_pull=auto_pull)
+    return board.serve(root, port, open_browser=not args.no_browser, auto_pull=auto_pull,
+                       child=args.child, restarted=args.restarted)
 
 
 def cmd_catalog(args: argparse.Namespace) -> int:
@@ -460,6 +461,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("board", help="serve the board (build history, editor state, play log) and open it in the browser")
     p.add_argument("--port", type=int, help="default: [board] port in dms.toml (8765)")
+    p.add_argument("--child", action="store_true", help=argparse.SUPPRESS)       # the server itself, under the supervisor
+    p.add_argument("--restarted", action="store_true", help=argparse.SUPPRESS)   # ... started again after a code change
     p.add_argument("--no-browser", action="store_true", help="don't open the browser")
     p.set_defaults(func=cmd_board)
 

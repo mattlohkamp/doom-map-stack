@@ -23,7 +23,9 @@ import struct
 import sys
 from pathlib import Path
 
-from PIL import Image
+import random
+
+from PIL import Image, ImageDraw
 from PIL.PngImagePlugin import PngInfo
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -41,6 +43,26 @@ FEET = H - 3           # the actor's feet (grAb y): the jet hangs just below
 VARIANTS = {
     "cyan": ("CBDC", "CBBC", 1.0, ((60, 200, 255), (230, 255, 255), (10, 110, 200), (90, 220, 255))),
     "red": ("CBDR", "CBBL", 1.35, ((255, 60, 30), (255, 255, 230), (200, 20, 10), (255, 140, 40))),
+    # 2026-11-26 (chat): the yellow drone, a reskinned lost soul: it charges, so no bolt. Drawn first as a draft (into
+    # the project's assets/sprites/, for the asset browser: AGENTS.md); approved, it's the map's now.
+    "yellow": ("CBDY", None, 0, None),
+}
+DRAFTS: set[str] = set()   # kinds still drafts: drawn into DRAFT_OUT instead of the map's sprites/
+DRAFT_OUT = ROOT / "assets" / "sprites"
+# The glowing colours per kind: visor (off, and a function of v 0..1 and the core 0..1), pod light (on, off), flare.
+GLOW = {
+    "red": ((30, 10, 10), lambda v, core: (min(255, 120 + 135 * v + 100 * max(0, v - 0.6) * core),
+                                           min(255, 10 + 150 * max(0, v - 0.55) * (0.5 + core)),
+                                           min(255, 5 + 200 * max(0, v - 0.8) * core)),
+            ((255, 60, 40), (90, 20, 20)), (255, 230, 160)),
+    "cyan": ((10, 24, 30), lambda v, core: (min(255, 10 + 240 * max(0, v - 0.7) * (0.5 + core)),
+                                            min(255, 100 + 155 * v),
+                                            min(255, 120 + 135 * v + 60 * core)),
+             ((70, 235, 255), (20, 70, 85)), (200, 255, 255)),
+    "yellow": ((30, 26, 8), lambda v, core: (min(255, 140 + 115 * v),     # amber, to yellow, to white hot
+                                             min(255, 90 + 150 * v + 40 * core * v),
+                                             min(255, 5 + 220 * max(0, v - 0.75) * core)),
+               ((255, 220, 40), (90, 75, 15)), (255, 250, 190)),
 }
 KIND = "red"           # the kind being drawn (main() sets it)
 
@@ -140,21 +162,14 @@ def render(yaw: float, visor: float, sweep: float | None, jet: float, flash: boo
                         glow = None
                         if abs(lat) < 0.17 and abs(lon) < 0.95:  # the visor slit
                             if visor <= 0:
-                                base = (30, 10, 10) if KIND == "red" else (10, 24, 30)
+                                base = GLOW[KIND][0]
                             else:
                                 u = lon / 0.95
                                 k = 1.0 if sweep is None else max(0.0, 1 - abs(u - sweep) * 1.6)
                                 k = 0.25 + 0.75 * k
                                 core = 1 - abs(lat) / 0.17
                                 v = visor * k
-                                if KIND == "red":   # red, to orange, to white hot
-                                    glow = (min(255, 120 + 135 * v + 100 * max(0, v - 0.6) * core),
-                                            min(255, 10 + 150 * max(0, v - 0.55) * (0.5 + core)),
-                                            min(255, 5 + 200 * max(0, v - 0.8) * core))
-                                else:               # cyan, to white
-                                    glow = (min(255, 10 + 240 * max(0, v - 0.7) * (0.5 + core)),
-                                            min(255, 100 + 155 * v),
-                                            min(255, 120 + 135 * v + 60 * core))
+                                glow = GLOW[KIND][1](v, core)   # red to orange to white hot; cyan to white; amber to yellow to white
                         elif abs(lat) < 0.24 and abs(lon) < 1.05:   # its rim
                             base = SEAM
                         elif abs(lat + 0.55) < 0.05:                 # a seam round the lower half
@@ -180,7 +195,7 @@ def render(yaw: float, visor: float, sweep: float | None, jet: float, flash: boo
                             n = norm((p[0] - c[0], p[1] - c[1], p[2] - c[2]))
                             best = t
                             if n[2] > 0.8:
-                                on, off = ((255, 60, 40), (90, 20, 20)) if KIND == "red" else ((70, 235, 255), (20, 70, 85))
+                                on, off = GLOW[KIND][2]
                                 col = on if visor > 0 else off
                             elif abs(n[0]) > 0.85:
                                 col = shade(SEAM, to_view(n), 0.2)        # its open end, a vent
@@ -219,10 +234,47 @@ def render(yaw: float, visor: float, sweep: float | None, jet: float, flash: boo
                     if a0 == 0:
                         r0 = g0 = b0 = 0
                     if k > 0.25 or a0:
-                        fr, fg, fb = (255, 230, 160) if KIND == "red" else (200, 255, 255)   # the flare: warm, or cyan-white
+                        fr, fg, fb = GLOW[KIND][3]   # the flare
                         px[pxx, py] = (min(255, int(r0 * (1 - k) + fr * k)), min(255, int(g0 * (1 - k) + fg * k)),
                                        min(255, int(b0 * (1 - k) + fb * k)), 255)
     return img
+
+
+# Note #175 (2026-11-26): the yellow drone zaps like a taser: electric arcs crackling round it in its attack frames
+# (like the lost soul's SKULC1, SKULD1 in Freedoom: drawn here from scratch). kind: the frames that crackle.
+ARCS = {"yellow": "DE"}
+ARC_GLOW, ARC_CORE = (120, 170, 255, 150), (235, 245, 255, 255)
+
+
+def arcs(img: Image.Image, yaw: float, seed: str) -> Image.Image:
+    """Jagged electric arcs over a drone picture: from each side pod round the front of the sphere, and a spark or
+    two jumping off it. Drawn flat over the picture; `seed` makes each frame and rotation crackle differently."""
+    rng = random.Random(seed)
+    out = img.copy()
+    d = ImageDraw.Draw(out)
+    side = math.cos(yaw)                       # the pods: +-15.5 across, foreshortened as it turns
+    pods = [(CX - 15.5 * side, CY + 1), (CX + 15.5 * side, CY + 1)]
+    lines = []
+    for px, py in pods:                        # pod to the visor's middle, bowing out in front
+        tx, ty = CX + rng.uniform(-3, 3), CY + rng.uniform(-2, 2)
+        pts = [(px, py)]
+        for k in range(1, 6):
+            t = k / 6
+            pts.append((px + (tx - px) * t + rng.uniform(-2.2, 2.2), py + (ty - py) * t - 5 * math.sin(math.pi * t) + rng.uniform(-2.2, 2.2)))
+        pts.append((tx, ty))
+        lines.append(pts)
+    for _ in range(rng.randint(1, 2)):         # a spark jumping off the sphere
+        a = rng.uniform(0, 2 * math.pi)
+        x0, y0 = CX + math.cos(a) * R * 0.9, CY + math.sin(a) * R * 0.9
+        pts = [(x0, y0)]
+        for k in range(1, 4):
+            pts.append((x0 + math.cos(a) * 3 * k + rng.uniform(-1.8, 1.8), y0 + math.sin(a) * 3 * k + rng.uniform(-1.8, 1.8)))
+        lines.append(pts)
+    for pts in lines:
+        d.line(pts, fill=ARC_GLOW, width=3)
+    for pts in lines:
+        d.line(pts, fill=ARC_CORE, width=1)
+    return out
 
 
 def to_palette(img: Image.Image) -> Image.Image:
@@ -246,7 +298,9 @@ def to_palette(img: Image.Image) -> Image.Image:
 def save(img: Image.Image, name: str, ox: int, oy: int) -> None:
     info = PngInfo()
     info.add(b"grAb", struct.pack(">ii", ox, oy))
-    img.save(OUT / f"{name}.png", pnginfo=info)
+    out = DRAFT_OUT if KIND in DRAFTS else OUT
+    out.mkdir(parents=True, exist_ok=True)
+    img.save(out / f"{name}.png", pnginfo=info)
 
 
 def bolt(frame: int) -> Image.Image:
@@ -280,8 +334,13 @@ def bolt(frame: int) -> Image.Image:
 def main() -> None:
     global KIND
     OUT.mkdir(exist_ok=True)
-    for old in OUT.glob("CB*.png"):
-        old.unlink()
+    mine = {p for drone, shot, *_ in VARIANTS.values() for p in (drone, shot) if p}
+    for old in OUT.glob("CB*.png"):              # only its own (the drone gun's CBGN, CBGP are drone_gun.py's)
+        if old.name[:4] in mine:
+            old.unlink()
+    for drone, *_ in (VARIANTS[k] for k in DRAFTS):
+        for old in DRAFT_OUT.glob(f"{drone}*.png"):
+            old.unlink()
     rotations = [("1", None), ("2", "8"), ("3", "7"), ("4", "6"), ("5", None)]
     frames = {  # frame: visor, sweep, jet, flash
         "A": (0.7, -0.5, 0.6, False),
@@ -297,11 +356,16 @@ def main() -> None:
             row = []
             for rot, mirror in rotations:
                 yaw = (int(rot) - 1) * math.pi / 4
-                img = to_palette(render(yaw, visor, sweep, jet, flash))
+                pic = render(yaw, visor, sweep, jet, flash)
+                if KIND in ARCS and letter in ARCS[KIND]:   # note #175: the yellow drone crackles as it attacks
+                    pic = arcs(pic, yaw, f"{KIND}{letter}{rot}")   # a string seed: the same picture every run
+                img = to_palette(pic)
                 name = f"{drone}{letter}{rot}" + (f"{letter}{mirror}" if mirror else "")
                 save(img, name, CX, FEET)
                 row.append(img)
             sheet.append(row)
+        if shot is None:   # no bolt (the yellow drone charges)
+            continue
         brow = []
         for k, letter in enumerate("ABCDE"):
             img = to_palette(bolt(k))

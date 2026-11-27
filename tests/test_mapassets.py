@@ -144,3 +144,80 @@ def test_script_monsters_are_known_by_their_default():
     """
     got = {a["class"]: a["monster"] for a in mapassets.parse_actors(text)}
     assert got == {"MyBot": True, "MyBigBot": None, "MyFlagged": True, "MyLamp": None}   # MyBigBot: from its parent
+
+
+def test_a_weapons_ready_and_fire_states_are_read_as_they_fall_through():
+    from dms import mapassets
+
+    text = """
+    class MyGun : Weapon
+    {
+        States
+        {
+        Spawn:
+            MGNP A -1;
+            Stop;
+        Ready:
+            MGUN AB 4 A_WeaponReady;
+            Loop;
+        Fire:
+            MGUN C 0 A_StartSound("misc/chat", CHAN_WEAPON);
+            MGUN C 4;
+            MGUN C 0 A_Jump(256, "Left", "Right");
+            Goto Left;
+        Left:
+            MGUN D 3 Bright A_FireProjectile("MyBolt", 7);
+            Goto Recover;
+        Right:
+            MGUN E 3 Bright A_FireProjectile("MyBolt", -7);
+            Goto Recover;
+        Recover:
+            MGUN C 4 A_ReFire;
+            Goto Ready;
+        }
+    }
+    class MyBolt : Actor { States { Spawn: MBLT A 2; Loop; } }
+    """
+    gun, bolt = mapassets.parse_actors(text)
+    assert gun["frames"] == [["MGNPA", -1]]
+    assert gun["ready"] == [["MGUNA", 4], ["MGUNB", 4]]
+    # Through the Goto to the first volley, on to Recover, stopping at Goto Ready; the 0-tic frames kept (the
+    # browser skips them).
+    assert gun["fire"] == [["MGUNC", 0], ["MGUNC", 4], ["MGUNC", 0], ["MGUND", 3], ["MGUNC", 4]]
+    assert bolt["ready"] == [] and bolt["fire"] == []
+
+def test_a_maps_own_decals_are_packed_and_listed(tmp_path):
+    from dms import extras, maps
+
+    info = maps.new(tmp_path, "a")
+    (info.folder / "decaldef.txt").write_text('// a rune\ndecal ARune\n{\n\tpic ARUNE\n\tshade "C0 20 FF"\n\tx-scale 0.5\n}\n')
+    assert [lump.name for lump in extras.lumps(info)] == ["DECALDEF"]
+    [d] = mapassets._decals(info)
+    assert (d["name"], d["pic"], d["shade"], d["xscale"]) == ("ARune", "ARUNE", "C0 20 FF", 0.5)
+
+
+def test_the_projects_assets_folder_is_the_drafts_layer(tmp_path):
+    from dms import extras, maps
+
+    maps.new(tmp_path, "a")
+    assert [i.name for i in mapassets.sources(tmp_path)] == ["a"]           # no assets/ folder: no drafts
+    (tmp_path / "assets" / "sprites").mkdir(parents=True)
+    (tmp_path / "assets" / "sprites" / "ABCDA0.png").write_bytes(b"\x89PNG")
+    *_, drafts = mapassets.sources(tmp_path)
+    assert drafts.name == mapassets.DRAFTS and mapassets.label(drafts) == "draft"
+    assert [n for n, _ in extras.sprites(drafts)] == ["ABCDA0"]              # read like a map's own
+
+
+def test_a_maps_own_sounds_are_packed_and_listed(tmp_path):
+    from dms import extras, maps
+
+    info = maps.new(tmp_path, "a")
+    d = info.folder / "sounds"
+    d.mkdir()
+    for name in ("abzap1.wav", "ABZAP2.ogg", "much-too-long.wav", "NOTICE.txt"):
+        (d / name).write_bytes(b"RIFF")
+    (info.folder / "sndinfo.txt").write_text("a/zap1 ABZAP1\na/zap2 ABZAP2\n$random a/zap { a/zap1 a/zap2 }\n")
+    assert [n for n, _ in extras.sounds(info)] == ["ABZAP1", "ABZAP2"]
+    assert [lump.name for lump in extras.lumps(info)] == ["SNDINFO", "ABZAP1", "ABZAP2"]
+    got = mapassets._sounds(None, info)
+    assert [(s["name"], s["lump"], s["custom"]) for s in got] == [("a/zap1", "ABZAP1", "a"), ("a/zap2", "ABZAP2", "a")]

@@ -2,7 +2,9 @@
 
 maps/<map>/textures.txt becomes the TEXTURES lump and maps/<map>/animdefs.txt the ANIMDEFS lump (UZDoom's
 text formats): new textures composed from the game's own (turned, cut, recoloured, layered), and how
-they animate. Only text is committed: the pictures are put together by the engine from what the IWAD
+they animate. maps/<map>/decaldef.txt becomes the DECALDEF lump: decals of the map's own, their `pic` one
+of the map's own pictures (below) or any texture the game has; scripts spray them by name. maps/<map>/sndinfo.txt
+becomes SNDINFO, naming its own sounds: maps/<map>/sounds/NAME.wav (or .ogg, .flac), packed as plain lumps. Only text is committed: the pictures are put together by the engine from what the IWAD
 has, so no graphics enter the repo. They go into the game's WAD, the live copy the game runs
 (live.py) and edit.wad (the editor shows them). UZDoom reads them only at startup, so a change means a
 restart of the running game, like a script change. The validator learns the names from textures.txt.
@@ -27,7 +29,7 @@ from pathlib import Path
 from dms import wad
 from dms.maps import MapInfo
 
-FILES = (("textures.txt", "TEXTURES"), ("animdefs.txt", "ANIMDEFS"))
+FILES = (("textures.txt", "TEXTURES"), ("animdefs.txt", "ANIMDEFS"), ("decaldef.txt", "DECALDEF"), ("sndinfo.txt", "SNDINFO"))
 LUMPS = tuple(name for _, name in FILES)
 # WallTexture "NAME", 64, 128   /   Flat NAME, 64, 64   /   Texture "NAME", ...
 DEFINITION = re.compile(r'^\s*(walltexture|texture|flat)\s+(?:optional\s+)?"?([A-Za-z0-9_\-\[\]\\^]+)"?\s*,\s*(\d+)\s*,\s*(\d+)',
@@ -60,6 +62,19 @@ def sprites(info: MapInfo) -> list[tuple[str, Path]]:
     return [(f.stem.upper(), f) for f in sorted(d.glob("*.png")) if SPRITE_NAME.fullmatch(f.stem)]
 
 
+SOUND_EXTS = (".wav", ".ogg", ".flac")
+
+
+def sounds(info: MapInfo) -> list[tuple[str, Path]]:
+    """The map's own sounds: (NAME, file) for each maps/<map>/sounds/NAME.wav|.ogg|.flac (NAME a lump name, 8 characters
+    at most), in name order. Packed as plain lumps; the map's sndinfo.txt gives them their logical names."""
+    d = folder(info) / "sounds"
+    if not d.is_dir():
+        return []
+    return [(f.stem.upper(), f) for f in sorted(d.iterdir())
+            if f.suffix.lower() in SOUND_EXTS and PICTURE_NAME.fullmatch(f.stem)]
+
+
 def picture_size(data: bytes) -> tuple[int, int]:
     """A PNG's width and height (from its header)."""
     import struct
@@ -77,6 +92,7 @@ def lumps(info: MapInfo) -> list[wad.Lump]:
     own = pictures(info)
     if own:
         out += [wad.Lump("TX_START")] + [wad.Lump(name, f.read_bytes()) for name, f in own] + [wad.Lump("TX_END")]
+    out += [wad.Lump(name, f.read_bytes()) for name, f in sounds(info)]
     spr = sprites(info)
     if spr:
         out += [wad.Lump("SS_START")] + [wad.Lump(name, f.read_bytes()) for name, f in spr] + [wad.Lump("SS_END")]

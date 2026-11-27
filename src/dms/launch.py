@@ -59,6 +59,26 @@ def reapply_editor_settings(root: Path) -> None:
     build_udb_plugin(root, tool_path(root, "udb"))
 
 
+_SPAWN_LOOSE = ("import json, subprocess, sys; a = json.loads(sys.argv[1]); "
+                "d = subprocess.DEVNULL; print(subprocess.Popen(a, stdin=d, stdout=d, stderr=d, close_fds=True, "
+                "creationflags=0x200).pid)")
+
+
+def spawn_loose(args: list, cwd: Path, env: dict) -> int:
+    """Start a program that must outlive whoever started it (the game, the editor); its pid.
+
+    On Windows it's started by a Python that exits at once, so its parent is a process that's gone. The board
+    restarts its server by killing the server's whole process tree (taskkill /T, board._supervise), and a game the
+    server had started (H's restart) was in that tree: it vanished without a word whenever a .py file of dms
+    changed (2026-11-27). The new process group (0x200) keeps a console's Ctrl+C off it as well; it gets no console
+    streams (the game logs to a file), which would also have kept the go-between waiting on it."""
+    if sys.platform != "win32":
+        return subprocess.Popen(args, cwd=cwd, env=env, close_fds=True, start_new_session=True).pid
+    out = subprocess.run([sys.executable, "-I", "-c", _SPAWN_LOOSE, json.dumps([str(a) for a in args])],
+                         cwd=cwd, env=env, capture_output=True, text=True, check=True)
+    return int(out.stdout.strip().splitlines()[-1])
+
+
 def open_editor(root: Path, wad: Path | None = None, map_slot: str | None = None) -> int:
     """Open Ultimate Doom Builder in portable mode, optionally with a WAD (and the map slot to
     open in it). Returns immediately."""
@@ -72,7 +92,7 @@ def open_editor(root: Path, wad: Path | None = None, map_slot: str | None = None
             args += ["-map", map_slot, "-scriptconfig", UDB_SCRIPT_CONFIG]
         args.append(str(wad.resolve()))
     print(f"dms: opening Ultimate Doom Builder{f' with {wad}' if wad else ''}")
-    subprocess.Popen(args, cwd=udb.parent, env=repo_env(root), close_fds=True)
+    spawn_loose(args, udb.parent, repo_env(root))
     return 0
 
 
@@ -160,9 +180,9 @@ def play(root: Path, info: MapInfo, skill: int = 3, nomonsters: bool = False,
     print(f"dms play: {info.name} (skill {skill}{', no monsters' if nomonsters else ''}"
           f"{', peaceful: P in the game turns it off' if peaceful else ''})")
     print(f"    log: {log}")
-    proc = subprocess.Popen(args, cwd=build_dir, env=repo_env(root), close_fds=True)
+    pid = spawn_loose(args, build_dir, repo_env(root))
     (build_dir / "play.json").write_text(json.dumps({
-        "pid": proc.pid, "started": time.time(), "skill": skill, "nomonsters": nomonsters, "peaceful": peaceful,
+        "pid": pid, "started": time.time(), "skill": skill, "nomonsters": nomonsters, "peaceful": peaceful,
     }) + "\n", encoding="utf-8")
     return 0
 

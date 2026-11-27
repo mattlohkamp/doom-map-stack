@@ -6,7 +6,10 @@ CACOSTAR.png  The star carved on the ordinary obelisks. From the mapper's artwor
 CACOFACE.png  The eye in the passage's and the stairs' carved alcoves. Freedoom's GSTSATYR texture with the
               carving of Freedoom's MARBFAC2 scaled down and blended over the satyr's face.
 
-Both are derived from textures of the Freedoom project, whose licence follows.
+CACOSTAR.png and CACOFACE.png are derived from textures of the Freedoom project, whose licence follows.
+
+CBRUNE.png    The rune on the great door's small door (decaldef.txt's CacobeliskRune). Original, drawn by
+              ../art/rune_decal.py; nothing of Freedoom's in it (the repo's MIT licence covers it).
 
 Copyright © 2001-2024
 Contributors to the Freedoom project.  All rights reserved.

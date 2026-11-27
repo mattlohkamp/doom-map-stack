@@ -45,6 +45,30 @@ and **music**. It reads the resources actually in use (the configured IWAD plus 
 - **Text alongside images** (`AGENTS.md`): `dms assets [category] [--search TEXT]` prints the same
   lists in the terminal, so Claude can use the index without the browser.
 
+## Layers (the mapper's rule, 2026-11-26)
+
+The browser reads three layers, each over the ones before it, and dedupes by name the way the engine
+does (a later definition replaces an earlier one; the replaced one is not listed twice):
+
+1. **The source WAD**: the IWAD (Freedoom2) and `uzdoom.pk3` (`resources.py`, the cached index).
+2. **WADs on top of it**, the current project's maps' own assets included (`mapassets.py`, read when asked).
+3. **Assets still being developed**: made with Claude, not yet in any map.
+
+**Every new asset Claude and the mapper design shows here first, before it goes into a map to test.**
+When the browser can't show a kind yet, teaching it to is part of making the asset.
+
+Status (2026-11-26):
+
+| | Done | Missing |
+|---|---|---|
+| 1 | textures, flats, decals, things, sounds, music | |
+| 2 | a map's `textures.txt` textures and flats, `textures/*.png`, actors in `zscript.zs` with their `sprites/`, `decaldef.txt` decals (2026-11-26, note #153's rune), its own sounds (`sounds/NAME.wav|ogg|flac` named by `sndinfo.txt`, 2026-11-26: the drones' static); weapons of its own (a class on `Weapon` or a game weapon: under items, with a first-person view of its Ready state and one Fire played on a click, each frame placed by its offsets on the 320 x 200 screen; 2026-11-27, the drone gun) | other resource WADs a project loads (none can be loaded yet); a map's own music; `animdefs.txt` animations on a map's own textures; texture `XScale` in the composed previews |
+| 3 | the project's **`assets/`** folder (mapper's choice, 2026-11-26), laid out like a map's own (`textures.txt`, `textures/`, `sprites/`, `decaldef.txt`, `zscript.zs`, `sndinfo.txt`, `sounds/`), read by `mapassets.sources`; tagged `draft` | music (as for layer 2); packing drafts into a test WAD |
+| dedupe | by name (things by class), in the page: a map's or draft's asset hides the game's of the same name and is tagged "(replaces)" | |
+
+**Making a new asset:** put its files in `assets/` (the source script in `assets/art/`), check it in the
+browser with the mapper, and only then move the files into the map that uses it.
+
 ## Where each category comes from
 
 New module **`src/dms/resources.py`**: one view of every lump in load order (IWAD, then `uzdoom.pk3`'s

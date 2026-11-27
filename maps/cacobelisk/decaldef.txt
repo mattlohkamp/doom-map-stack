@@ -1,0 +1,13 @@
+// Cacobelisk's own decals (packed as DECALDEF by dms: src/dms/extras.py). zscript.zs sprays them.
+
+// Notes #153, #155 (2026-11-26): the rune on the great door's small door, daubed on in a hurry in drippy dark
+// purple paint (it was a clean, glowing violet stencil). The picture (textures/CBRUNE.png, art/rune_decal.py)
+// is a white mask, its opacity the paint's thickness, anchored at the rune's middle; `shade` gives the colour.
+// Lit like the wall (not full bright): paint, not a glow.
+decal CacobeliskRune
+{
+	pic CBRUNE
+	shade "5C 1A 74"
+	x-scale 0.5
+	y-scale 0.5
+}

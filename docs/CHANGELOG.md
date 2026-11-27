@@ -3,6 +3,24 @@
 The tool's versions: `major.minor.fix`, plus `+docN` for a commit that changes only documents (AGENTS.md has the
 rules). Below 1.0 while the tool is used only here. Releases are git tags (`v0.21.0`).
 
+## v0.24.0 (2026-11-27): live updates, drafts, a map's own decals, sounds and weapons
+
+- **Live updates**: the board is a supervisor; its server runs in a child that restarts by itself when a dms `.py`
+  file changes (once the new code imports cleanly), and open pages (board, asset browser, theme viewer) reload or
+  refetch when their page, the server or the maps' assets change. No restarting the board or refreshing a page.
+- **The game and the editor are started loose** (`launch.spawn_loose`): a game the board had restarted (H) was in the
+  server's process tree and was killed, without a word, whenever the server restarted.
+- **Drafts**: the project's `assets/` folder, laid out like a map's own, is the asset browser's third layer (tagged
+  `draft`): new assets are shown there before they go into a map.
+- **A map's own decals** (`decaldef.txt` as `DECALDEF`, pictures from its own textures) and **sounds** (`sounds/`,
+  named by `sndinfo.txt`), packed into its WADs and listed in the asset browser.
+- **Asset browser**: weapons of a map's own (a class on `Weapon` or a game weapon) are items, with a first-person
+  view: the Ready state looping, one Fire on a click, each frame placed by its offsets on the 320 x 200 screen.
+- Cacobelisk: the yellow drone (a reskinned lost soul with a taser's zap); the drones' static (pain, idle, death) and
+  cell drops; **the drone gun**, a hacked cyan drone held as a weapon (slot 6, cells; glitchy bursts of five; picked
+  up with a wolf whistle made from the drones' own); the zombie hall to try it on; the rune on the small door; notes
+  #153-#179 (see its notes.md).
+
 ## v0.23.0 (2026-11-26): a map's own sprites
 
 - **Map sprites**: `maps/<map>/sprites/NAME.png` (sprite lump names, offsets in each PNG's `grAb` chunk) are packed

@@ -5,7 +5,9 @@ Two things the game's own resources (resources.py) can't say:
 - **Custom assets**: what a map defines for itself. Textures and flats from `maps/<map>/textures.txt`
   (extras.py; put together here from the game's pictures the way the engine does: patches at their
   places, flipped, turned, blended, recoloured), and the actors in `maps/<map>/zscript.zs`, with the
-  picture of their Spawn state. Every entry carries `custom` (the map's name), so the page can mark it.
+  picture of their Spawn state; its own pictures, sprites and decals (decaldef.txt). The project's `assets/`
+  folder (assets still being developed, no map yet) is read the same way. Every entry carries `custom`
+  (the map's name, or "draft"), so the page can mark it.
   The compositor knows the common cases; a definition using something it doesn't (a translation by
   ranges, an unusual style) is still listed, with `approx` set: the game is the judge of its look.
 - **Usage**: which textures, flats, things, sounds, decals and songs each map uses, and how often, read
@@ -30,6 +32,33 @@ TINTS = {"red": (255, 0, 0), "green": (0, 255, 0), "blue": (0, 0, 255), "gold": 
 COLOURS = {"black": (0, 0, 0), "white": (255, 255, 255), "red": (255, 0, 0), "green": (0, 255, 0), "blue": (0, 0, 255)}
 PATCH_PROPS = {"flipx", "flipy", "rotate", "translation", "blend", "alpha", "style", "useoffsets"}
 KIND_CATEGORY = {"walltexture": "textures", "texture": "textures", "flat": "flats"}
+
+# Layer 3 (docs/asset-browser.md, "Layers"): assets still being developed, in the project's `assets/` folder,
+# laid out like a map's own (textures.txt, textures/, sprites/, decaldef.txt, zscript.zs). Listed with the
+# label "draft"; their URLs use DRAFTS, which no map name can be (map names are folder names, no "@").
+DRAFTS = "@assets"
+
+
+def drafts(root: Path) -> maps.MapInfo | None:
+    """The project's assets/ folder, shaped as a map (extras.py and this module read it like one)."""
+    from dms import project
+
+    folder = project.path(root) / "assets"
+    if not folder.is_dir():
+        return None
+    return maps.MapInfo(name=DRAFTS, folder=folder, title="assets in development", kind="assets", status="",
+                        source="", sky="", music="", project=project.path(root))
+
+
+def sources(root: Path) -> list[maps.MapInfo]:
+    """Where custom assets come from: every map of the project (layer 2), then its assets/ folder (layer 3)."""
+    d = drafts(root)
+    return maps.all_maps(root) + ([d] if d else [])
+
+
+def label(info: maps.MapInfo) -> str:
+    """What the page's tag says: the map's name, or "draft"."""
+    return "draft" if info.name == DRAFTS else info.name
 
 _HEADER = re.compile(r'\b(walltexture|texture|flat|sprite|graphic)\s+(?:optional\s+)?"?([A-Za-z0-9_\-\[\]\\^]+)"?\s*,\s*(\d+)\s*,\s*(\d+)\s*\{',
                      re.IGNORECASE)
@@ -168,10 +197,44 @@ _CLASS = re.compile(r"^\s*class\s+(\w+)\s*:\s*(\w+)", re.M)
 _NOT_ACTORS = {"eventhandler", "staticeventhandler", "thinker", "object", "genericmenu", "inventory"}
 
 
+_LABEL = re.compile(r"^(\w+)\s*:$")
+_GOTO = re.compile(r"^goto\s+(\w+)$", re.I)
+
+
+def _state_frames(body: str, label: str, follow: bool = False) -> list[list]:
+    """The frames of one state of a class's States block: [[sprite + letter, tics]], from its label to the first
+    line that isn't a frame. With follow (a weapon's Fire), it runs on through labels and one Goto at a time, the
+    way the state falls through, to a Goto Ready (or Loop, Stop, a state already seen); an A_Jump is not taken."""
+    lines = [x.strip() for x in re.split(r"[;\n]", body)]
+    starts = {}
+    for k, x in enumerate(lines):
+        lm = _LABEL.match(x)
+        if lm:
+            starts.setdefault(lm.group(1).lower(), k + 1)
+    frames, at, seen = [], starts.get(label.lower()), {label.lower()}
+    while at is not None:
+        nxt = None
+        for x in lines[at:]:
+            if not x or (follow and _LABEL.match(x)):
+                continue
+            fm = resources._FRAME_LINE.match(x)
+            if fm:
+                frames += [[fm.group(1).upper() + letter, int(fm.group(3))] for letter in fm.group(2).upper()]
+                continue
+            gm = _GOTO.match(x)
+            if follow and gm and gm.group(1).lower() not in seen and gm.group(1).lower() != "ready":
+                seen.add(gm.group(1).lower())
+                nxt = starts.get(gm.group(1).lower())
+            break
+        at = nxt
+    return frames
+
+
 def parse_actors(text: str) -> list[dict]:
     """The actor classes in a map's script: {"class", "parent", "frames": [[sprite + letter, tics]],
-    "radius", "height", "monster"} (frames: its Spawn state, empty when it has none of its own; monster: True when
-    its Default says `Monster;` or `+ISMONSTER`, None when it doesn't say, so the parent's counts)."""
+    "radius", "height", "monster", "ready", "fire"} (frames: its Spawn state, empty when it has none of its own;
+    monster: True when its Default says `Monster;` or `+ISMONSTER`, None when it doesn't say, so the parent's counts;
+    ready, fire: a weapon's Ready state and its Fire state as it falls through, empty for other actors)."""
     text = _strip_comments(text)
     found = list(_CLASS.finditer(text))
     out = []
@@ -179,29 +242,21 @@ def parse_actors(text: str) -> list[dict]:
         if m.group(2).lower() in _NOT_ACTORS:
             continue
         body = text[m.end() : found[i + 1].start() if i + 1 < len(found) else len(text)]
-        frames = []
-        sp = re.search(r"(?<![:\w])Spawn\s*:(?!:)", body, re.I)
-        for line in re.split(r"[;\n]", body[sp.end():]) if sp else []:
-            s = line.strip()
-            if not s:
-                continue
-            fm = resources._FRAME_LINE.match(s)
-            if not fm:
-                break
-            frames += [[fm.group(1).upper() + letter, int(fm.group(3))] for letter in fm.group(2).upper()]
+        frames = _state_frames(body, "Spawn")
         size = {k: int(v.group(1)) if (v := re.search(rf"(?<![\w.]){k}\s+(\d+)", body, re.I)) else None
                 for k in ("radius", "height")}
         monster = True if re.search(r"(?<![\w.])Monster\s*;|\+\s*ISMONSTER\b", body, re.I) else None
-        out.append({"class": m.group(1), "parent": m.group(2), "frames": frames, **size, "monster": monster})
+        out.append({"class": m.group(1), "parent": m.group(2), "frames": frames, **size, "monster": monster,
+                    "ready": _state_frames(body, "Ready"), "fire": _state_frames(body, "Fire", follow=True)})
     return out
 
 
 def _stamp(root: Path) -> tuple:
     """Changes when any file this module reads does."""
     out = []
-    for info in maps.all_maps(root):
-        own = [f for _, f in extras.pictures(info) + extras.sprites(info)]
-        for f in [info.folder / name for name in ("TEXTMAP", "map.toml", "zscript.zs", "textures.txt", "animdefs.txt")] + own:
+    for info in sources(root):
+        own = [f for _, f in extras.pictures(info) + extras.sprites(info) + extras.sounds(info)]
+        for f in [info.folder / name for name in ("TEXTMAP", "map.toml", "zscript.zs", "textures.txt", "animdefs.txt", "decaldef.txt", "sndinfo.txt")] + own:
             if f.is_file():
                 st = f.stat()
                 out.append((str(f), st.st_mtime_ns, st.st_size))
@@ -245,7 +300,7 @@ def _source(res, defs: list[dict], upto: int):
 
 def picture(root: Path, map_name: str, name: str) -> Picture | None:
     """One of a map's own textures, flats or sprites, put together."""
-    info = next((i for i in maps.all_maps(root) if i.name == map_name), None)
+    info = next((i for i in sources(root) if i.name == map_name), None)
     if info is None:
         return None
     res, _, _ = resources.load(root)
@@ -256,17 +311,111 @@ def picture(root: Path, map_name: str, name: str) -> Picture | None:
     return None
 
 
+DECAL_PREFIX = "decal-"     # /asset-custom/<map>/decal-<Name>.png: one of the map's own decals, shaded
+
+
+def _decals(info: maps.MapInfo) -> list[dict]:
+    """The decals in the map's decaldef.txt (as resources.parse_decaldef reads them), in name order."""
+    f = info.folder / "decaldef.txt"
+    if not f.is_file():
+        return []
+    decals, _ = resources.parse_decaldef(f.read_text(encoding="utf-8", errors="replace"))
+    return [decals[k] for k in sorted(decals)]
+
+
+def _decal_version(info: maps.MapInfo) -> int:
+    files = [info.folder / "decaldef.txt"] + [f for _, f in extras.pictures(info)]
+    return max((f.stat().st_mtime_ns for f in files if f.is_file()), default=0)
+
+
+def _decal_picture(res, info: maps.MapInfo, d: dict) -> Picture | None:
+    """A decal's picture: one of the map's own pictures, else the game's."""
+    if not d["pic"]:
+        return None
+    for name, f in extras.pictures(info):
+        if name == d["pic"]:
+            return res.picture(f.read_bytes())
+    return res.graphic(d["pic"]) or res.texture(d["pic"])
+
+
+SOUND_PREFIX = "sound-"     # /asset-custom/<map>/sound-<LUMP>.<ext>: one of the map's own sound files
+SOUND_TYPES = {".wav": "audio/wav", ".ogg": "audio/ogg", ".flac": "audio/flac"}
+
+
+def _sounds(res, info: maps.MapInfo) -> list[dict]:
+    """The map's own sounds as the browser lists them: each logical name its sndinfo.txt gives one of its own sound
+    files (or a game lump), then its own files nothing names (by lump name). Shaped like resources' sound entries."""
+    own = {name: f for name, f in extras.sounds(info)}
+    url = lambda lump, f: f"/asset-custom/{info.name}/{SOUND_PREFIX}{lump}{f.suffix.lower()}?v={f.stat().st_mtime_ns}"
+    f = info.folder / "sndinfo.txt"
+    defs = resources.parse_sndinfo(f.read_text(encoding="utf-8", errors="replace")) if f.is_file() else {}
+    out, named = [], set()
+    for name in sorted(defs):
+        lump = defs[name].get("lump", "").upper()
+        if lump not in own:
+            continue
+        named.add(lump)
+        data = own[lump].read_bytes()
+        out.append({"name": name, "group": name.split("/")[0] if "/" in name else "other", "lump": lump,
+                    "length": resources.sound_length(data, own[lump].suffix.lower().lstrip(".")),
+                    "url": url(lump, own[lump]), "custom": label(info)})
+    for lump, sf in own.items():
+        if lump not in named:
+            out.append({"name": lump.lower(), "group": "other", "lump": lump,
+                        "length": resources.sound_length(sf.read_bytes(), sf.suffix.lower().lstrip(".")),
+                        "url": url(lump, sf), "custom": label(info)})
+    return out
+
+
 def picture_file(root: Path, map_name: str, name: str) -> tuple[bytes, str] | None:
-    """(PNG, content type) for /asset-custom/<map>/<NAME>.png."""
+    """(PNG, content type) for /asset-custom/<map>/<NAME>.png (or decal-<Name>.png); or a sound file of the map's own
+    for /asset-custom/<map>/sound-<LUMP>.<ext>, as it is."""
     stem, _, ext = name.rpartition(".")
+    if stem.startswith(SOUND_PREFIX):
+        info = next((i for i in sources(root) if i.name == map_name), None)
+        sf = dict(extras.sounds(info)).get(stem[len(SOUND_PREFIX):].upper()) if info else None
+        return (sf.read_bytes(), SOUND_TYPES[sf.suffix.lower()]) if sf and sf.suffix.lower() == "." + ext else None
     if ext != "png" or not NAME_OK.fullmatch(stem or ""):
         return None
-    info = next((i for i in maps.all_maps(root) if i.name == map_name), None)
+    info = next((i for i in sources(root) if i.name == map_name), None)
+    if info and stem.startswith(DECAL_PREFIX):
+        d = next((x for x in _decals(info) if x["name"].lower() == stem[len(DECAL_PREFIX):].lower()), None)
+        res, _, _ = resources.load(root)
+        p = _decal_picture(res, info, d) if d else None
+        rgb = resources.shade_rgb(d["shade"]) if d else None
+        if p is not None and rgb:
+            p = resources.stencil(p, rgb)
+        return (resources.png_bytes(p), "image/png") if p else None
     for own, f in (extras.pictures(info) + extras.sprites(info)) if info else ():   # the map's own: the file itself
         if own == stem.upper():
             return f.read_bytes(), "image/png"
     p = picture(root, map_name, stem)
     return (resources.png_bytes(p), "image/png") if p else None
+
+
+_WEAPON_BASES = {"weapon", "doomweapon", "fist", "chainsaw", "pistol", "shotgun", "supershotgun", "chaingun",
+                 "rocketlauncher", "plasmarifle", "bfg9000"}
+WEAPON_TOP = 32      # where a raised weapon's sprite hangs (the engine's WEAPONTOP)
+
+
+def _hud(res, info, url, frames: list[list]) -> list[list]:
+    """A weapon's first-person frames as the browser plays them: [[url, tics, x, y]], x and y where the picture's
+    top left corner lands on the engine's 320 x 200 screen (its offsets, as the engine places a raised weapon)."""
+    own = dict(extras.sprites(info))
+    out = []
+    for frame, tics in frames:
+        if tics == 0:
+            continue                                         # a 0-tic frame is never seen
+        mine = next((n for n in own if n[:5] == frame), None)
+        if mine:
+            ox, oy = resources._png_grab(own[mine].read_bytes())
+            out.append([f"/asset-custom/{info.name}/{mine}.png?v={own[mine].stat().st_mtime_ns}", tics, -ox, WEAPON_TOP - oy])
+            continue
+        lump = resources.frame_lump(res, frame)
+        p = res.sprite(lump) if lump else None
+        if p is not None:
+            out.append([f"sprite/{lump}.png", tics, -p.left, WEAPON_TOP - p.top])
+    return out
 
 
 def custom(root: Path) -> dict[str, list[dict]]:
@@ -283,7 +432,7 @@ def _custom(root: Path) -> dict[str, list[dict]]:
             if t.get("class"):
                 by_class.setdefault(t["class"].lower(), (group, t))
     out: dict[str, list[dict]] = {}
-    for info in maps.all_maps(root):
+    for info in sources(root):
         defs = _definitions(info)
         v = _version(info)
         url = lambda name: f"/asset-custom/{info.name}/{name}.png?v={v}"
@@ -299,7 +448,7 @@ def _custom(root: Path) -> dict[str, list[dict]]:
                 "name": d["name"], "width": d["width"], "height": d["height"], "sets": ["Custom"],
                 "colour": resources.colour_of(p), "masked": category == "textures" and resources.masked(p),
                 "anim": None, "switch": None, "sky": False, "url": url(d["name"]),
-                "custom": info.name, "approx": approx, "made_of": sorted({x["name"] for x in d["patches"]})})
+                "custom": label(info), "approx": approx, "made_of": sorted({x["name"] for x in d["patches"]})})
         for name, f in extras.pictures(info):                # its own pictures (textures/NAME.png): walls and flats
             p = res.picture(f.read_bytes())
             for category in ("textures", "flats"):
@@ -308,7 +457,16 @@ def _custom(root: Path) -> dict[str, list[dict]]:
                     "colour": resources.colour_of(p), "masked": category == "textures" and resources.masked(p),
                     "anim": None, "switch": None, "sky": False,
                     "url": f"/asset-custom/{info.name}/{name}.png?v={f.stat().st_mtime_ns}",
-                    "custom": info.name, "approx": False, "made_of": [], "picture": True})
+                    "custom": label(info), "approx": False, "made_of": [], "picture": True})
+        for d in _decals(info):                              # its own decals (decaldef.txt)
+            p = _decal_picture(res, info, d)
+            rgb = resources.shade_rgb(d["shade"])
+            out.setdefault("decals", []).append({
+                **d, "width": p.width if p else 0, "height": p.height if p else 0, "groups": [], "kind": "custom",
+                "shade_rgb": "#%02x%02x%02x" % rgb if rgb else None,
+                "url": f"/asset-custom/{info.name}/{DECAL_PREFIX}{d['name']}.png?v={_decal_version(info)}" if p else None,
+                "custom": label(info), "approx": False})
+        out.setdefault("sounds", []).extend(_sounds(res, info))         # its own sounds (sndinfo.txt, sounds/)
         script = info.folder / "zscript.zs"
         actors = parse_actors(script.read_text(encoding="utf-8", errors="replace")) if script.is_file() else []
         own = {a["class"].lower(): a for a in actors}
@@ -316,17 +474,21 @@ def _custom(root: Path) -> dict[str, list[dict]]:
         for a in actors:
             # Its looks and size: its own, else the nearest parent's that has them (the map's, then the game's).
             frames, radius, height, parent, base = a["frames"], a["radius"], a["height"], a["parent"].lower(), None
-            monster = a["monster"]
+            monster, ready, fire = a["monster"], a["ready"], a["fire"]
             for _ in range(8):
                 if parent in own:
                     up = own[parent]
                     frames, radius, height = frames or up["frames"], radius or up["radius"], height or up["height"]
                     monster = monster or up["monster"]
+                    ready, fire = ready or up["ready"], fire or up["fire"]
                     parent = up["parent"].lower()
                 else:
                     base = by_class.get(parent)
                     break
-            group = "monsters" if monster else base[0] if base and base[0] != "specials" else "decorations"
+            # A weapon of its own (2026-11-27, the drone gun): built on the engine's Weapon or one of the game's
+            # weapons: an item, with its first-person view.
+            weapon = parent in _WEAPON_BASES or bool(ready)
+            group = "monsters" if monster else "items" if weapon else base[0] if base and base[0] != "specials" else "decorations"
             lump, picture_url, anim = None, None, []
             for frame, tics in frames:
                 mine = next((n for n in sprites if n[:5] == frame), None) \
@@ -341,12 +503,15 @@ def _custom(root: Path) -> dict[str, list[dict]]:
             if not lump:
                 continue  # nothing to show (e.g. a class that only holds code)
             entry = {"num": None, "title": a["class"], "name": a["class"], "class": a["class"],
-                     "category": "custom", "category_title": f"Custom ({info.name})",
+                     "category": "custom", "category_title": f"Custom ({label(info)})",
                      "radius": radius if radius is not None else (base[1].get("radius") if base else None),
                      "height": height if height is not None else (base[1].get("height") if base else None),
                      "sprite": lump, "sprite_lump": lump, "frames": [], "url": picture_url,
                      "spawn": anim if len({x[0] for x in anim}) > 1 else [],
-                     "custom": info.name, "parent": a["parent"]}
+                     "custom": label(info), "parent": a["parent"]}
+            if weapon:
+                entry["weapon"] = True
+                entry["hud"] = {"ready": _hud(res, info, url, ready), "fire": _hud(res, info, url, fire)}
             out.setdefault(group, []).append(entry)
     return out
 

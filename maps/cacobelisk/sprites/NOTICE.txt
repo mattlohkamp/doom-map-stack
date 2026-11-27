@@ -10,3 +10,9 @@ Drawn from scratch by ../art/drone_sprites.py (a small ray tracer; re-run it to 
 Freedoom's palette; the glowing parts are in true colour. The design follows Freedoom's chaingunner (a red visor
 slit in a grey helmet) and revenant (small red lights), but no Freedoom pixels are copied. Their death uses
 Freedoom's own rocket explosion (MISL), which stays in the IWAD.
+
+CBDY*.png, the yellow drone (2026-11-26), the same way: drawn by ../art/drone_sprites.py, nothing of Freedoom's.
+
+CBGN*.png, CBGP*.png, the drone gun (2026-11-27; zscript.zs CacobeliskDroneGun): the cyan drone held close and seen
+from behind (first person, A-E) and lying powered down (the pickup). Drawn from scratch by ../art/drone_gun.py, which
+uses ../art/drone_sprites.py's model; nothing of Freedoom's.

@@ -12,6 +12,7 @@ import contextlib
 import io
 import json
 import re
+import subprocess
 import sys
 import threading
 import time
@@ -170,9 +171,10 @@ class Watcher:
 
     SETTLE = 3  # looks without a change before a play log counts as finished (UZDoom writes as it goes)
 
-    def __init__(self, root: Path, auto_pull: bool = False) -> None:
+    def __init__(self, root: Path, auto_pull: bool = False, quiet_start: bool = False) -> None:
         self.root = root
         self.auto_pull = auto_pull
+        self.quiet_start = quiet_start   # a restarted server (live update): don't list every map again
         self.prev: dict | None = None
         self.pending_logs: dict[str, int] = {}
         self.handled_saves: dict[str, tuple] = {}  # map -> edit.wad (mtime, size) already auto-pulled
@@ -204,6 +206,8 @@ class Watcher:
             self.prev = cur
             for name, c in cur.items():
                 self._check_reloads(name, c["info"], first=True)
+            if self.quiet_start:
+                return []
             return [self._summary(name, c) for name, c in cur.items()] or ["no maps yet"]
         msgs: list[str] = []
         for name, c in cur.items():
@@ -494,9 +498,15 @@ def make_handler(root: Path, announce: bool = False):
                     if announce:
                         say("board opened in a browser")
                 elif parts == ["api", "ping"]:
-                    # "page": board.html's version, so an open board reloads itself when it changes.
+                    # Live updates: "page": board.html's version and "code": this server's (it restarts when dms's code
+                    # changes), so an open board reloads itself; "pages": every page's own file, and "assets": what the
+                    # maps and drafts bring to the asset browser (mapassets), so the other pages follow too.
+                    from dms import mapassets
+
                     self._json({"dms_board": True, "root": str(root), "project": str(project.path(root)),
-                                "page": PAGE_FILE.stat().st_mtime_ns})
+                                "page": PAGE_FILE.stat().st_mtime_ns, "code": SERVER_STARTED,
+                                "pages": {f.stem: f.stat().st_mtime_ns for f in (PAGE_FILE, ASSETS_FILE, SYNTH_FILE, THEMES_FILE)},
+                                "assets": str(hash(mapassets._stamp(root)))})
                 elif parts == ["themes"]:
                     # The theme viewer (docs/themes.md): its own page, same server, read on every request.
                     self._send(HTTPStatus.OK, THEMES_FILE.read_text(encoding="utf-8").encode("utf-8"),
@@ -614,7 +624,35 @@ def open_pages(board_url: str) -> None:
     webbrowser.open_new_tab(board_url)
 
 
-def serve(root: Path, port: int, open_browser: bool = True, auto_pull: bool = True) -> int:
+PACKAGE = Path(__file__).parent
+SERVER_STARTED = time.time_ns()     # this server's generation: open pages reload when it changes (api/ping "code")
+
+
+def _code_stamp() -> dict[str, int]:
+    """The dms package's Python files and their mtimes: what the running server is made of."""
+    return {p.name: p.stat().st_mtime_ns for p in PACKAGE.glob("*.py")}
+
+
+def _code_loads() -> str | None:
+    """Imports every module of the dms package in a fresh Python: None if they all load, else the error's last lines."""
+    check = ("import importlib, pkgutil, dms\n"
+             "for m in pkgutil.iter_modules(dms.__path__):\n"
+             "    importlib.import_module('dms.' + m.name)\n")
+    try:
+        r = subprocess.run([sys.executable, "-c", check], capture_output=True, text=True, timeout=120)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return str(e)
+    return None if r.returncode == 0 else "\n".join((r.stderr or r.stdout).strip().splitlines()[-3:])
+
+
+def serve(root: Path, port: int, open_browser: bool = True, auto_pull: bool = True, child: bool = False,
+          restarted: bool = False) -> int:
+    """The board. Live updates (mapper, 2026-11-26: no restarting the board, or the browser, after a change): this
+    process is a supervisor; the server runs in a child process (`dms board --child`), which the supervisor starts
+    again by itself when the dms package's code changes (once the new code imports cleanly; a broken change leaves
+    the running server as it is and says why). Open pages notice the new server (api/ping "code") and reload."""
+    if child:
+        return _serve_child(root, port, auto_pull, restarted)
     url = f"http://127.0.0.1:{port}/"
     running = _running_here(port, root)
     if running:
@@ -622,24 +660,110 @@ def serve(root: Path, port: int, open_browser: bool = True, auto_pull: bool = Tr
         if open_browser:
             open_pages(_page_url(root, url))
         return 0
+    if running is False:
+        print(f"dms board: can't use port {port} (something else is on it); set another under [board] in dms.toml",
+              file=sys.stderr)
+        return 1
+    return _supervise(root, port, open_browser)
+
+
+def _supervise(root: Path, port: int, open_browser: bool) -> int:
+    url = f"http://127.0.0.1:{port}/"
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
+
+    def start(restarted: bool) -> subprocess.Popen:
+        args = [sys.executable, "-c", "import sys; from dms.cli import main; sys.exit(main())",
+                "board", "--child", "--port", str(port)] + (["--restarted"] if restarted else [])
+        return subprocess.Popen(args, cwd=str(root))
+
+    def stop(p: subprocess.Popen) -> None:
+        # The whole tree: on Windows a venv's python.exe is a launcher that runs the real Python as a child of its
+        # own, and stopping only the launcher left the old server holding the port (found testing, 2026-11-26).
+        if p.poll() is None:
+            if sys.platform == "win32":
+                subprocess.run(["taskkill", "/T", "/F", "/PID", str(p.pid)], capture_output=True)
+            else:
+                p.terminate()
+            try:
+                p.wait(10)
+            except subprocess.TimeoutExpired:
+                p.kill()
+
+    child = start(False)
+    for _ in range(100):                                # wait for it to listen, then open the browser
+        if child.poll() is not None or _running_here(port, root):
+            break
+        time.sleep(0.2)
+    if child.poll() is not None:
+        return child.returncode or 1
+    if open_browser:
+        open_pages(_page_url(root, url))
+    seen = _code_stamp()
+    crashes: list[float] = []
     try:
-        server = ThreadingHTTPServer(("127.0.0.1", port), make_handler(root, announce=True))
-    except OSError as e:
-        print(f"dms board: can't use port {port} ({e.strerror or e}); set another under [board] in dms.toml",
+        while True:
+            time.sleep(1)
+            if child.poll() is not None:                 # the server stopped by itself: start it again, unless it keeps dying
+                crashes = [t for t in crashes if time.time() - t < 60] + [time.time()]
+                if len(crashes) > 3:
+                    say("dms board: the server keeps stopping; waiting for a change to its code before trying again")
+                    while _code_stamp() == seen:
+                        time.sleep(1)
+                    seen = _code_stamp()
+                    crashes = []
+                else:
+                    say(f"dms board: the server stopped (exit {child.returncode}); starting it again")
+                child = start(True)
+                continue
+            now = _code_stamp()
+            if now == seen:
+                continue
+            time.sleep(1)                                # let a burst of edits settle
+            if _code_stamp() != now:
+                continue
+            changed = sorted(n for n in set(now) | set(seen) if now.get(n) != seen.get(n))
+            seen = now
+            err = _code_loads()
+            if err:
+                say(f"dms board: {', '.join(changed)} changed but doesn't load; the board keeps running as it was:\n"
+                    + "\n".join("    " + line for line in err.splitlines()))
+                continue
+            say(f"dms board: {', '.join(changed)} changed: restarting the server (open pages reconnect by themselves)")
+            stop(child)
+            child = start(True)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        stop(child)
+    return 0
+
+
+def _serve_child(root: Path, port: int, auto_pull: bool, restarted: bool) -> int:
+    server = None
+    for _ in range(50):                                   # the old server may hold the port a moment longer
+        try:
+            server = ThreadingHTTPServer(("127.0.0.1", port), make_handler(root, announce=True))
+            break
+        except OSError as e:
+            err = e
+            time.sleep(0.2)
+    if server is None:
+        print(f"dms board: can't use port {port} ({err.strerror or err}); set another under [board] in dms.toml",
               file=sys.stderr)
         return 1
     server.daemon_threads = True
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="replace")  # notes may hold characters the console can't show
-    print(f"dms board: {url}")
-    print("    This window keeps the board running and lists what reaches it (builds, editor, play sessions).")
-    print("    Close it (or press Ctrl+C) to stop the board.")
-    if auto_pull:
-        print("    Saves in the editor are pulled automatically (dms.toml [board] auto_pull).")
-    print()
-    threading.Thread(target=_watch, args=(Watcher(root, auto_pull=auto_pull),), daemon=True).start()
-    if open_browser:
-        open_pages(_page_url(root, url))
+    if not restarted:
+        print(f"dms board: http://127.0.0.1:{port}/")
+        print("    This window keeps the board running and lists what reaches it (builds, editor, play sessions).")
+        print("    Close it (or press Ctrl+C) to stop the board. Changes to dms's code restart it by themselves.")
+        if auto_pull:
+            print("    Saves in the editor are pulled automatically (dms.toml [board] auto_pull).")
+        print()
+    threading.Thread(target=_watch, args=(Watcher(root, auto_pull=auto_pull, quiet_start=restarted),),
+                     daemon=True).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -657,6 +781,6 @@ THEMES_FILE = Path(__file__).with_name("themes.html")
 
 def page() -> str:
     """The board page (HTML, CSS and script in one file). Read on every request, so a change to it
-    shows up with a browser refresh; changes to this Python file still need the board restarted."""
+    shows up by itself (open pages poll api/ping); a change to this Python file restarts the server by itself (serve)."""
     return PAGE_FILE.read_text(encoding="utf-8")
 

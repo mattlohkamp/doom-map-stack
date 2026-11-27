@@ -1,0 +1,15 @@
+// Cacobelisk's own sounds (sounds/, named here; packed as SNDINFO).
+
+// The station drones' static (art/static_burst.py), first shown as a draft in the asset browser (the project's
+// assets/). 2026-11-27 (chat, the mapper's pick after hearing the three takes): one take per job, not one at random.
+cacobelisk/drone/pain     CBSTAT1    // the crunch: when it flinches
+cacobelisk/drone/active   CBSTAT3    // the sputter: idle, now and then while it hunts
+cacobelisk/drone/death    CBSTAT2    // the squelch: dying, then the lost soul's pop (zscript.zs, Death)
+
+// 2026-11-27 (chat): the drone gun's static as the player starts firing (once, not between held volleys: zscript.zs
+// CacobeliskDroneGun, Fire and Hold): the sputter again, under its own name so it can change on its own.
+cacobelisk/dronegun/static  CBSTAT3
+
+// 2026-11-27 (chat): the drone gun's pickup: the drones' whistle (baby/sight, Freedoom's DSBSPSIT) repitched into a wolf
+// whistle (art/wolf_whistle.py; Freedoom's licence in sounds/NOTICE.txt). A draft in the project's assets/ first.
+cacobelisk/dronegun/pickup  CBWOLF

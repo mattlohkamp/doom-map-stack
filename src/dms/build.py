@@ -351,11 +351,13 @@ def draw(info: MapInfo, root: Path, tm: udmf.Textmap, issues: list[Issue], previ
 
 
 def needs_build(info: MapInfo, root: Path) -> bool:
+    from dms import extras
     out = info.wad(root)
     if not out.exists():
         return True
     sources = [info.folder / "map.toml", info.textmap, info.generator, info.folder / "overrides.toml",
-               info.folder / "zscript.zs", info.folder / "textures.txt", info.folder / "animdefs.txt"]
+               info.folder / "zscript.zs"] + [info.folder / name for name, _ in extras.FILES] \
+        + [f for _, f in extras.pictures(info) + extras.sprites(info) + extras.sounds(info)]
     newest = max((p.stat().st_mtime for p in sources if p.exists()), default=0)
     return newest > out.stat().st_mtime
 

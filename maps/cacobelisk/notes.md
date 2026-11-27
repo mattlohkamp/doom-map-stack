@@ -1355,3 +1355,194 @@ light and pickups tuned by ear and eye from the game.*
   apart, `CacobeliskRedDroneBolt` speed 20, 6-10). Sprites CBDC/CBBC (cyan) and CBDR/CBBL (red). Freedoom's palette
   has no cyan: the glowing parts are left in true colour (UZDoom's hardware renderer shows them so; the software
   renderer would turn them blue). Compiles; needs a restart. Unchecked in the game.
+- 2026-11-26, note #153 (game): a rune on the great door's small door, on its face to the hall: nothing in the decal
+  list would do, so a new one, the map's first decal of its own (dms packs `decaldef.txt` as DECALDEF now). An
+  original sigil (a stave with two horns, an eye across its middle, two splayed feet), drawn by
+  `art/rune_decal.py` as a white mask (`textures/CBRUNE.png`), coloured in decaldef.txt (`CacobeliskRune`: the
+  switch obelisk's violet, additive, full bright: a faint glow). zscript.zs `CacobeliskRunes` sprays it on the line
+  with id WICKET_RUNE_LINE (901) at level start; it rides up with the door. Only the hall side; the vestibule side
+  is bare. Needs a restart. Unchecked in the game.
+- 2026-11-26, note #154 (game, screenshot): no rune on the small door. The script ran ("1 rune(s)") but the game's
+  live copy had no DECALDEF: H restarted the game through the board, which was still running the code from before
+  decaldef.txt was packed, so the decal's name meant nothing to the game. Not a map fault: the board needs a
+  restart (then H). Lesson: a change to what dms packs (extras.py, live.py) reaches the game only through a
+  restarted board, since the board restarts the game.
+- 2026-11-26, note #155 (game): the rune was "far too stark, a perfect chalk-paint stencil": now daubed on in a hurry
+  in drippy dark purple paint (the mapper offered that or brown dried blood): `art/rune_decal.py` paints it with a
+  half-dry brush (bristle streaks, ragged ends, bare skips, uneven paint, spatters, seven runs with beads), tilted
+  5 degrees, 96 x 120 at half scale; decaldef.txt shades it 5C 1A 74, lit like the wall (no glow). It hung down
+  and right of the door's middle: a decal is anchored at its picture's offset, and the PNG had none (0, 0 = its
+  top left corner); its grAb is the rune's middle now. Unchecked in the game.
+- 2026-11-26, note #156 (game, screenshot): the great doorway as the other doors: a slight wooden step through it
+  (vestibule.sill: WICKET_STEP up, FLAT5_2 boards turned across it, WOOD1 risers on the hall's and the vestibule's
+  side) between jambs in the door track (DOORTRAK; they were the hall's stone). The leaves are hinged at its back
+  corners, so they stand at its back edge. The floor seen through the crack is still the vestibule's. Unchecked.
+- 2026-11-26, note #157 (game, screenshot): the pinkies struggled out from among the storage room's boxes (the east
+  one stood touching the box wall). The two clusters are 80 wide (were 112) and closer: lanes round their outsides
+  about 105-150 wide, and a 56 lane between them, in line with the door: wide enough for an imp, too narrow for a
+  pinky. The four imps up that middle lane, a pinky at the back of each side lane, so the imps come straight on and
+  the pinkies flank (STORE_MONSTERS); the pickups moved with their boxes. Unchecked in the game.
+- 2026-11-26, note #158 (game): the great doorway's sill is the whole frame, as if the door were shut: it runs on under
+  the stuck leaves and out to 48 from the hall's face (SILL_DEEP; the leaves' swing reaches about 41), 104 either
+  side of the middle behind the wall (SILL_WIDE: round the hinged ends), wooden risers on its edges in the
+  vestibule. The leaves and the small door's frame border it now, not the vestibule. Unchecked in the game.
+- 2026-11-26, note #159 (game, screenshot): the storage room's pinkies were deaf like the rest (ambush), so they
+  never came. Now zscript.zs `CacobeliskPincer`: once any of the room's imps engages (has the player as its target,
+  is hurt or dies), the two pinkies (STORE_PINKY_TID 340; imps STORE_IMP_TID 341) wake and go for the same player,
+  round either side of the boxes. They stay deaf to gunfire elsewhere. Compiles; needs a restart. Unchecked.
+- 2026-11-26, note #160 (game, screenshot): "looks perfect, except" the small door's floor boards: turned with the leaf
+  (note #72), 5 degrees off the sill's. Their floor is turned like the sill's now (flats turn about the map's
+  origin, so the same angle lines them up); the wooden ceilings still run with the leaf. Unchecked in the game.
+- 2026-11-26, note #161 (game, screenshot): trying to use the shortcut box from the storage room's side says "Out of
+  reach for now..." in the middle of the screen until the box has sunk (zscript.zs `CacobeliskShortcutHint`: the use
+  key watched, a trace to the player's use range, the box's face found by line id STORE_SHORTCUT_FACE_LINE 902; no
+  special on the face, which the movement check would take for a switch). Compiles; needs a restart. Unchecked.
+- 2026-11-26, note #162 (game, screenshot): "why can't I open this door?": the guard posts' back doors (note #140) had
+  their use lines built from the door sector's side, so the service connector was their back side, and a door
+  opens only from its front. Both lines are built from the connector now (front = the player's side). The movement
+  check didn't catch it: it should warn about a door line used from its back (worth adding). Unchecked in the game.
+- 2026-11-26, note #163 (game, screenshot): the guard posts' back doors (48 wide) showed only part of the 64-wide tech door.
+  Now CACODRNR (textures.txt): CACODOOR's picture squeezed into 48 map units (XScale 1.3333), so the whole door
+  with both edges of its frame fits (ENTRY_GUARD_DOOR_TEXTURE). New texture: needs a restart. Unchecked in the game.
+- 2026-11-26, note #164 (game): the cyan drone's three bolts as a volley, one after another (pew, pew, pew; 6 tics apart:
+  3 lit, 3 dark), not all at once: the same fan (7 degrees either side of where it stared), swept from one side to
+  the other without turning between shots. Compiles; needs a restart. Unchecked in the game.
+- 2026-11-26, note #165 (game): the squeezed tech door (#163) "looks wrong". The guard posts' back doors are now CACOCRDR
+  (textures.txt, 48 x 64): CRATWIDE's lower, brown crate (its 128 x 64 from texel 0, 64), its right edge at the door's
+  right and cut off on the left (texels 80-128), as the mapper described. The way to each door is 64 high
+  (ENTRY_GUARD_WAY_HIGH, was 76), so the shut door's face is the texture's height; it opens to 60 (the player is 56).
+  CACODRNR is gone. Needs a restart. Unchecked in the game.
+- 2026-11-26 (chat): the cyan drone picks one of three volleys at random (zscript.zs, its Missile state): 40% the fan swept
+  left to right, 40% right to left (aimed where it stared), 20% all three straight at the player, turning before each.
+  Compiles; needs a restart. Unchecked in the game.
+- 2026-11-26, note #166 (game, screenshot): a red drone over the crate in the box room's north-west corner (CRATE3, 64
+  high), hovering 12 above it (STATION_BOX_RED_DRONES; the room is 128 high). Unchecked in the game.
+- 2026-11-26, note #167 (game): the box room's monsters (two zombiemen, the shotgunner, the new red drone) are deaf
+  (ambush): the fighting outside doesn't draw them; they wake on sight. The drones' swap at load now keeps the deaf
+  flag (`CacobeliskDrones.Swap`). Needs a restart. Unchecked in the game.
+- 2026-11-26, note #168 (game, screenshot): the passage's secret door showed its rock sliding up as it opened. Now its
+  textures stay put and only the ceiling rises: the face is hung from the passage's ceiling (dontpegtop), the door's
+  two sides from its floor (dontpegbottom). Unchecked in the game.
+- 2026-11-26, note #169 (game, screenshot): the secret doorway's floor is the passage's mud (A-MUD: the piece's own floor
+  texture), like the floor round it; it was the rock. Unchecked in the game.
+- 2026-11-26, note #170 (game, screenshot): the zombies in the guard posts had trouble getting a shot through the station
+  entrance's slits: 48 x 32 now (ENTRY_SLIT (76, 124), ENTRY_SLIT_Z (22, 54); were 40 x 16 at 28-44), widened inwards
+  only (a first try out to 130 crossed the tech hall's wall: build #220, fixed in #221). Unchecked in the game.
+- 2026-11-26, note #171 (game, screenshot): the pump hall's drones (three cyan, one red) came out too eagerly at noise
+  from outside: they're deaf now (ambush; the swap at load keeps it), so they wake on sight and the pit and catwalks
+  stay a set-piece arena. Unchecked in the game.
+- 2026-11-26, note #172 (game): the guard posts' zombies still missed through the slits and turned to walk out of their
+  back doors. Each slit is a cage front now: from the floor, 72 high (ENTRY_SLIT_Z), the cliff railing's bars
+  (CLIFF_RAIL, MIDBARS3) on either side and an open window ENTRY_CAGE_OPEN (20) wide in the middle; every piece
+  blocking, all of it see- and shoot-through both ways. The back doors are the player's only (no monsteruse, undoing
+  note #129's), so the zombies stay and shoot; the movement check's new warnings about those doors are expected.
+  Unchecked in the game.
+- 2026-11-26, note #173 (game, screenshot): the bars were meant above and below the window, not left and right (#172). Now
+  the whole width of each cage front: a strip of the cliff railing's bars at the guards' feet and one at the top
+  (ENTRY_CAGE_BAR 20 high each, MIDBARS3 squeezed), the open window between (32, from 20 to 52 up). A two-sided line
+  draws one middle texture, so the low strip is the front line (to the hall, standing on the floor: dontpegbottom),
+  the high strip the back line (to the post, hung from the top); both blocking. Unchecked in the game.
+- 2026-11-26 (chat): **the yellow drone**, the third kind: a reskinned lost soul (it stares a moment, then flies at the
+  player; lost soul's stats and attack). Amber-to-yellow visor and pod lights, drawn by `art/drone_sprites.py`
+  (VARIANTS "yellow", sprites CBDY; the colours per kind now in its GLOW table). A draft, per the asset-browser rule:
+  its sprites in the project's `assets/sprites/`, its class `CacobeliskYellowDrone` in `assets/zscript.zs`, shown in
+  the asset browser tagged "draft". Not in the map yet: once approved, its files move here and it gets a place.
+- 2026-11-26 (chat): the yellow drone approved ("put some out in the corridors round the pit"): moved from the project's
+  `assets/` (sprites, class) into the map (`sprites/CBDY*`, zscript.zs `CacobeliskYellowDrone`, drone_sprites.py
+  DRAFTS empty). Four, placed as lost souls with YELLOW_DRONE_TID 332 and swapped at load: two in the north corridor
+  (40 up), two in the south pipe gallery (24 up) (STATION_YELLOW_DRONES). Not deaf. Unchecked in the game.
+- 2026-11-26, note #174 (game): monsters should still open the guard posts' doors (undoing #172's change), the zombies just
+  shoot when they see the player instead of heading for the door. monsteruse is back; the two guards are
+  `CacobeliskGuardZombie` (GUARD_ZOMBIE_TID 333, swapped at load): while the player is in sight they don't move
+  (A_Chase with CHF_DONTMOVE: they turn and fire), and they fire more readily (+MISSILEMORE, MinMissileChance 60);
+  out of sight they chase as usual, through the door. Unchecked in the game.
+- 2026-11-26, note #175 (game): the yellow drone's last lost-soul sound was its charge (AttackSound skull/melee): now the
+  engine's electric crackle (world/spark). And a taser's zap, after Freedoom's lost soul frames (SKULC1, SKULD1): its
+  charge frames (D, E) carry jagged electric arcs, drawn by `art/drone_sprites.py` (ARCS, arcs(): pod to visor,
+  sparks jumping off; seeded by a string, so every run draws the same); while charging it throws bluish sparks with a
+  crackle (Crackle); on striking the player, a jagged arc of sparks from it to them and the spark sound (Zap: spotted
+  in Tick, its flight ending with the target within reach, as LostSoul has no hook for the hit). Its obituary: zapped.
+  The first build didn't compile (a constant ZAP and the method Zap: ZScript ignores case, again); the mapper saw
+  the error window. Fixed. Unchecked in the game.
+- 2026-11-27 (chat): the drones groaned when hurt (PainSound baby/pain, the arachnotron's): now bursts of radio static,
+  one of three takes at random (`cacobelisk/drone/pain`, sndinfo.txt; sounds/CBSTAT1-3 from `art/static_burst.py`,
+  made from noise), for all three kinds. The map's first sounds of its own; they were a draft in the project's
+  `assets/` and moved here. Needs a restart. Unchecked in the game.
+- 2026-11-27 (chat): "the same sound over and over": the three static takes were one recipe with three seeds and sounded
+  alike. Now each its own (art/static_burst.py): CBSTAT1 a low crunch with a heavy buzz, CBSTAT2 a bright squelch
+  with a falling radio whistle, CBSTAT3 a ragged sputter with crackles after a short beep; and the Pain states play
+  it at a random pitch, 0.85-1.2 (A_StartSound in place of A_Pain). The yellow drone flinched at every hit (the
+  lost soul's PainChance, 256): 96 now, like the red one. A hit that doesn't make a drone flinch makes no sound
+  (offered: a short metallic tick on every hit). Needs a restart. Unchecked in the game.
+- 2026-11-27 (chat, the mapper's pick after hearing them): one take per job, not one at random: the crunch (CBSTAT1)
+  when a drone flinches (`cacobelisk/drone/pain`, still at a random pitch), the sputter (CBSTAT3) as its idle sound
+  (`.../active`, was the arachnotron's), the squelch (CBSTAT2) as it dies (`.../death`): it hangs 10 tics shorting
+  out, then pops with the lost soul's death sound (skull/death) and the explosion (was the rocket's, weapons/rocklx).
+  All three kinds (the red drone's Death shows its own sprite, then goes to the cyan one's Pop). Needs a restart.
+  Unchecked in the game.
+- 2026-11-27, note #176 (game, screenshot): "the doors to the guard stations just aren't working": open doorways now, no
+  doors: each post's back doorway as high as its connector (ENTRY_GUARD_WAY_HIGH, 64), no special or tag, the post's
+  STARG3 above it. CACOCRDR (textures.txt) is gone with them. The guards still stand and shoot while they see the
+  player, and walk out through the doorway when they don't. Unchecked in the game.
+- 2026-11-27, note #177 (game, screenshot): the walls between the guard posts and the passage behind the arch get the
+  same cage front as the slits onto the hall: a window 64 long (ENTRY_SIDE_CAGE_MARGIN 12 short of the post's
+  corners) through the 8-thick wall (station.side_slit_n/s: bars at the feet on the passage side, bars at the top on
+  the post side, the window between; blocking, see- and shoot-through). The passage's walls are split round them
+  (entry_link.wall_n2/s2). Unchecked in the game.
+- 2026-11-27, note #178 (game, screenshot): the back tunnel's ceiling FLAT5_2 (was SLIME15), and the chamber at its end,
+  behind the storage room's shortcut box (store.backway), in the tunnel's textures: BROWN96 walls (BACK_TUNNEL_WALL,
+  the niche's mouth too), SLIME16 floor, FLAT5_2 ceiling (it had the techbase's, note #139). The switch's niche keeps
+  its track metal. Unchecked in the game.
+- 2026-11-27 (chat): **the drone gun**, a weapon: the cyan drone held in both hands by its pods, firing the drone's
+  volleys (the stare and beep, then three bolts: 40% swept left to right, 40% right to left, 20% straight), one cell
+  a bolt, slot 6 with the plasma rifle, a bolt 12-24 (`CacobeliskGunBolt`, the drone's bolt made a player's). Sprites
+  by `assets/art/drone_gun.py` (CBGN A-E first person, CBGP the pickup), the class in `assets/zscript.zs`. A draft:
+  shown in the asset browser (items, tagged draft) with its first-person view; once approved, it moves here and
+  gets a place. The browser learned weapons for it (mapassets: Ready and Fire states, placed by their offsets).
+- 2026-11-27, note #179 (game): #168 was taken the wrong way round: the face should lift like a door's, only the frame
+  inside the doorway (the door sector's sides) should stand still. The face is pegged to the door's ceiling again
+  (no dontpegtop), so it rides up; the sides keep dontpegbottom. Still a secret, still the odd texture, still the
+  dust. Unchecked in the game.
+- 2026-11-27 (chat, second pass on the drone gun): no hands ("I don't think you're good enough at image generation to do
+  something appropriate here"), and the drone seen from behind: the cyan light and slats on its back read as a visor,
+  so its back is plain metal now (seams, rivets, the crest). Held close: half the screen across, its lower half and
+  pods off the bottom. The visor's light shows only over the far rim (idle: drifting left and right; charging:
+  rising; firing: the flare), as before. The mapper may bring concept art.
+- 2026-11-27 (chat): the drone gun into the map to try in the game ("leave one laying on a crate in the station storage
+  room"): its sprites, `art/drone_gun.py` and its classes moved here from the project's `assets/`. One on crate 3 by the
+  storage room's door (STATION_DRONE_GUN), the crate lowered to 48 (was 64: a pickup more than 56 above the player's
+  feet can't be taken); placed as a plasma rifle with DRONE_GUN_TID 334, swapped at load (CacobeliskDrones).
+  `drone_sprites.py` now clears only its own sprites when it redraws. Near the crate's south edge (10 in), so it can be
+  touched from the floor; the movement check still calls it unreachable (the crate is scenery to it; expected). Needs
+  a restart. Unchecked in the game.
+- 2026-11-27 (chat, after trying the drone gun: "comically big"): a third smaller (the sphere 54 pixels across, was 80),
+  and hacked: a panel torn out of its back (a bent rim, a green circuit board with traces and chips), red, yellow, blue
+  and black wires hanging out over the edge, the yellow one cut short and sparking now and then; the crest's back end
+  snapped off (it ran down over the hatch). Firing: a burst of static (`cacobelisk/dronegun/static`, the sputter) as
+  the trigger is first pulled, then the three shots; held down, A_ReFire goes to Hold, which skips the static (the
+  beep is gone). Needs a restart. Unchecked in the game.
+- 2026-11-27 (chat): the drone gun rebalanced, "slightly glitchy", no longer the cyan drone's volleys: the static and a
+  brief charge (6 tics, was 8) on the first pull only, then bursts of five, 3 tics apart (2 lit, 1 dark), each bolt
+  strayed at random up to 3 degrees sideways and 1.5 up or down (GlitchShot); held down, burst follows burst after 7
+  tics. A bolt 6-12 (was 12-24): about 45 a burst, five cells. Needs a restart. Unchecked in the game.
+- 2026-11-27 (chat): the drone gun's pickup sound: a wolf whistle, the drones' whistle (baby/sight, Freedoom's DSBSPSIT)
+  cut and resampled (whit, whee, oo) by `art/wolf_whistle.py` into `sounds/CBWOLF.wav` (Freedoom's licence in
+  `sounds/NOTICE.txt`); a draft first (mapper: "incredibly cute and perfect"), then moved here.
+- 2026-11-27 (chat): the drone gun turned down ("too good, better than the minigun, maybe not quite as good as the plasma
+  gun"): bolts 5-10 (were 6-12), 4 tics apart (were 3), 9 between bursts (were 7), stray 4.5 and 2.25 degrees (were 3
+  and 1.5). Every bolt landing, about 49 a second (was 79; chaingun about 87, plasma rifle about 260). Needs a
+  restart. Unchecked in the game.
+- 2026-11-27 (chat): the drone gun slower still and looser: shots 5 tics apart (were 4), 12 between bursts (were 9),
+  stray 5.5 and 2.75 degrees (were 4.5 and 2.25), its bolts three quarters the drone's size (Scale 0.75, radius 3,
+  height 4). Every bolt landing, about 39 a second. Needs a restart. Unchecked in the game.
+- 2026-11-27 (chat): **the zombie hall**, a room to try the drone gun on: 704 x 640, 192 high, south of the station's
+  storage room through a station door (door_zombies, 112 wide, east of the tall crates) in its south wall. Techbase
+  textures (METAL4, FLOOR0_3, CEIL3_5), light 160, four crates for cover (ZOMBIE_HALL_CRATES), twenty zombiemen in
+  uneven groups (ZOMBIE_HALL_ZOMBIES: four by the west wall, six in the middle, five in the far east corner, five
+  loose), not deaf, so gunfire brings them through the door. A cell pack (100) on the storage room's floor
+  (STATION_CELL_PACK). Unchecked in the game.
+- 2026-11-27 (chat): the drone gun's shot a semitone above the drone's (baby/attack), a semitone either way at random
+  (SHOT_SEMITONES; played by GlitchShot, overlapping, the bolt's own SeeSound cleared). Every drone (cyan, red,
+  yellow) drops a small energy cell (DropItem "Cell": a dropped one gives half, 10), to keep the player short of cells
+  early on; the gun shares the plasma rifle's cells (the mapper: it may replace the plasma rifle). The storage room's
+  cell pack (100) is there for testing the zombie hall. Needs a restart. Unchecked in the game.

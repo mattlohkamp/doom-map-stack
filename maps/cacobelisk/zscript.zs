@@ -963,7 +963,6 @@ class CacobeliskWater : EventHandler
 			if (d.Length() <= DOOR_REACH && abs(Actor.deltaangle(mo.angle, VectorAngle(d.x, d.y))) <= DOOR_FACING)
 			{
 				mo.A_Print("This door is opened elsewhere.");
-				mo.A_StartSound("*usefail", CHAN_VOICE);
 			}
 		}
 	}
@@ -1311,10 +1310,11 @@ class CacobeliskDrone : Actor
 		PainChance 160;
 		MinMissileChance 160;    // fires a little more readily than most (200 is the usual)
 		SeeSound "baby/sight";
-		ActiveSound "baby/active";
-		PainSound "baby/pain";
-		DeathSound "weapons/rocklx";
+		ActiveSound "cacobelisk/drone/active";   // 2026-11-27: the sputter of static (sndinfo.txt)
+		PainSound "cacobelisk/drone/pain";       // the crunch of static (sndinfo.txt), not a groan
+		DeathSound "cacobelisk/drone/death";     // the squelch of static, then a small explosion (Death)
 		Obituary "%o was picked off by a station drone.";
+		DropItem "Cell";         // 2026-11-27 (chat): every drone drops a small energy cell (a dropped one gives half: 10)
 		Tag "Station drone";
 	}
 
@@ -1339,21 +1339,54 @@ class CacobeliskDrone : Actor
 		// It stops, turns to the player and stares, its visor charging, then fans out three bolts.
 		CBDC C 0 A_StartSound("misc/chat", CHAN_VOICE);
 		CBDC CDCDCDCD STARE_TICS { return DroneStare(); }
-		CBDC E 4 Bright
+		// Note #164 (2026-11-26): the three bolts one after another (pew, pew, pew), not all at once.
+		// Mapper, 2026-11-26: one of three volleys, at random: 40% the fan swept left to right, 40% right to left
+		// (both aimed where it stared, no turning between shots), 20% all three straight at the player, turning
+		// to follow them before each shot.
+		CBDC D 0
 		{
-			A_SpawnProjectile("CacobeliskDroneBolt", 20);
-			A_SpawnProjectile("CacobeliskDroneBolt", 20, 0, SPREAD);
-			A_SpawnProjectile("CacobeliskDroneBolt", 20, 0, -SPREAD);
+			int r = Random(0, 99);
+			if (r < 40)
+				return ResolveState("VolleyLeftRight");
+			if (r < 80)
+				return ResolveState("VolleyRightLeft");
+			return ResolveState("VolleyAimed");
 		}
+	VolleyLeftRight:
+		CBDC E 3 Bright A_SpawnProjectile("CacobeliskDroneBolt", 20, 0, SPREAD);     // + is to its left
+		CBDC D 3;
+		CBDC E 3 Bright A_SpawnProjectile("CacobeliskDroneBolt", 20);
+		CBDC D 3;
+		CBDC E 3 Bright A_SpawnProjectile("CacobeliskDroneBolt", 20, 0, -SPREAD);
+		CBDC D 6;
+		Goto See;
+	VolleyRightLeft:
+		CBDC E 3 Bright A_SpawnProjectile("CacobeliskDroneBolt", 20, 0, -SPREAD);
+		CBDC D 3;
+		CBDC E 3 Bright A_SpawnProjectile("CacobeliskDroneBolt", 20);
+		CBDC D 3;
+		CBDC E 3 Bright A_SpawnProjectile("CacobeliskDroneBolt", 20, 0, SPREAD);
+		CBDC D 6;
+		Goto See;
+	VolleyAimed:
+		CBDC E 3 Bright { A_FaceTarget(); A_SpawnProjectile("CacobeliskDroneBolt", 20); }
+		CBDC D 3 A_FaceTarget;
+		CBDC E 3 Bright { A_FaceTarget(); A_SpawnProjectile("CacobeliskDroneBolt", 20); }
+		CBDC D 3 A_FaceTarget;
+		CBDC E 3 Bright { A_FaceTarget(); A_SpawnProjectile("CacobeliskDroneBolt", 20); }
 		CBDC D 6;
 		Goto See;
 	Pain:
 		CBDC F 3;
-		CBDC F 3 A_Pain;
+		CBDC F 3 A_StartSound(PainSound, CHAN_VOICE, 0, 1.0, ATTN_NORM, FRandom(0.85, 1.2));   // the static, a little higher or lower each time
 		Goto See;
 	Death:
-		MISL B 8 Bright A_Scream;
-		MISL C 6 Bright A_NoBlocking;
+		// 2026-11-27 (chat): it hangs there shorting out (the squelch of static, DeathSound), then pops like a
+		// lost soul (skull/death, a small explosion).
+		CBDC F 10 A_Scream;
+	Pop:
+		MISL B 8 Bright { A_NoBlocking(); A_StartSound("skull/death", CHAN_BODY); }
+		MISL C 6 Bright;
 		MISL D 4 Bright;
 		Stop;
 	}
@@ -1389,8 +1422,11 @@ class CacobeliskRedDrone : CacobeliskDrone
 		Goto See;
 	Pain:
 		CBDR F 3;
-		CBDR F 3 A_Pain;
+		CBDR F 3 A_StartSound(PainSound, CHAN_VOICE, 0, 1.0, ATTN_NORM, FRandom(0.85, 1.2));   // the static, a little higher or lower each time
 		Goto See;
+	Death:
+		CBDR F 10 A_Scream;     // shorting out, then the pop (the cyan drone's Death)
+		Goto Pop;
 	}
 }
 
@@ -1450,12 +1486,18 @@ class CacobeliskDrones : EventHandler
 {
 	const DRONE_TID = 330;       // map.py DRONE_TID: lost souls that are cyan drones
 	const RED_DRONE_TID = 331;   // map.py RED_DRONE_TID: ... red drones
+	const YELLOW_DRONE_TID = 332;   // map.py YELLOW_DRONE_TID: ... yellow drones
+	const GUARD_ZOMBIE_TID = 333;   // map.py GUARD_ZOMBIE_TID: the guard posts' zombiemen (note #174)
+	const DRONE_GUN_TID = 334;      // map.py DRONE_GUN_TID: plasma rifles that are drone guns (2026-11-27)
 
 	override void WorldLoaded(WorldEvent e)
 	{
 		int cyan = Swap(DRONE_TID, "CacobeliskDrone");
 		int red = Swap(RED_DRONE_TID, "CacobeliskRedDrone");
-		Console.Printf("[DMS] CacobeliskDrones: %d cyan and %d red drone(s) in the station", cyan, red);
+		int yellow = Swap(YELLOW_DRONE_TID, "CacobeliskYellowDrone");
+		Swap(GUARD_ZOMBIE_TID, "CacobeliskGuardZombie");
+		Swap(DRONE_GUN_TID, "CacobeliskDroneGun");
+		Console.Printf("[DMS] CacobeliskDrones: %d cyan, %d red and %d yellow drone(s) in the station", cyan, red, yellow);
 	}
 
 	int Swap(int tid, class<Actor> kind)
@@ -1464,7 +1506,7 @@ class CacobeliskDrones : EventHandler
 		let it = Level.CreateActorIterator(tid);
 		Actor a;
 		while (a = it.Next())
-			if (!(a is "CacobeliskDrone"))
+			if (a.GetClass() != kind)     // not one already swapped in (the yellow one is a lost soul too)
 				found.Push(a);
 		for (int i = 0; i < found.Size(); i++)
 		{
@@ -1473,10 +1515,367 @@ class CacobeliskDrones : EventHandler
 			if (!d)
 				continue;
 			d.angle = old.angle;
+			d.bAmbush = old.bAmbush;     // note #167: a deaf one (the box room's) stays deaf
 			d.ChangeTid(tid);
 			old.ClearCounters();
 			old.Destroy();
 		}
 		return found.Size();
+	}
+}
+
+// Note #153 (2026-11-26): a rune on the great door's small door, on its face to the hall (the line with
+// id map.py WICKET_RUNE_LINE): the map's own decal (decaldef.txt CacobeliskRune). Sprayed onto the door's
+// face, the upper part of the frame's side, hung from the door's underside, so it rides up as the door opens.
+class CacobeliskRunes : EventHandler
+{
+	const WICKET_RUNE_LINE = 901;
+	const RUNE_UP = 38;          // the rune's middle above the door's sill
+
+	override void WorldLoaded(WorldEvent e)
+	{
+		if (e.IsSaveGame)
+			return;              // a saved game keeps its decals
+		int n = 0;
+		let it = Level.CreateLineIdIterator(WICKET_RUNE_LINE);
+		int i;
+		while ((i = it.Next()) >= 0)
+		{
+			Line ln = Level.Lines[i];
+			Vector2 d = ln.delta;
+			Vector2 normal = (d.y, -d.x) / d.Length();             // towards the front side
+			Vector2 mid = ln.v1.p + d / 2;
+			Vector2 at = mid + normal * 12;
+			double z = ln.frontsector.floorplane.ZAtPoint(mid) + RUNE_UP;
+			Actor spot = Actor.Spawn("MapSpot", (at.x, at.y, z));
+			if (spot == null)
+				continue;
+			spot.angle = atan2(-normal.y, -normal.x);
+			spot.A_SprayDecal("CacobeliskRune", 32);
+			spot.Destroy();
+			n++;
+		}
+		Console.Printf("[DMS] CacobeliskRunes: %d rune(s) on the small door", n);
+	}
+}
+
+// Note #159 (2026-11-26): the storage room's pincer. All its monsters are deaf (ambush: gunfire elsewhere leaves
+// them be), but once any of its imps engages (has a target, or is hurt or dead), the two pinkies wake and
+// come for the same player, round either side of the boxes (the middle lane is too narrow for them: map.py
+// STORE_BOXES), while the imps come down the middle.
+class CacobeliskPincer : EventHandler
+{
+	const STORE_PINKY_TID = 340;     // map.py STORE_PINKY_TID
+	const STORE_IMP_TID = 341;       // map.py STORE_IMP_TID
+	bool sprung;
+
+	override void WorldTick()
+	{
+		if (sprung || Level.maptime % 4)
+			return;
+		Actor foe = null;
+		bool engaged = false;
+		let it = Level.CreateActorIterator(STORE_IMP_TID);
+		Actor imp;
+		while (imp = it.Next())
+		{
+			if (imp.health <= 0 || imp.health < imp.SpawnHealth() || (imp.target && imp.target.player))
+			{
+				engaged = true;
+				if (imp.target && imp.target.player && imp.target.health > 0)
+					foe = imp.target;
+			}
+		}
+		if (!engaged)
+			return;
+		sprung = true;
+		if (!foe)                                    // an imp killed before it saw anyone: the nearest player
+		{
+			for (int i = 0; i < MAXPLAYERS; i++)
+				if (playeringame[i] && players[i].mo && players[i].mo.health > 0)
+				{
+					foe = players[i].mo;
+					break;
+				}
+		}
+		if (!foe)
+			return;
+		int n = 0;
+		let pit = Level.CreateActorIterator(STORE_PINKY_TID);
+		Actor pinky;
+		while (pinky = pit.Next())
+		{
+			if (pinky.health <= 0)
+				continue;
+			n++;
+			if (pinky.target && pinky.target.player)
+				continue;                            // already after someone
+			pinky.target = foe;
+			pinky.A_StartSound(pinky.SeeSound, CHAN_VOICE);
+			pinky.SetState(pinky.SeeState);
+		}
+		Console.Printf("[DMS] CacobeliskPincer: the imps engaged; %d pinky(s) come round the boxes", n);
+	}
+}
+
+// Note #161 (2026-11-26): a player who tries to use the shortcut box from the storage room's side (its face, the
+// line with id map.py STORE_SHORTCUT_FACE_LINE) is told "Out of reach for now..." (the game grunts its own
+// "can't use that" anyway), until the box has sunk. The face has no special of its own (it would count as a switch for
+// the movement check), so the use key is watched here: a press, then a trace as far as the player's use range.
+class CacobeliskShortcutHint : EventHandler
+{
+	const FACE_LINE = 902;       // map.py STORE_SHORTCUT_FACE_LINE
+	const SHORTCUT_TAG = 12;     // map.py STORE_SHORTCUT_TAG
+	bool held[MAXPLAYERS];
+	double boxTop;
+	int box, face;
+
+	override void WorldLoaded(WorldEvent e)
+	{
+		box = Level.CreateSectorTagIterator(SHORTCUT_TAG).Next();
+		face = Level.CreateLineIdIterator(FACE_LINE).Next();
+		if (box >= 0)
+			boxTop = Level.Sectors[box].floorplane.ZAtPoint(Level.Sectors[box].centerspot);
+	}
+
+	override void WorldTick()
+	{
+		for (int i = 0; i < MAXPLAYERS; i++)
+		{
+			if (!playeringame[i] || !players[i].mo)
+				continue;
+			bool pressed = (players[i].cmd.buttons & BT_USE) != 0;
+			bool fresh = pressed && !held[i];
+			held[i] = pressed;
+			if (!fresh || box < 0 || face < 0)
+				continue;
+			Sector s = Level.Sectors[box];
+			if (s.floorplane.ZAtPoint(s.centerspot) < boxTop - 1)
+				continue;                            // it has sunk (or is sinking): nothing to say
+			let mo = players[i].mo;
+			FLineTraceData t;
+			mo.LineTrace(mo.angle, PlayerPawn(mo) ? PlayerPawn(mo).UseRange : 64, mo.pitch, 0,
+				players[i].viewz - mo.pos.z, data: t);
+			if (t.HitType != TRACE_HitWall || !t.HitLine || t.HitLine.Index() != face)
+				continue;
+			if (i == consoleplayer)
+				Console.MidPrint(null, "Out of reach for now...");
+			Console.Printf("[DMS] CacobeliskShortcutHint: the shortcut box is out of reach from this side");
+		}
+	}
+}
+
+// 2026-11-26 (chat): the yellow station drone, the third kind: a reskinned lost soul. It hovers, stares a moment (its
+// visor charging), then flies at the player like a lost soul: the lost soul's stats and attack (A_SkullAttack), the
+// drones' look (sprites CBDY, art/drone_sprites.py), sounds and explosion. First shown as a draft in the asset
+// browser (the project's assets/), then moved here. Placed as a lost soul with YELLOW_DRONE_TID (CacobeliskDrones).
+class CacobeliskYellowDrone : LostSoul
+{
+	// Note #175 (2026-11-26): a taser: arcs crackle round it as it charges (its sprites, and sparks here), and when it
+	// strikes, a jagged arc from it to the player with a zap. LostSoul's own flight ends on a hit with no hook, so the
+	// strike is spotted here: flying one tic, stopped the next, with the target within reach.
+	const ARC_COLOUR = 0xC8DCFF;    // bluish white (not "ZAP": ZScript ignores case, and Zap() is a method)
+
+	void Crackle()
+	{
+		for (int i = 0; i < 3; i++)
+			A_SpawnParticle(ARC_COLOUR, SPF_FULLBRIGHT, Random(4, 8), FRandom(1.5, 3), 0,
+				FRandom(-18, 18), FRandom(-18, 18), FRandom(8, 32), FRandom(-1, 1), FRandom(-1, 1), FRandom(-1, 1));
+		if (Random(0, 3) == 0)
+			A_StartSound("world/spark", CHAN_BODY, CHANF_NOSTOP, 0.6);
+	}
+
+	override void Tick()
+	{
+		bool flying = bSkullFly;
+		Super.Tick();
+		if (flying && !bSkullFly && health > 0 && target && Distance3D(target) < radius + target.radius + 24)
+			Zap(target);
+	}
+
+	void Zap(Actor victim)
+	{
+		A_StartSound("world/spark", CHAN_WEAPON, 0, 1.0);
+		Vector3 a = pos + (0, 0, height / 2);
+		Vector3 b = victim.pos + (0, 0, victim.height / 2);
+		Vector3 step = (b - a) / 12;
+		for (int k = 0; k <= 12; k++)          // a jagged arc between them
+		{
+			Vector3 p = a + step * k + (FRandom(-4, 4), FRandom(-4, 4), FRandom(-4, 4));
+			A_SpawnParticle(ARC_COLOUR, SPF_FULLBRIGHT, Random(6, 10), FRandom(2, 4), 0, p.x - pos.x, p.y - pos.y, p.z - pos.z);
+		}
+		for (int k = 0; k < 10; k++)           // sparks off the victim
+			A_SpawnParticle(ARC_COLOUR, SPF_FULLBRIGHT, Random(8, 14), FRandom(1.5, 3), 0, b.x - pos.x, b.y - pos.y, b.z - pos.z,
+				FRandom(-3, 3), FRandom(-3, 3), FRandom(-1, 3), 0, 0, -0.3);
+	}
+
+	Default
+	{
+		+NOBLOOD                 // a machine
+		PainChance 96;           // 2026-11-27: the lost soul flinches at every hit; as the red drone now
+		SeeSound "baby/sight";
+		ActiveSound "cacobelisk/drone/active";   // 2026-11-27: the sputter of static (sndinfo.txt)
+		PainSound "cacobelisk/drone/pain";       // the crunch of static (sndinfo.txt), not a groan
+		DeathSound "cacobelisk/drone/death";     // the squelch of static, then a small explosion (Death)
+		AttackSound "world/spark";   // note #175: its charge: an electric crackle, not the lost soul's scream
+		Obituary "%o was zapped by a yellow station drone.";
+		DropItem "Cell";         // 2026-11-27 (chat): like the other drones, a small energy cell
+		Tag "Yellow station drone";
+	}
+
+	States
+	{
+	Spawn:
+		CBDY AB 10 A_Look;
+		Loop;
+	See:
+		CBDY AB 6 A_Chase;
+		Loop;
+	Missile:
+		CBDY C 10 A_FaceTarget;
+		CBDY D 4 Bright A_SkullAttack;
+	Charge:
+		CBDY E 4 Bright Crackle;
+		CBDY D 4 Bright Crackle;
+		Loop;
+	Pain:
+		CBDY F 3;
+		CBDY F 3 A_StartSound(PainSound, CHAN_VOICE, 0, 1.0, ATTN_NORM, FRandom(0.85, 1.2));   // the static, a little higher or lower each time
+		Goto See;
+	Death:
+		// 2026-11-27 (chat): it hangs there shorting out (the squelch of static, DeathSound), then pops like a
+		// lost soul (skull/death, a small explosion).
+		CBDY F 10 A_Scream;
+	Pop:
+		MISL B 8 Bright { A_NoBlocking(); A_StartSound("skull/death", CHAN_BODY); }
+		MISL C 6 Bright;
+		MISL D 4 Bright;
+		Stop;
+	}
+}
+
+// Note #174 (2026-11-26): the guard posts' zombiemen. They can open their back doors (to come after the player), but
+// while they can see the player they stand their ground and shoot through the cage front rather than walking off
+// to find a way round: no moving while the player is in sight, and keener to fire than a plain zombieman.
+// Placed as zombiemen with GUARD_ZOMBIE_TID, swapped at load (CacobeliskDrones).
+class CacobeliskGuardZombie : ZombieMan
+{
+	Default
+	{
+		+MISSILEMORE             // fires more readily at range
+		MinMissileChance 60;     // (200 is the usual: lower is keener)
+	}
+
+	void GuardChase()
+	{
+		if (target && target.health > 0 && CheckSight(target))
+			A_Chase(flags: CHF_DONTMOVE);    // hold the post: turn, and fire when it decides to
+		else
+			A_Chase();
+	}
+
+	States
+	{
+	See:
+		POSS AABBCCDD 4 GuardChase;
+		Loop;
+	}
+}
+
+// 2026-11-27 (chat): the drone gun: "a weapon where you're holding one of the blue drones, and it fires the same
+// pattern as they do, and it takes energy cells". The cyan station drone (CacobeliskDrone), held close and seen from
+// behind, no hands, a third smaller and hacked open (sprites CBGN, drawn by art/drone_gun.py; the pickup CBGP).
+// Rebalanced (2026-11-27, chat: "slightly glitchy - a brief charge, then a sustained sequence of bursts", no longer
+// the cyan drone's volleys): a burst of static and a brief charge when the trigger is first pulled, then bursts of
+// five bolts, each strayed a little at random (JITTER sideways, JITTER_PITCH up or down: less than the drone's
+// 7-degree sweep); held down, burst follows burst (A_ReFire to Hold: no static, no charge).
+// Turned down (2026-11-27, chat: "feels too good, better than the minigun"): bolts 5-10 (were 6-12), 4 tics apart
+// (were 3), 9 between bursts (were 7), a wider stray (4.5 and 2.25 degrees, were 3 and 1.5). Every bolt landing:
+// about 49 a second (it was 79; the chaingun's is about 87, the plasma rifle's about 260). Then (chat): shots 5
+// tics apart, 12 between bursts, stray 5.5 and 2.75 degrees, bolts drawn at three quarters size: about 39 a second.
+// One cell a bolt, a burst five; it stops short when the cells run out. Slot 6, with the plasma rifle.
+// Picked up with a wolf whistle (the drones' whistle repitched: sndinfo.txt, art/wolf_whistle.py).
+// A draft in the project's assets/ first; moved here to try in the game (2026-11-27): one on a crate in the station's
+// storage room, placed as a plasma rifle with DRONE_GUN_TID and swapped at load (CacobeliskDrones).
+class CacobeliskDroneGun : Weapon
+{
+	const JITTER = 5.5;          // degrees either side a bolt may stray
+	const JITTER_PITCH = 2.75;   // ... and up or down
+	const SHOT_SEMITONES = 1.0;  // its shot's pitch, above the drone's (then a semitone either way at random)
+
+	Default
+	{
+		Weapon.SelectionOrder 150;          // after the plasma rifle (100) when the game picks for the player
+		Weapon.SlotNumber 6;
+		Weapon.SlotPriority 0.5;            // after the plasma rifle on key 6
+		Weapon.AmmoType "Cell";
+		Weapon.AmmoUse 1;
+		Weapon.AmmoGive 40;
+		Weapon.BobStyle "Smooth";           // it floats in the hands rather than swinging
+		Weapon.BobSpeed 1.4;
+		Inventory.PickupMessage "You got a station drone! Somebody's rewired it.";
+		Inventory.PickupSound "cacobelisk/dronegun/pickup";   // the wolf whistle
+		Tag "Drone gun";
+		Radius 14;
+		Height 24;
+	}
+
+	// One bolt, strayed a little at random: the hacked drone's aim isn't steady.
+	action void GlitchShot()
+	{
+		Actor bolt = A_FireProjectile("CacobeliskGunBolt", FRandom(-JITTER, JITTER), true, 0, 0, 0, FRandom(-JITTER_PITCH, JITTER_PITCH));
+		// 2026-11-27 (chat): its shot, the drone's (baby/attack), a semitone higher with a semitone either way at random,
+		// played here (the bolt has no SeeSound) so each can have its own pitch; overlapping, so it doesn't cut the static.
+		if (bolt)
+			A_StartSound("baby/attack", CHAN_WEAPON, CHANF_OVERLAP, 1.0, ATTN_NORM, 2 ** ((SHOT_SEMITONES + FRandom(-1, 1)) / 12.0));
+	}
+
+	States
+	{
+	Spawn:
+		CBGP A -1;
+		Stop;
+	Ready:
+		CBGN AAAAAAAAAABBBBBBBBBB 1 A_WeaponReady;
+		Loop;
+	Select:
+		CBGN A 1 A_Raise;
+		Loop;
+	Deselect:
+		CBGN A 1 A_Lower;
+		Loop;
+	Fire:
+		// The static (the drone's sputter, sndinfo.txt) and a brief charge, only as the trigger is first pulled.
+		CBGN C 0 A_StartSound("cacobelisk/dronegun/static", CHAN_WEAPON);
+		CBGN CD 3;
+	Hold:
+		// A burst of five, 5 tics apart (the cyan drone's were 6), each bolt with its own sound.
+		CBGN E 2 Bright GlitchShot;
+		CBGN D 3;
+		CBGN E 2 Bright GlitchShot;
+		CBGN D 3;
+		CBGN E 2 Bright GlitchShot;
+		CBGN D 3;
+		CBGN E 2 Bright GlitchShot;
+		CBGN D 3;
+		CBGN E 2 Bright GlitchShot;
+		CBGN D 6;
+		CBGN C 6 A_ReFire;                  // held down: the next burst, 12 tics on (Hold: no static, no charge)
+		Goto Ready;
+	}
+}
+
+// The drone gun's bolt: the cyan drone's (look, sound, scorch), but a player's weapon: 5 to 10 a bolt (the plasma
+// rifle's ball is 5 to 40), so a burst of five that lands is about 37, from five cells.
+class CacobeliskGunBolt : CacobeliskDroneBolt
+{
+	Default
+	{
+		DamageFunction (Random(5, 10));
+		SeeSound "";             // the gun plays the shot itself, each at its own pitch (GlitchShot)
+		Scale 0.75;              // (chat) a little smaller than the drone's own
+		Radius 3;
+		Height 4;
+		Obituary "%o was picked off by %k's station drone.";
 	}
 }

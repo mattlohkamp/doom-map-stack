@@ -192,8 +192,11 @@ function usedIn(t, c = cat) {
 const useCount = t => { const per = usedIn(t); return useMap ? (per[useMap] || 0) : Object.values(per).reduce((a, b) => a + b, 0); };
 const usedTitle = t => "used in " + Object.entries(usedIn(t)).map(([m, n]) => `${m} (${n})`).join(", ");
 const usedBadge = t => { const n = useCount(t); return n ? h("span", { class: "used", title: usedTitle(t) }, "x" + n) : null; };
-const customPill = t => t.custom ? h("span", { class: "cust", title: `custom: made by the map ${t.custom} (its textures.txt or zscript.zs)` +
-  (t.approx ? "; this preview is approximate, the game is the judge" : "") }, t.custom + (t.approx ? " ~" : "")) : null;
+const customPill = t => t.custom ? h("span", { class: "cust", title: (t.custom === "draft"
+    ? "custom: a draft, still being developed (the project's assets/ folder), not in any map yet"
+    : `custom: made by the map ${t.custom} (its own files: textures.txt, textures/, sprites/, decaldef.txt, zscript.zs)`) +
+  (t.replaces ? "; it replaces the game's asset of the same name" : "") +
+  (t.approx ? "; this preview is approximate, the game is the judge" : "") }, t.custom + (t.replaces ? " (replaces)" : "") + (t.approx ? " ~" : "")) : null;
 
 // ---- per-category columns, facets and sorts ---------------------------------------------------
 const thingCols = [
@@ -264,21 +267,54 @@ async function init() {
   }, 250);
   let idx;
   try { idx = await (await fetch("/api/assets/index")).json(); } finally { clearInterval(watch); }
-  KEY = idx.key; counts = idx.counts;
-  try { custom = await (await fetch("/api/assets/custom")).json(); } catch { custom = {}; }   // an older board server: none
-  try { usage = { ...usage, ...await (await fetch("/api/assets/usage")).json() }; } catch { }
-  for (const [k, list] of Object.entries(custom)) counts[k] = (counts[k] || 0) + list.length;
+  KEY = idx.key; baseCounts = idx.counts;
+  await loadOwn();
   if (useMap && !usage.maps.includes(useMap)) useMap = "";
   const tabs = $("#tabs");
   for (const [k, label] of TABS) tabs.append(h("button", { class: "tab", "data-cat": k, onclick: () => go(k) }, label, h("span", { class: "n" }, counts[k] ?? "")));
   go(cat);
 }
+// The maps' own assets and the drafts (layers 2 and 3), and what the maps use: read at start, and again whenever
+// they change on disk (live updates: liveCheck), without reloading the page.
+let baseCounts = {};
+async function loadOwn() {
+  try { custom = await (await fetch("/api/assets/custom")).json(); } catch { custom = {}; }   // an older board server: none
+  try { usage = { maps: [], tex: {}, things: {}, classes: {}, sounds: {}, decals: {}, music: {}, ...await (await fetch("/api/assets/usage")).json() }; } catch { }
+  counts = { ...baseCounts };
+  for (const [k, list] of Object.entries(custom)) counts[k] = (counts[k] || 0) + list.length;
+  document.querySelectorAll(".tab").forEach(t => { const n = t.querySelector(".n"); if (n) n.textContent = counts[t.dataset.cat] ?? ""; });
+}
+// Live updates (mapper, 2026-11-26): every 2 s, ask the board what changed. This page's own files, or a board
+// restarted with new code: reload (the view is kept in localStorage). The maps' or drafts' assets: fetch them
+// again and redraw in place.
+let liveSeen = null;
+async function liveCheck() {
+  let p;
+  try { p = await (await fetch("/api/ping")).json(); } catch { return; }   // the board restarting: next time
+  const page = `${p.pages?.assets}|${p.pages?.["assets-synth"]}|${p.code}`;
+  if (liveSeen === null) { liveSeen = { page, assets: p.assets }; return; }
+  if (page !== liveSeen.page) return location.reload();
+  if (p.assets !== liveSeen.assets && KEY) {        // (not before the page has finished starting)
+    liveSeen.assets = p.assets;
+    await loadOwn();
+    for (const k of Object.keys(data)) delete data[k];   // each category merges the game's and the new own lists again
+    go(cat);
+  }
+}
+setInterval(liveCheck, 2000);
+
 async function go(c) {
   cat = c; store.set("cat", c); history.replaceState(null, "", "#" + c);
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.dataset.cat === c));
   if (!data[c]) {
     $("#list").innerHTML = '<div class="empty loading"><svg class="sigil small" viewBox="-50 -50 100 100"><circle r="44"/><circle r="38" class="thin"/><path d="M0 -38 L22.3 30.7 L-36.1 -11.7 L36.1 -11.7 L-22.3 30.7 Z"/></svg><div>loading...</div></div>';
-    data[c] = [...(await (await fetch("/api/assets/" + c)).json()).items, ...(custom[c] || [])];
+    // The layers (docs/asset-browser.md): the game's, then the maps' own and the drafts. An asset of a map or a
+    // draft with a game asset's name replaces it, as in the engine: the game's is not listed twice.
+    const base = (await (await fetch("/api/assets/" + c)).json()).items, own = custom[c] || [];
+    const key = t => String(t.class || t.name || "").toLowerCase();
+    const ownKeys = new Set(own.map(key)), baseKeys = new Set(base.map(key));
+    own.forEach(t => { t.replaces = baseKeys.has(key(t)); });
+    data[c] = [...base.filter(t => !ownKeys.has(key(t))), ...own];
   }
   buildBar(); render(); renderSide();
 }
@@ -426,7 +462,9 @@ function pick(t) {
 
 // ---- the side panel ---------------------------------------------------------------------------
 let auditionMode = store.get("mode", "plan");
-const audit = store.get("audit", { zoom: 2, light: 255, bg: "black", link: false, spin: true, perface: false, guides: true });
+const audit = store.get("audit", { zoom: 2, light: 255, bg: "checker", link: false, spin: true, perface: false, guides: true });
+// The mapper, 2026-11-26: checker by default. Settings saved before that kept "black": moved over once.
+if (!audit.bgChecker) { audit.bg = "checker"; audit.bgChecker = 1; store.set("audit", audit); }
 function renderSide() {
   const side = $("#side"); side.innerHTML = "";
   stopAnim();
@@ -794,14 +832,47 @@ function renderThing(side, t) {
   const all = h("div", { class: "frames" });
   for (const f of front) { const im = h("img", { src: assetUrl(`sprite/${f}.png`) }); all.append(h("figure", {}, im, h("figcaption", {}, f))); }
   body.append(h("div", { class: "row dim", style: "margin-top:10px" }, `all frames, front view (${letters.length})`), all);
+  if (t.hud && t.hud.ready && t.hud.ready.length) renderHud(body, t);
 }
-let animTimer = null;
+
+// A weapon of a map's own (2026-11-27, the drone gun): its first-person view on the engine's 320 x 200 screen, at
+// 2x: the Ready state looping, and Fire played once per click (its states as they fall through; a random A_Jump
+// isn't taken, so this is one of its volleys). Each frame placed by its offsets, as the engine hangs a raised weapon.
+function renderHud(body, t) {
+  const Z = 2;
+  const screen = h("div", { style: `position:relative;width:${320 * Z}px;height:${200 * Z}px;overflow:hidden;` +
+    "background:linear-gradient(#2b2f36 0 48%, #3a352e 52% 100%);border:1px solid #444;image-rendering:pixelated" });
+  screen.append(h("div", { style: `position:absolute;left:${160 * Z - 3}px;top:${100 * Z - 3}px;width:6px;height:6px;border:1px solid #8f8;border-radius:50%`, title: "the crosshair" }));
+  screen.append(h("div", { style: `position:absolute;left:0;right:0;top:${168 * Z}px;border-top:1px dashed #777`, title: "the status bar's top: below it shows only in the full-screen view" }));
+  const im = h("img", { class: "pix", style: "position:absolute" });
+  screen.append(im);
+  const show = ([url, , x, y]) => {
+    im.src = assetUrl(url);
+    im.onload = () => { im.style.width = im.naturalWidth * Z + "px"; };
+    im.style.left = x * Z + "px"; im.style.top = y * Z + "px";
+  };
+  let seq = t.hud.ready, i = 0, firing = false;
+  const step = () => {
+    if (i >= seq.length) { if (firing) { firing = false; seq = t.hud.ready; } i = 0; }
+    const f = seq[i++];
+    show(f);
+    hudTimer = setTimeout(step, Math.max(1, f[1]) * 1000 / 35);
+  };
+  const fire = h("button", { type: "button", title: "plays the Fire state once" }, "fire");
+  fire.onclick = () => {
+    if (!t.hud.fire || !t.hud.fire.length || firing) return;
+    clearTimeout(hudTimer); firing = true; seq = t.hud.fire; i = 0; step();
+  };
+  body.append(h("div", { class: "row dim", style: "margin-top:10px" }, "in hand, on the game's 320 x 200 screen at 2x (ready; ", fire, " plays one volley)"), screen);
+  step();
+}
+let animTimer = null, hudTimer = null;
 const _stopAnim = stopAnim;
-stopAnim = function () { _stopAnim(); if (animTimer) clearTimeout(animTimer); animTimer = null; };
+stopAnim = function () { _stopAnim(); if (animTimer) clearTimeout(animTimer); if (hudTimer) clearTimeout(hudTimer); animTimer = hudTimer = null; };
 
 // ---- decals -----------------------------------------------------------------------------------
 function renderDecal(side, d) {
-  side.append(h("h2", {}, d.name, h("span", { class: "dim" }, d.kind)));
+  side.append(h("h2", {}, favButton(d), d.name, h("span", { class: "dim" }, d.kind), customPill(d), usedBadge(d)));
   const body = h("div", { class: "body" }); side.append(body);
   body.append(h("div", { class: "row" }, "spray: ", copyable(`A_SprayDecal("${d.name}");`), d.groups.length ? h("span", { class: "dim" }, "in groups: " + d.groups.join(", ")) : ""));
   body.append(h("div", { class: "row dim" }, `picture ${d.pic}, ${d.width} x ${d.height}` + (d.xscale !== 1 || d.yscale !== 1 ? `, scale ${d.xscale} x ${d.yscale}` : "") +

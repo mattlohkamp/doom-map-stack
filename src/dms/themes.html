@@ -855,6 +855,14 @@ addEventListener("hashchange", () => { const n = decodeURIComponent(location.has
 if (gl) {
   load(true);
   setInterval(() => load(false), 3000);       // a theme.toml edited shows within a few seconds
+  // Live updates: reload when this page's file changes, or the board restarted with new code.
+  let seen = null;
+  setInterval(async () => {
+    try {
+      const p = await (await fetch("/api/ping")).json(), v = `${p.pages?.themes}|${p.code}`;
+      if (seen === null) seen = v; else if (v !== seen) location.reload();
+    } catch { }   // the board restarting: try again next time
+  }, 2000);
   requestAnimationFrame(frame);
 }
 </script>

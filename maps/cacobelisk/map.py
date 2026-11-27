@@ -200,6 +200,10 @@ WICKET_TEXTURE = "BIGDOOR6"
 WICKET_OFFSET = (32, 26)
 WICKET_TEXTURE_HIGH = 112
 WICKET_STEP, WICKET_SILL = 4, "FLAT5_2"     # note #55: a slight wooden step through the small door
+# Note #158: the great doorway's wooden sill reaches this far from the hall's face (past the leaves' swing, which
+# reaches about 41) and this far either side of the middle behind the wall (the doorway is 96 each way; the
+# leaves' hinged ends reach 98; the vestibule's walls there are at 112).
+SILL_DEEP, SILL_WIDE = 48, 104
 # Note #58: the small door set into the leaf, in its own rusted metal frame: a recess FRAME[0] deep in
 # the leaf's face, FRAME[1] wider than the door each side and FRAME[2] taller, lined with the elevator
 # track's rusty metal (SUPPORT3); the door at its back. Posts of the frame stand either side of the door
@@ -213,6 +217,7 @@ LEAF_THICK = 12
 WICKET = (15, 79)               # along the left leaf from its hinge
 WICKET_HIGH = 72
 WICKET_TAG = 501
+WICKET_RUNE_LINE = 901          # note #153: the line id of the small door's face to the hall (zscript.zs sprays a rune on it)
 # Note #72: a pinky couldn't follow into the vestibule (a 76 opening beside the right leaf's hinge, then
 # a tight turn). Now twice as deep, rounded, its north-east side curving back down to a wide opening
 # onto the passage (about 122, slanted). Its outline from the west jamb's back corner round to the
@@ -277,6 +282,7 @@ STORE_FRAME = 8             # note #117: the door's frame on the room's side
 # in the chamber sinks that box (Floor_LowerToLowest), opening a shortcut into the storage room.
 STORE_SHORTCUT, STORE_SHORTCUT_TAG = 2, 12     # which of STORE_BACK, and its tag
 STORE_SHORTCUT_STEP = 8                        # note #142: the step it leaves when it sinks
+STORE_SHORTCUT_FACE_LINE = 902                  # note #161: the line id of its face to the room (zscript.zs CacobeliskShortcutHint)
 STORE_SWITCH_WINDOW, STORE_SWITCH_SHUTTER_TAG = (423, 455), 15   # note #149: the switch's niche (d along the wall), its shutter's tag
 STORE_SHORTCUT_PRIZE = ((2048, 1, 368), (2049, 29, 368), (2018, 15, 392))   # note #143: bullets, shells, green armour on top; note #150: kept 29 from the box's sides (a pickup's square, 20 each way, reaches 28 at a slant in this turned room), or the taller boxes beside it held them up when it sank
 STORE_BACKWAY_D = 470                          # the chamber reaches this far back (d), behind the box at about 405
@@ -295,18 +301,23 @@ STORE_BACK = ((((208, 300), (150, 345), (150, 361.8), (200, 330)), 80),
 # Note #97 (2026-11-26): fully navigable: the boxes in two clusters (boxes in a cluster touch, sharing a side),
 # at least 59 from the walls and 70 apart, so nothing snags on the way round. Then pickups: 50 health
 # (a medikit, two stimpacks, five bonuses), 50 armour (fifty bonuses, in short trails; gone in note #103), a box of shells.
-STORE_BOXES = ((-160, 170, -96, 234, 96), (-96, 170, -48, 234, 48), (-160, 234, -96, 282, 64),
-               (70, 150, 134, 214, 64), (70, 214, 134, 262, 48), (22, 150, 70, 214, 32))
+# Note #157 (2026-11-26): the pinkies struggled out from among the boxes. The clusters are narrower now (80 wide,
+# were 112) and closer together, so the lanes round their outsides are wide (about 105-150, more than a pinky's
+# twice-its-width for a bend) and the lane between them, in line with the door, is 56: wide enough for an imp
+# (40), too narrow for a pinky (60). So the imps come straight down the middle and the pinkies flank round the sides.
+STORE_BOXES = ((-120, 170, -72, 234, 96), (-72, 170, -40, 234, 48), (-120, 234, -72, 282, 64),
+               (48, 150, 96, 214, 64), (48, 214, 96, 262, 48), (16, 150, 48, 214, 32))
 STORE_DOOR_TORCHES = ((46, -84, 44), (46, 84, 44))   # note #113: tall red torches either side of the door, inside
-STORE_MONSTERS = ((3002, -20, 300), (3002, 170, 290),                      # note #112: out of the new box wall
-                  (3001, -200, 190), (3001, -60, 270), (3001, 100, 110), (3001, 40, 300))
+STORE_MONSTERS = ((3002, -174, 282), (3002, 156, 268),                     # note #157: a pinky behind each side lane
+                  (3001, -12, 250), (3001, -12, 300), (3001, -44, 318), (3001, 20, 318))   # the imps up the middle lane
+STORE_PINKY_TID, STORE_IMP_TID = 340, 341      # note #159: zscript.zs CacobeliskPincer wakes the pinkies once an imp engages
 # Note #103 (2026-11-26): no armour; the health and the shells up on the boxes, where the player bumps into them
 # from the floor: only on boxes no higher than 48 (a pickup on a box is touched while it is lower than the
 # player's 56), 10 in from a side the player can walk up to.
-STORE_PICKUPS = ((2012, ((46, 160),)),                                     # the medikit: on the 32-high box
-                 (2011, ((-72, 180), (102, 252))),                         # the stimpacks: on the two 48-high ones
-                 (2014, ((32, 204), (60, 204), (-58, 224), (-58, 200), (124, 230))),
-                 (2049, ((80, 240),)))
+STORE_PICKUPS = ((2012, ((28, 160),)),                                     # the medikit: on the 32-high box
+                 (2011, ((-50, 180), (86, 252))),                          # the stimpacks: on the two 48-high ones
+                 (2014, ((32, 182), (32, 204), (-56, 224), (-56, 202), (86, 226))),
+                 (2049, ((60, 250),)))
 SIDE_FOG = (0x0E0C08, 180)
 SIDE_CARVING = (8, "r")       # note #134: a carved alcove like the passage's in the 9th piece's right wall
 SIDE_CARVING_ITEMS = (2015,) * 5     # armour bonuses (ARMOR_BONUS is defined further down)
@@ -1616,11 +1627,11 @@ def storage_chamber(m: MapBuilder, s, a, b) -> None:
     sb0, sb1 = P(*sc_pts[2]), P(*sc_pts[3])                 # the box's back edge
     ua, ub = sc_pts[2][0], sc_pts[3][0]
     far0, far1 = P(ua, STORE_BACKWAY_D), P(ub, STORE_BACKWAY_D)
-    # Note #139 (2026-11-26): glimpsed over the box from the storage room, the chamber is plainly somewhere else: the
-    # base's (its walls METAL4, the techbase floor and ceiling, a grey switch), while the wall over the box, on the
-    # storage room's side, stays the grotto's rock.
-    chamber = m.sector(f"{gid}.backway", floor=floor, ceiling=floor + 96, light=96, floor_tex=TECH_FLOOR,
-                       ceiling_tex=TECH_CEILING)
+    # Note #139 (2026-11-26): glimpsed over the box from the storage room, the chamber is plainly somewhere else, while
+    # the wall over the box, on the storage room's side, stays the grotto's rock. Note #178 (2026-11-27): it's the back
+    # tunnel's end, so it has the tunnel's textures (BACK_TUNNEL_WALL, _FLOOR, _CEIL; it had the techbase's).
+    chamber = m.sector(f"{gid}.backway", floor=floor, ceiling=floor + 96, light=96, floor_tex=BACK_TUNNEL_FLOOR,
+                       ceiling_tex=BACK_TUNNEL_CEIL)
     # Note #149 (2026-11-26): the switch set into a niche in the side wall, like the elevator's: a window of the plate
     # (32 x 32, 24 above the floor), track metal round it, and in front of the switch a shutter whose ceiling
     # zscript.zs brings down once it's used (one use), the panel (CALL_SHUTTER_TEXTURE) riding down over it.
@@ -1638,9 +1649,9 @@ def storage_chamber(m: MapBuilder, s, a, b) -> None:
         ld = m.linedefs[ln]
         if "sideback" in ld.fields:
             for sd in ("sidefront", "sideback"):
-                m.sidedefs[ld[sd]].fields.update(texturetop=CLOSET_SKIN, texturebottom=CLOSET_SKIN)
+                m.sidedefs[ld[sd]].fields.update(texturetop=BACK_TUNNEL_WALL, texturebottom=BACK_TUNNEL_WALL)
         else:
-            m.sidedefs[ld["sidefront"]]["texturemiddle"] = CLOSET_SKIN
+            m.sidedefs[ld["sidefront"]]["texturemiddle"] = BACK_TUNNEL_WALL
     for ln in _edges(m, niche, [(N0, N1, "skip", ""), (N1, M1, None, f"{gid}.backway.niche.side_b"),
                                 (M1, M0, shutter, f"{gid}.backway.niche.panel"), (M0, N0, None, f"{gid}.backway.niche.side_a")]):
         ld = m.linedefs[ln]
@@ -1689,6 +1700,11 @@ def storage_chamber(m: MapBuilder, s, a, b) -> None:
                     m.sidedefs[ld[sd]]["texturetop"] = CLOSET_SKIN if m.sidedefs[ld[sd]]["sector"] == chamber.index else SIDE_WALL
             else:
                 m.sidedefs[ld["sidefront"]]["texturemiddle"] = VESTIBULE_BOX_SIDE
+    # Note #161: the shortcut box's face to the room carries a line id, so zscript.zs (CacobeliskShortcutHint) can
+    # tell a player who tries to use it from this side that it's out of reach for now.
+    for ld in m.linedefs:
+        if ld["user_gid"] == f"{gid}.back_{STORE_SHORTCUT + 1}.side_1":
+            ld["id"] = STORE_SHORTCUT_FACE_LINE
     boxes, sides = [], {}
     for k, (bu0, bd0, bu1, bd1, bh) in enumerate(STORE_BOXES):
         box = m.sector(f"{gid}.box_{k + 1}", floor=floor + bh, ceiling=floor + STORE_HIGH, light=STORE_LIGHT,
@@ -1712,6 +1728,7 @@ def storage_chamber(m: MapBuilder, s, a, b) -> None:
     for k, (type_, u, d) in enumerate(STORE_MONSTERS):
         t = m.thing(type_, *P(u, d), f"{gid}.monster_{k + 1}", angle=to_door)
         m.things[t]["ambush"] = True
+        m.things[t]["id"] = STORE_PINKY_TID if type_ == 3002 else STORE_IMP_TID     # note #159
     for k, (type_, u, d) in enumerate(STORE_SHORTCUT_PRIZE):             # note #143: on the shortcut box, out of reach until it sinks
         m.thing(type_, *P(u, d), f"{gid}.back_3.prize_{k + 1}", angle=(k * 97) % 360)
     for k, (type_, u, d) in enumerate(STORE_DOOR_TORCHES):               # note #113
@@ -1746,11 +1763,38 @@ def great_door(m: MapBuilder, room, a, b, before=None, after=None) -> None:
     # which didn't match the walls round it): the same texture, hung from the ceiling like them, and
     # carried on from the wall on its left.
     from dms.gen import WALL
-    opening = m.two_sided(P(-half, 0), P(half, 0), room, vest, "vestibule.opening", texture=WALL)
-    m.linedefs[opening]["dontpegtop"] = True
-    m.sidedefs[m.linedefs[opening]["sidefront"]]["offsetx"] = round(L / 2 - half)
     # The vestibule: the jambs (16 deep), then wider behind the wall.
     j = 16
+    # Note #156 (2026-11-26): the doorway as the other doors are: a slight wooden step through it (WICKET_STEP up,
+    # boards turned to run across it, a wooden riser either side) between jambs in the door track (DOORTRAK);
+    # the leaves are hinged at its back corners. It was the vestibule's mossy stone, which showed under the leaves.
+    # Note #158: the whole frame of the door, as if it were shut: the boards run on under the leaves (stuck ajar,
+    # they stand on it) and out a little into the vestibule past where they'd close (SILL_DEEP from the hall's
+    # face, SILL_WIDE either side of the middle, wider than the doorway behind the wall, round the hinges).
+    sill = threshold = m.sector("vestibule.sill", floor=floor + WICKET_STEP, ceiling=top, light=VESTIBULE_LIGHT,
+                                floor_tex=WICKET_SILL, ceiling_tex=PASSAGE_TEXTURE)
+    fog(m, sill)
+    m.sectors[sill.index]["rotationfloor"] = round(math.degrees(math.atan2(uy, ux)), 2)
+    opening = m.two_sided(P(-half, 0), P(half, 0), room, sill, "vestibule.opening", texture=WALL)
+    m.linedefs[opening]["dontpegtop"] = True
+    m.sidedefs[m.linedefs[opening]["sidefront"]].fields.update(offsetx=round(L / 2 - half), texturebottom=CISTERN_WOOD)
+    sw, sdp = SILL_WIDE, SILL_DEEP
+    for ln in _edges(m, sill, [(P(-half, 0), P(half, 0), "skip", ""),
+                               (P(half, 0), P(half, j), None, "vestibule.jamb_e"),
+                               (P(half, j), P(sw, j), None, "vestibule.sill.wall_e"),
+                               (P(sw, j), P(sw, sdp), vest, "vestibule.sill.end_e"),
+                               (P(sw, sdp), P(-sw, sdp), vest, "vestibule.sill.back"),
+                               (P(-sw, sdp), P(-sw, j), vest, "vestibule.sill.end_w"),
+                               (P(-sw, j), P(-half, j), None, "vestibule.sill.wall_w"),
+                               (P(-half, j), P(-half, 0), None, "vestibule.jamb_w")]):
+        L2 = m.linedefs[ln]
+        if "sideback" in L2.fields:                                    # the step's edges: risers into the vestibule
+            for sd in ("sidefront", "sideback"):
+                m.sidedefs[L2[sd]].fields.update(texturebottom=CISTERN_WOOD, texturetop="-")
+        elif ".jamb_" in L2["user_gid"]:
+            m.sidedefs[L2["sidefront"]]["texturemiddle"] = JAMB_TRACK
+        else:                                                          # the back of the hall's wall, either side
+            m.sidedefs[L2["sidefront"]]["texturemiddle"] = PASSAGE_TEXTURE
     # Note #13 (2026-11-23): a torch set in the vestibule's wall VESTIBULE_TORCH_WALL (a niche like the
     # passage's: 24 wide, from the floor), to explain the room's red glow; the glow now comes from it.
     # Note #126 (2026-11-24): a second lit torch, in the wall beside the way out to the passage
@@ -1806,13 +1850,13 @@ def great_door(m: MapBuilder, room, a, b, before=None, after=None) -> None:
                 (P(*t0), P(*t1), sec, f"{name}.mouth"),
                 (P(*t1), b2, None, f"vestibule.wall_{i + 1}_b")]
     _edges(m, vest, [
-        (P(half, 0), P(-half, 0), "skip", ""),
-        (P(-half, 0), P(-half, j), None, "vestibule.jamb_w"),
-        (P(-half, j), P(*VESTIBULE_OUTLINE[0]), None, "vestibule.wall_sw"),
+        (P(SILL_WIDE, j), P(SILL_WIDE, SILL_DEEP), "skip", ""),          # the step through the doorway (above)
+        (P(SILL_WIDE, SILL_DEEP), P(-SILL_WIDE, SILL_DEEP), "skip", ""),
+        (P(-SILL_WIDE, SILL_DEEP), P(-SILL_WIDE, j), "skip", ""),
+        (P(-SILL_WIDE, j), P(*VESTIBULE_OUTLINE[0]), None, "vestibule.wall_sw"),
     ] + [e for i in range(len(VESTIBULE_OUTLINE) - 1) for e in outline_edge(i)] + [
         (P(*PASSAGE[0][0]), P(*PASSAGE[0][1]), "skip", ""),     # the passage's opening (passage())
-        (P(*PASSAGE[0][1]), P(half, j), None, "vestibule.wall_se"),
-        (P(half, j), P(half, 0), None, "vestibule.jamb_e"),
+        (P(*PASSAGE[0][1]), P(SILL_WIDE, j), None, "vestibule.wall_se"),
     ])
     # Note #3 (2026-11-23): the vestibule in the passage's style: mossy stone on its walls, floor and
     # ceiling (the jambs, in the thickness of the hall's wall, stay the hall's).
@@ -1894,7 +1938,7 @@ def great_door(m: MapBuilder, room, a, b, before=None, after=None) -> None:
     def vest_side(ln):
         for side in ("sidefront", "sideback"):
             sd = m.sidedefs[m.linedefs[ln][side]]
-            if sd["sector"] == vest.index:
+            if sd["sector"] == threshold.index:
                 return sd
 
     def by_gid(gid):
@@ -1903,9 +1947,9 @@ def great_door(m: MapBuilder, room, a, b, before=None, after=None) -> None:
     def leaf(k, s0, s1, gid, ends):
         s = m.sector(gid, floor=top, ceiling=top, light=VESTIBULE_LIGHT)
         lines = _edges(m, s, [
-            (leaf_point(k, s0, 0), leaf_point(k, s1, 0), vest, f"{gid}.face"),
+            (leaf_point(k, s0, 0), leaf_point(k, s1, 0), threshold, f"{gid}.face"),
             (leaf_point(k, s1, 0), leaf_point(k, s1, T), ends[1], f"{gid}.end_b"),
-            (leaf_point(k, s1, T), leaf_point(k, s0, T), vest, f"{gid}.back"),
+            (leaf_point(k, s1, T), leaf_point(k, s0, T), threshold, f"{gid}.back"),
             (leaf_point(k, s0, T), leaf_point(k, s0, 0), ends[0], f"{gid}.end_a"),
         ])
         for ln in lines:
@@ -1920,7 +1964,7 @@ def great_door(m: MapBuilder, room, a, b, before=None, after=None) -> None:
         vest_side(by_gid(f"{gid}.back"))["texturebottom"] = LEAF_TEXTURES[0]
         return s
     w0, w1 = WICKET
-    leaf(1, 0, length, "great_door.leaf_e", (vest, vest))
+    leaf(1, 0, length, "great_door.leaf_e", (threshold, threshold))
     # The left leaf, with the small door (notes #50, #57, #58): pieces in the leaf's own (s, t), built
     # through one table of edges so pieces that meet share their lines; edges nobody else has face the
     # vestibule. Note #1 (2026-11-23): the door slides up (it sank into the floor): a real door sector,
@@ -1956,6 +2000,9 @@ def great_door(m: MapBuilder, room, a, b, before=None, after=None) -> None:
     for name in ("great_door.frame", "great_door.wicket", "great_door.wicket_back"):
         turn = round(math.degrees(math.atan2(leaf_dir[1], leaf_dir[0])), 2)
         m.sectors[pieces[name][0].index].fields.update(rotationfloor=turn, rotationceiling=turn)   # note #94: the wooden ceiling too
+        # Note #160 (2026-11-26): the floor now lies on the doorway's sill (note #158), whose boards run with the wall:
+        # the same turn (about the map's origin, like every flat), so the boards carry on without a seam.
+        m.sectors[pieces[name][0].index]["rotationfloor"] = m.sectors[threshold.index]["rotationfloor"]
     door = pieces["great_door.wicket"][0]
     m.sectors[door.index]["id"] = WICKET_TAG
     edges = {}
@@ -1968,14 +2015,14 @@ def great_door(m: MapBuilder, room, a, b, before=None, after=None) -> None:
             edges.setdefault(frozenset((pts[k], pts[k2])), []).append((name, sec, pts[k], pts[k2]))
     for key, owners in edges.items():
         name, sec, pa, pb = owners[0]
-        other = owners[1][1] if len(owners) > 1 else vest
+        other = owners[1][1] if len(owners) > 1 else threshold
         oname = owners[1][0] if len(owners) > 1 else "vestibule"
         (s0, t0), (s1, t1) = pa, pb
         where = "face" if t0 == t1 == 0 else "back" if t0 == t1 == T else f"{min(s0, s1):g}_{min(t0, t1):g}"
         gid = f"{name}.{oname.split('.')[-1]}.{where}"
         # The front is the player's side (the vestibule or the frame) on the door's faces.
         front, back, a, b = sec, other, leaf_point(0, *pa), leaf_point(0, *pb)
-        if other is vest or name == "great_door.wicket":
+        if other is threshold or name == "great_door.wicket":
             front, back, a, b = other, sec, b, a
         ln = m.two_sided(a, b, front, back, gid, texture=FRAME_TEXTURE)
         L = m.linedefs[ln]
@@ -1990,9 +2037,11 @@ def great_door(m: MapBuilder, room, a, b, before=None, after=None) -> None:
             # (so it rides up with it): WICKET_OFFSET's row at WICKET_HIGH above the floor.
             fs.fields.update(texturetop=WICKET_TEXTURE, offsetx_top=WICKET_OFFSET[0],
                              offsety_top=WICKET_OFFSET[1] + WICKET_HIGH - WICKET_TEXTURE_HIGH)
+            if front is pieces["great_door.frame"][0]:  # note #153: the face to the hall gets a rune
+                L["id"] = WICKET_RUNE_LINE
         elif is_wicket:                                 # the door's sides
             fs["texturebottom"] = bs["texturebottom"] = "DOORTRAK"
-        elif other is vest:                                             # the leaf's face and back
+        elif other is threshold:                                             # the leaf's face and back
             vs = fs
             side = "face" if t0 == 0 else "back"
             vs.fields.update(texturetop=LEAF_TEXTURES[0], texturebottom=LEAF_TEXTURES[0],
@@ -2242,14 +2291,41 @@ STATION_BOX_GUARDS = ((3004, -300, 600), (3004, -220, 540), (9, -380, 560))   # 
 # swapped for drones when the level loads. In the main pump hall, off the pit and clear of the catwalks (their
 # underside is 136 up), hovering HEIGHT above the floor, facing the way in (west). (x, y) from STATION's origin.
 DRONE_TID, RED_DRONE_TID = 330, 331        # the cyan drones (CacobeliskDrone) and the red (CacobeliskRedDrone)
+YELLOW_DRONE_TID = 332                     # the yellow ones (CacobeliskYellowDrone: a reskinned lost soul)
+GUARD_ZOMBIE_TID = 333                     # note #174: the guard posts' zombies (CacobeliskGuardZombie: they stand and shoot)
+DRONE_GUN_TID = 334                        # 2026-11-27: the drone gun (CacobeliskDroneGun), placed as a plasma rifle
+# 2026-11-27 (chat): "leave one laying on a crate in the station storage room": on crate 3, by the door (lowered to 48
+# for it: a pickup higher than the player's 56 above their feet can't be taken). (x, y) from STATION's origin.
+# 2026-11-27 (chat): "a room full of zombies to test it on ... gated with a door attached to the south of the station
+# storage room ... a nice big room, and put like 20 zombies in there": the zombie hall, 704 x 640 and 192 high, through a
+# station door in the storage room's south wall (east of its tall crates, so the way to it is clear). Techbase
+# textures (themes/techbase). Crates for cover (x0, y0, x1, y1, height, side), and twenty zombiemen in uneven groups,
+# never mirrored (docs/map-design-notes.md): (x, y, angle), from STATION's origin. A cell pack in the storage room,
+# since the gun's own 40 cells are eight bursts.
+ZOMBIE_HALL_CRATES = ((-208, -1008, -144, -944, 64, "CRATE1"), (176, -1152, 240, -1088, 48, "CRATE3"),
+                      (240, -1152, 304, -1088, 64, "CRATE2"), (-48, -1264, 16, -1200, 64, "CRATE1"))
+ZOMBIE_HALL_ZOMBIES = (
+    (-240, -780, 60), (-190, -820, 90), (-260, -860, 45), (-150, -770, 100),                       # by the west wall
+    (40, -980, 90), (100, -1010, 120), (-20, -1040, 75), (70, -1060, 95), (150, -960, 110), (0, -930, 80),   # the middle
+    (330, -1250, 135), (280, -1290, 100), (360, -1200, 150), (200, -1260, 90), (320, -1000, 160),  # the far east corner
+    (-260, -1150, 30), (-200, -1220, 60), (150, -800, 70), (-90, -1290, 90), (380, -800, 180))     # loose ones
+STATION_CELL_PACK = (60, -600)
+STATION_DRONE_GUN = (-16, -486)   # 10 in from the crate's south edge: touched from the floor (centres within 16 + 14)
+# 2026-11-26 (chat): yellow drones in the corridors round the pump hall: two in the north corridor (128 high), two in
+# the south pipe gallery (96 high): (x, y, height above the floor), from STATION's origin, clear of the nooks and doors.
+STATION_YELLOW_DRONES = ((280, 560, 40), (720, 560, 40), (640, -560, 24), (1200, -560, 24))
 STATION_DRONES = ((520, 280), (820, -300), (1000, 150))
 STATION_RED_DRONES = ((1000, -150),)
+# Note #166 (2026-11-26): a red drone over the crate in the box room's north-west corner (CRATE3, 64 high): (x, y, height
+# above the crate's top: the room is 128 high, the drone 40).
+STATION_BOX_RED_DRONES = ((-448, 696, 12),)
 STATION_DRONE_HEIGHT = 72
 BACK_TUNNEL_Y, BACK_TUNNEL_WIDE, BACK_TUNNEL_X = 3120, 64, -770
 # Note #136 (2026-11-26): a narrow access tunnel: lower (72), rusty brown underfoot and overhead, and now and then a
 # candle in a small niche in its north wall (every BACK_TUNNEL_CANDLES along the long stretch), its feeble glow
 # the engine's own.
-BACK_TUNNEL_HIGH, BACK_TUNNEL_FLOOR, BACK_TUNNEL_CEIL = 72, "SLIME16", "SLIME15"
+BACK_TUNNEL_HIGH, BACK_TUNNEL_FLOOR, BACK_TUNNEL_CEIL = 72, "SLIME16", "FLAT5_2"   # note #178: the ceiling FLAT5_2 (was SLIME15)
+BACK_TUNNEL_WALL = "BROWN96"     # note #178: the tunnel's walls, and the chamber's at its end (storage_chamber)
 BACK_TUNNEL_CANDLES, BACK_TUNNEL_NICHE = 320, (16, 8)   # every, and the niche's width and depth
 BACK_TUNNEL_STEPS, BACK_TUNNEL_STEP_LONG = 4, 64          # note #141: the rise to the storage room's level, gently
 
@@ -2379,12 +2455,20 @@ def station_zones() -> list[dict]:
     base("storage", -176, -656, 112, -432, **store)
     base("storage_crate_1", -144, -624, -80, -560, **{**store, "floor": 64, "side": "CRATE1", "floor_tex": "CRATOP2", "scenery": True})
     base("storage_crate_2", -80, -624, -16, -560, **{**store, "floor": 96, "side": "CRATE2", "floor_tex": "CRATOP1", "scenery": True})
-    base("storage_crate_3", -48, -496, 16, -432, **{**store, "floor": 64, "side": "CRATE3", "floor_tex": "CRATOP2", "scenery": True})
+    base("storage_crate_3", -48, -496, 16, -432, **{**store, "floor": 48, "side": "CRATE3", "floor_tex": "CRATOP2", "scenery": True})   # 2026-11-27: 48 (was 64), the drone gun on it
     # Note #131 (2026-11-26): a frame where the service passage opens into the storage room, so the walls don't change
     # texture in a bare corner: the track's metal (STATION_FRAME), 16 deep, posts 8 wide, a lintel at 112.
     base("storage_frame", 16, -448, 112, -432, ceil=112, wall=STATION_FRAME, side=STATION_FRAME)
     void(16, -448, 24, -432)
     void(104, -448, 112, -432)
+
+    # 2026-11-27 (chat): the zombie hall, south of the storage room, behind a station door (ZOMBIE_HALL_*).
+    door("door_zombies", -8, -704, 104, -656)
+    zh = {"ceil": 192, "light": 160, "wall": "METAL4", "floor_tex": "FLOOR0_3", "ceil_tex": "CEIL3_5"}
+    base("zombies", -304, -1344, 400, -704, **zh)
+    for k, (x0, y0, x1, y1, hgt, tex) in enumerate(ZOMBIE_HALL_CRATES):
+        base(f"zombies_crate_{k + 1}", x0, y0, x1, y1, **{**zh, "floor": hgt, "side": tex,
+                                                          "floor_tex": "CRATOP1" if hgt > 48 else "CRATOP2", "scenery": True})
     return Z
 
 
@@ -2521,10 +2605,16 @@ STATION_ENTRY_DEEPER = 64
 # at eye height (the guards' shots, at about 36, pass), the guard posts moved out beside the wider passage.
 ENTRY_ARCH = (-64, -56, -48, 48, 56, 64)
 ENTRY_ARCH_TOPS = (88, 104, 112, 104, 88)
-ENTRY_SLIT, ENTRY_SLIT_Z = (84, 124), (28, 44)
+# Note #170 (2026-11-26): wider and taller (no further out than 124, where the tech hall's wall runs past).
+# Note #172: the zombies still missed and turned away: the slit is now a cage front from the floor up, ENTRY_SLIT_Z
+# high, of the cliff's railing bars (CLIFF_RAIL, MIDBARS3, 72 high); note #173: a strip of them at the feet and one above,
+# the open window between; all of it impassable (blocking), all of it see- and shoot-through, both ways.
+ENTRY_SLIT, ENTRY_SLIT_Z = (76, 124), (0, 72)
+ENTRY_CAGE_BAR = 20            # note #173: the height of each strip of bars (at the feet, and at the top); the window between is 32
+ENTRY_SIDE_CAGE_MARGIN = 12    # note #177: the side cage fronts (link to post) stop this far short of the post's corners
 ENTRY_GUARD_U, ENTRY_GUARD_LIGHT = (72, 136), 112
-ENTRY_GUARD_DOOR_TAG = 13      # note #129: the guard posts' doors, tags 13 and 14
-ENTRY_GUARD_BACKDOOR = (80, 128)   # note #140: the door in each post's back wall, |u| (48 wide, 72 high)
+ENTRY_GUARD_BACKDOOR = (80, 128)   # note #140: the doorway in each post's back wall, |u| (48 wide)
+ENTRY_GUARD_WAY_HIGH = 64              # note #165: the connector's height, and (note #176) the open doorway's
 ZOMBIE = 3004
 
 
@@ -2569,29 +2659,33 @@ def station(m: MapBuilder, hall, C3, C2, floor: int) -> None:
         Ga, Gb = P(sign * bb, dw - 8), P(sign * ba, dw - 8)              # on the post's back wall
         Da, Db = P(sign * bb, dw + 8), P(sign * ba, dw + 8)              # the door's other face
         Qa, Qb = (origin[0] + 8, origin[1] - sign * bb), (origin[0] + 8, origin[1] - sign * ba)   # the raster's cell
-        gate = m.sector(f"station.guard_{name}.door", floor=floor, ceiling=floor, light=ENTRY_GUARD_LIGHT,
+        # Note #176 (2026-11-27): "the doors just aren't working": an open doorway now, as high as the connector, no
+        # door (notes #129-#174 had a door here, tags 13 and 14, CACOCRDR on its face).
+        gate = m.sector(f"station.guard_{name}.door", floor=floor, ceiling=floor + ENTRY_GUARD_WAY_HIGH, light=ENTRY_GUARD_LIGHT,
                         floor_tex="FLAT5_4", ceiling_tex="CEIL5_1")
-        m.sectors[gate.index]["id"] = ENTRY_GUARD_DOOR_TAG + k
-        conn = m.sector(f"station.guard_{name}.way", floor=floor, ceiling=floor + 76, light=ENTRY_GUARD_LIGHT,
+        conn = m.sector(f"station.guard_{name}.way", floor=floor, ceiling=floor + ENTRY_GUARD_WAY_HIGH, light=ENTRY_GUARD_LIGHT,
                         floor_tex="FLAT5_4", ceiling_tex="CEIL5_1")
-        doors[name] = (gate, conn, Ga, Gb, Da, Db, Qa, Qb, ENTRY_GUARD_DOOR_TAG + k)
+        doors[name] = (gate, conn, Ga, Gb, Da, Db, Qa, Qb, None)
     def door_line(ln, tag):
+        # Note #176: no door any more, just the post's wall above the opening (the guards still stand and shoot while
+        # they see the player, and walk out through it when they don't: zscript.zs CacobeliskGuardZombie).
         ld = m.linedefs[ln]
-        ld.fields.update(special=12, arg0=tag, arg1=16, arg2=150, playeruse=True, monsteruse=True, repeatspecial=True)
         for sd in ("sidefront", "sideback"):
-            m.sidedefs[ld[sd]].fields.update(texturetop=TECH_DOOR_TEXTURE, texturebottom=TECH_DOOR_TEXTURE)
+            m.sidedefs[ld[sd]].fields.update(texturetop="STARG3")
     for name, (gate, conn, Ga, Gb, Da, Db, Qa, Qb, tag) in doors.items():
         for ln in _edges(m, gate, [(Ga, Gb, "skip", ""), (Gb, Db, None, f"station.guard_{name}.door.end_b"),
-                                   (Db, Da, conn, f"station.guard_{name}.door.back"), (Da, Ga, None, f"station.guard_{name}.door.end_a")]):
-            ld = m.linedefs[ln]
-            if "sideback" in ld.fields:
+                                   (Db, Da, "skip", ""), (Da, Ga, None, f"station.guard_{name}.door.end_a")]):
+            m.sidedefs[m.linedefs[ln]["sidefront"]]["texturemiddle"] = "DOORTRAK"
+            m.linedefs[ln]["dontpegbottom"] = True
+        # Note #162 (2026-11-26): the door's face to the connector is built from the connector's side, so its front is
+        # the player's side (a door opens only from its front); it was built from the door's own and wouldn't open.
+        for ln in _edges(m, conn, [(Da, Db, gate, f"station.guard_{name}.door.back"), (Db, Qb, None, f"station.guard_{name}.way.side_b"),
+                                   (Qb, Qa, "skip", ""), (Qa, Da, None, f"station.guard_{name}.way.side_a")]):
+            if "sideback" in m.linedefs[ln].fields:
                 door_line(ln, tag)
             else:
-                m.sidedefs[ld["sidefront"]]["texturemiddle"] = "DOORTRAK"
-                ld["dontpegbottom"] = True
-        for ln in _edges(m, conn, [(Da, Db, "skip", ""), (Db, Qb, None, f"station.guard_{name}.way.side_b"),
-                                   (Qb, Qa, "skip", ""), (Qa, Da, None, f"station.guard_{name}.way.side_a")]):
-            m.sidedefs[m.linedefs[ln]["sidefront"]]["texturemiddle"] = "STARG3"
+                m.sidedefs[m.linedefs[ln]["sidefront"]]["texturemiddle"] = "STARG3"
+    side_cages = {}
     for name, sign in (("n", -1), ("s", 1)):
         guard = m.sector(f"station.guard_{name}", floor=floor, ceiling=floor + 96, light=ENTRY_GUARD_LIGHT,
                          floor_tex="FLAT5_4", ceiling_tex="CEIL5_1")
@@ -2600,22 +2694,63 @@ def station(m: MapBuilder, hall, C3, C2, floor: int) -> None:
                         light=ENTRY_GUARD_LIGHT, floor_tex="CEIL5_1", ceiling_tex="CEIL5_1")
         m.sectors[slit.index]["user_scenery"] = True
         a, b = sorted((sign * s0, sign * s1))
-        for ln in _edges(m, slit, [(P(a, 0), P(b, 0), hall, f"station.slit_{name}.front"), (P(b, 0), P(b, 8), None, f"station.slit_{name}.side_b"),
+        # Note #173 (2026-11-26; #172 had the bars left and right): a strip of bars at the guards' feet and one above,
+        # the open window between them, the whole width. A two-sided line draws its middle texture once, so each strip
+        # is its own line: the front (to the hall) carries the low strip, standing on the floor (dontpegbottom), the
+        # back (to the post) the high one, hung from the slit's top; the bars squeezed to ENTRY_CAGE_BAR high. Both
+        # impassable (blocking), both see- and shoot-through.
+        bar_scale = 72 / ENTRY_CAGE_BAR                       # MIDBARS3 is 72 high
+        for ln in _edges(m, slit, [(P(a, 0), P(b, 0), hall, f"station.slit_{name}.front"),
+                                   (P(b, 0), P(b, 8), None, f"station.slit_{name}.side_b"),
                                    (P(b, 8), P(a, 8), guard, f"station.slit_{name}.back"), (P(a, 8), P(a, 0), None, f"station.slit_{name}.side_a")]):
             ld = m.linedefs[ln]
             if "sideback" in ld.fields:
                 metal(ln)
+                ld["blocking"] = True
+                if ld["user_gid"].endswith(".front"):
+                    ld["dontpegbottom"] = True
+                for sd in ("sidefront", "sideback"):
+                    m.sidedefs[ld[sd]].fields.update(texturemiddle=CLIFF_RAIL, scaley_mid=bar_scale)
             else:
                 m.sidedefs[ld["sidefront"]]["texturemiddle"] = CLOSET_SKIN
         lo, hi = sorted((sign * g0, sign * g1))
         sa, sb = sorted((sign * s0, sign * s1))
         gate, conn, Ga, Gb, Da, Db, Qa, Qb, tag = doors[name]
+        # Note #177 (2026-11-27): the wall between the post and the passage behind the arch (8 thick) gets a cage front
+        # too, the same as the slit onto the hall: bars at the feet and at the top, the window between. Its post side
+        # is the post's wall at |u| g0, its passage side on the passage's wall (P(+-64, 8) to se/ne, a little askew).
+        w0, w1 = 8 + ENTRY_SIDE_CAGE_MARGIN, dw - 8 - ENTRY_SIDE_CAGE_MARGIN
+        A, B = P(sign * arch_u[-1], 8), (se if sign > 0 else ne)
+        dB = (B[0] - mid[0]) * nx + (B[1] - mid[1]) * ny
+        on_link = lambda d: (round(A[0] + (B[0] - A[0]) * (d - 8) / (dB - 8), 2), round(A[1] + (B[1] - A[1]) * (d - 8) / (dB - 8), 2))
+        K0, K1, L0, L1 = P(sign * g0, w0), P(sign * g0, w1), on_link(w0), on_link(w1)
+        side_cages[name] = (L0, L1)
+        cage = m.sector(f"station.side_slit_{name}", floor=floor + ENTRY_SLIT_Z[0], ceiling=floor + ENTRY_SLIT_Z[1],
+                        light=ENTRY_GUARD_LIGHT, floor_tex="CEIL5_1", ceiling_tex="CEIL5_1")
+        m.sectors[cage.index]["user_scenery"] = True
+        for ln in _edges(m, cage, [(L0, L1, link, f"station.side_slit_{name}.front"), (L1, K1, None, f"station.side_slit_{name}.side_b"),
+                                   (K1, K0, guard, f"station.side_slit_{name}.back"), (K0, L0, None, f"station.side_slit_{name}.side_a")]):
+            ld = m.linedefs[ln]
+            if "sideback" in ld.fields:
+                metal(ln)
+                ld["blocking"] = True
+                if ld["user_gid"].endswith(".front"):
+                    ld["dontpegbottom"] = True
+                for sd in ("sidefront", "sideback"):
+                    m.sidedefs[ld[sd]].fields.update(texturemiddle=CLIFF_RAIL, scaley_mid=bar_scale)
+            else:
+                m.sidedefs[ld["sidefront"]]["texturemiddle"] = CLOSET_SKIN
         # The back wall runs from P(hi, dw - 8) to P(lo, dw - 8): the door's two ends in it, in that order.
         back_pts = sorted((Ga, Gb), key=lambda q: math.dist(q, P(hi, dw - 8)))
         ring = [P(lo, 8), P(sa, 8), P(sb, 8), P(hi, 8), P(hi, dw - 8)] + back_pts + [P(lo, dw - 8)]
+        # The side window's ends, in the wall at |u| g0 (u = hi on the north post, lo on the south one), in ring order.
+        if sign < 0:
+            ring = ring[:4] + [K0, K1] + ring[4:]
+        else:
+            ring = ring + [K1, K0]
         outline = []
         for i, (q0, q1) in enumerate(zip(ring, ring[1:] + ring[:1])):
-            kind = "skip" if (q0, q1) == (P(sa, 8), P(sb, 8)) else gate if {q0, q1} == {Ga, Gb} else None
+            kind = "skip" if (q0, q1) in ((P(sa, 8), P(sb, 8)), (K0, K1), (K1, K0)) else gate if {q0, q1} == {Ga, Gb} else None
             outline.append((q0, q1, kind, f"station.guard_{name}.wall_{i + 1}"))
         for ln in _edges(m, guard, outline):
             ld = m.linedefs[ln]
@@ -2624,7 +2759,8 @@ def station(m: MapBuilder, hall, C3, C2, floor: int) -> None:
             else:
                 m.sidedefs[ld["sidefront"]]["texturemiddle"] = "STARG3"
         out = round(math.degrees(math.atan2(-ny, -nx))) % 360           # facing the room, through the slit
-        m.thing(ZOMBIE, *P(sign * (s0 + s1) / 2, 40), f"station.guard_{name}.zombie", angle=out)
+        z = m.thing(ZOMBIE, *P(sign * (s0 + s1) / 2, 40), f"station.guard_{name}.zombie", angle=out)
+        m.things[z]["id"] = GUARD_ZOMBIE_TID            # note #174: swapped for CacobeliskGuardZombie at load
     # The arch: columns 8 deep across the way through, each its own ceiling, so the top steps up to the middle.
     cols = []
     for k, (u0, u1, top) in enumerate(zip(arch_u, arch_u[1:], ENTRY_ARCH_TOPS)):
@@ -2649,8 +2785,11 @@ def station(m: MapBuilder, hall, C3, C2, floor: int) -> None:
                 m.sidedefs[ld["sidefront"]]["texturemiddle"] = CLOSET_SKIN
     # The passage behind the arch, the station's 128 wide all the way (note #125).
     a0, a1 = arch_u[0], arch_u[-1]
-    for ln in _edges(m, link, [(P(a0, 8), P(a1, 8), "skip", ""), (P(a1, 8), se, None, "station.entry_link.wall_s"),
-                               (se, ne, "skip", ""), (ne, P(a0, 8), None, "station.entry_link.wall_n")]):
+    (Ls0, Ls1), (Ln0, Ln1) = side_cages["s"], side_cages["n"]       # note #177: the side cage fronts
+    for ln in _edges(m, link, [(P(a0, 8), P(a1, 8), "skip", ""), (P(a1, 8), Ls0, None, "station.entry_link.wall_s"),
+                               (Ls0, Ls1, "skip", ""), (Ls1, se, None, "station.entry_link.wall_s2"),
+                               (se, ne, "skip", ""), (ne, Ln1, None, "station.entry_link.wall_n2"),
+                               (Ln1, Ln0, "skip", ""), (Ln0, P(a0, 8), None, "station.entry_link.wall_n")]):
         m.sidedefs[m.linedefs[ln]["sidefront"]]["texturemiddle"] = "STARG3"
     # Note #127: the back tunnel, built before the raster so the box room's north wall opens onto it: north from
     # the box room, three steps up to the storage room's level, then west above everything, then down to the
@@ -2707,17 +2846,29 @@ def station(m: MapBuilder, hall, C3, C2, floor: int) -> None:
                     side = m.sidedefs[ld[sd]]
                     for key in ("texturetop", "texturemiddle", "texturebottom"):
                         if side.get(key, "-") != "-":
-                            side[key] = "BROWN96"
+                            side[key] = BACK_TUNNEL_WALL
             if "sideback" not in ld.fields:
-                m.sidedefs[ld["sidefront"]]["texturemiddle"] = "BROWN96"
+                m.sidedefs[ld["sidefront"]]["texturemiddle"] = BACK_TUNNEL_WALL
     for k, (type_, gx, gy) in enumerate(STATION_BOX_GUARDS):           # note #145
-        m.thing(type_, origin[0] + gx, origin[1] + gy, f"station.boxes.guard_{k + 1}", angle=0)
+        t = m.thing(type_, origin[0] + gx, origin[1] + gy, f"station.boxes.guard_{k + 1}", angle=0)
+        m.things[t]["ambush"] = True       # note #167: deaf: they don't come out for the fighting outside, only on sight
+    for k, (gx, gy, gh) in enumerate(STATION_BOX_RED_DRONES):          # note #166
+        d = m.thing(3006, origin[0] + gx, origin[1] + gy, f"station.boxes.red_drone_{k + 1}", angle=0)
+        m.things[d].fields.update(id=RED_DRONE_TID, height=gh, ambush=True)
     for k, (gx, gy) in enumerate(STATION_DRONES):                  # 2026-11-26: the drones
         d = m.thing(3006, origin[0] + gx, origin[1] + gy, f"station.hall.drone_{k + 1}", angle=180)
-        m.things[d].fields.update(id=DRONE_TID, height=STATION_DRONE_HEIGHT)
+        m.things[d].fields.update(id=DRONE_TID, height=STATION_DRONE_HEIGHT, ambush=True)   # note #171: deaf: the pump hall is an arena
     for k, (gx, gy) in enumerate(STATION_RED_DRONES):
         d = m.thing(3006, origin[0] + gx, origin[1] + gy, f"station.hall.red_drone_{k + 1}", angle=180)
-        m.things[d].fields.update(id=RED_DRONE_TID, height=STATION_DRONE_HEIGHT)
+        m.things[d].fields.update(id=RED_DRONE_TID, height=STATION_DRONE_HEIGHT, ambush=True)   # note #171
+    for k, (zx, zy, za) in enumerate(ZOMBIE_HALL_ZOMBIES):                # 2026-11-27: the zombie hall
+        m.thing(ZOMBIE, origin[0] + zx, origin[1] + zy, f"station.zombies.zombie_{k + 1}", angle=za)
+    m.thing(17, origin[0] + STATION_CELL_PACK[0], origin[1] + STATION_CELL_PACK[1], "station.storage.cell_pack", angle=90)
+    gun = m.thing(2004, origin[0] + STATION_DRONE_GUN[0], origin[1] + STATION_DRONE_GUN[1], "station.storage.drone_gun", angle=90)
+    m.things[gun]["id"] = DRONE_GUN_TID                              # 2026-11-27: swapped for CacobeliskDroneGun at load
+    for k, (gx, gy, gh) in enumerate(STATION_YELLOW_DRONES):        # 2026-11-26 (chat)
+        d = m.thing(3006, origin[0] + gx, origin[1] + gy, f"station.corridor.yellow_drone_{k + 1}", angle=180)
+        m.things[d].fields.update(id=YELLOW_DRONE_TID, height=gh)
     for k, c in enumerate(niches):                                  # note #136: a candle in each niche
         m.thing(34, c, yh + nd // 2, f"station.back_tunnel.candle_{k + 1}")
     raster(m, "station", origin, floor, station_zones(),
@@ -3709,8 +3860,9 @@ def passage_secret(m: MapBuilder, s, a, b, P, gid: str) -> None:
     at = lambda pt, d: P(pt[0] + ix * d, pt[1] + iy * d)
     piece = m.sectors[s.index].fields
     f, c = piece["heightfloor"], piece["heightceiling"]
+    # Note #169: its floor the passage's own (it was the rock), so the doorway's floor runs on unbroken.
     door = m.sector(f"{gid}.secret_door", floor=f, ceiling=f, light=piece["lightlevel"],
-                    floor_tex=MAIN_WALL, ceiling_tex=MAIN_WALL)
+                    floor_tex=piece.get("texturefloor", MAIN_FLOOR), ceiling_tex=MAIN_WALL)
     m.sectors[door.index]["id"] = PASSAGE_SECRET_TAG
     deep = 8 + PASSAGE_SECRET_ALCOVE
     alcove = m.sector(f"{gid}.secret", floor=f, ceiling=f + PASSAGE_SECRET_HIGH, light=max(0, piece["lightlevel"] - 16),
@@ -3733,6 +3885,13 @@ def passage_secret(m: MapBuilder, s, a, b, P, gid: str) -> None:
                 for key in ("texturetop", "texturemiddle", "texturebottom"):
                     if side.get(key, "-") != "-":
                         side[key] = MAIN_WALL
+    # Note #168 (2026-11-26): the door's own sides (its frame) stay put as it lifts: hung from its floor
+    # (dontpegbottom); pegged as they were, they rode up with the moving ceiling. Note #179 (2026-11-27): the face
+    # does ride up, as a door's does (#168 had hung it from the passage's ceiling, dontpegtop, so it stood still and
+    # the opening seemed to slide up under it): left pegged to the door's ceiling.
+    for ln in made:
+        if m.linedefs[ln]["user_gid"] in (f"{gid}.secret_door.side_a", f"{gid}.secret_door.side_b"):
+            m.linedefs[ln]["dontpegbottom"] = True
     mid = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
     gx, gy = at(mid, deep - 24)
     ox, oy = P(*mid)

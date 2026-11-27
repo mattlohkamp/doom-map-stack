@@ -269,9 +269,16 @@ Map commands take a map name (`maps/<name>` in the current project) or a path to
   on screen, and a label is hidden while it would cover another (issues first, then sectors large to small,
   then things), so crowded spots spread out on zooming in; the line under the map says where the cursor is
   and what it's on. A click (not a drag) still opens the note box. It polls every 2 s, so new builds appear by themselves. The page is
-  `src/dms/board.html`, read on every request: an open board reloads itself within 2 s when it changes. Changes to
-  `src/dms/board.py` (the server, API, console log, auto-pull) need the board restarted. (`src/dms/board.py`,
-  standard library only). Builds that changed the map, or carry a note, are kept in `build/<map>/history/<n>/`
+  `src/dms/board.html`, read on every request: an open board reloads itself within 2 s when it changes. **Live updates, no restarts** (mapper, 2026-11-26): the board
+  process is a supervisor; the server runs in a child (`dms board --child`), started again by itself within about
+  3 s when any of the dms package's `.py` files changes (once a fresh Python imports them all; a broken change
+  leaves the running server as it was and says why in the console). Open pages poll `/api/ping` (`code`: the
+  server's generation, `pages`: each page's file, `assets`: what the maps and drafts bring) and reload, or (the
+  asset browser, for `assets`) refetch in place. So never ask the mapper to restart the board or refresh a
+  page. The child is stopped with its whole process tree (`taskkill /T`): a venv's python.exe is a launcher with
+  the real Python as its own child. So the game and the editor are started loose (`launch.spawn_loose`: through a
+  Python that exits at once, no console streams), never as a child: a game the board had restarted (H) was in that
+  tree and vanished, log cut short, whenever a dms `.py` file changed (2026-11-27). (`src/dms/board.py`, standard library only). Builds that changed the map, or carry a note, are kept in `build/<map>/history/<n>/`
   (`src/dms/history.py`, newest 100). **When building something for the mapper to look at, pass
   `dms build <map> --note "what changed; what to check"`**: the note is shown with that build on the board.
 
@@ -294,6 +301,16 @@ Map commands take a map name (`maps/<name>` in the current project) or a path to
   UZDoom reads them only at startup: a change marks the running game for a restart, like a script change.
   Where a wall needs two things one texture can't give (a strip along its foot, a turned texture), compose
   it here rather than cutting the map into more sectors.
+  **Decals of a map's own** (2026-11-26): `maps/<map>/decaldef.txt` is packed as `DECALDEF`; a decal's `pic` can
+  be one of the map's own pictures (below; a white mask coloured with `shade`; give the PNG a `grAb` offset at
+  its middle, or the decal hangs from its top left corner). The script sprays it
+  (`A_SprayDecal` from a spot in front of a line found by line `id`: Cacobelisk's `CacobeliskRunes`), and the asset
+  browser lists it under Decals with the map's tag (`mapassets.py`); a decal on a
+  door's upper part rides up with the door. Like textures, a change needs a restart.
+  **Sounds of a map's own** (2026-11-26): `maps/<map>/sounds/NAME.wav` (or `.ogg`, `.flac`; NAME a lump name, 8
+  characters at most, after the map: `CBSTAT1`) packed as plain lumps, named by `maps/<map>/sndinfo.txt` (`SNDINFO`:
+  `cacobelisk/drone/pain1 CBSTAT1`, `$random`); the asset browser lists and plays them. Make them with a script in
+  `art/` and say in `sounds/NOTICE.txt` where they came from. A change needs a restart.
   **Pictures of a map's own** (2026-11-24): `maps/<map>/textures/NAME.png` (8 characters at most) are packed between
   `TX_START` and `TX_END` and work on walls and as flats; the validator and the asset browser know them. Use one
   when composing can't do it (scaling, soft edges, the mapper's own artwork: sources go in `maps/<map>/art/`).
@@ -319,7 +336,7 @@ Map commands take a map name (`maps/<name>` in the current project) or a path to
   The editor's thing and texture-set configs are read at run time from `.tools/udb/`. Everything converted is
   cached in `build/assets/<key>/` (the key changes with the resource files or `resources.VERSION`); the first
   load indexes for about 20 s, with a loading screen (a turning sigil drawn in the page, and a bar fed by
-  `/api/assets/progress`: `resources.progress()`, the stage and its count, never waiting for the index). Changes to `resources.py` need the board restarted; `assets.html` is read per request.
+  `/api/assets/progress`: `resources.progress()`, the stage and its count, never waiting for the index). Changes to `resources.py` reach it by themselves (live updates, under the board); `assets.html` is read per request and an open page reloads when it changes.
   **The maps' own assets and what the maps use** (`src/dms/mapassets.py`; read from the maps' files when asked, not part
   of the cached index): each map's `textures.txt` textures and flats (put together here the way the engine does:
   patches placed, flipped, turned, blended, recoloured; a definition using something it doesn't know is shown with
@@ -453,6 +470,16 @@ Move each one up into the list above as it lands.
 - **Knowledge lives in the repo:** `AGENTS.md`, `docs/` and `maps/*/notes.md`, not in Claude's private memory.
 - **Rules live in scripts:** overwrite protection and similar checks go in `dms`, not in Claude Code hooks.
 - **Text alongside images:** every image output (render, tour) also has a text report.
+- **Every asset shows in the asset browser first** (the mapper's rule, 2026-11-26). The browser reads three
+  layers, later over earlier, deduped by name the way the engine resolves them: (1) the source WAD (the IWAD,
+  with `uzdoom.pk3`); (2) any WADs loaded on top of it, the project's maps' own assets included; (3) assets
+  still being developed, not yet in any map. Whenever Claude and the mapper design a new asset, of any kind
+  (texture, flat, decal, sprite, monster, sound, song...), it must show in the browser **before** it is put
+  into a map to test: if the browser can't show that kind yet, teaching it to is part of the job.
+  Drafts live in the project's **`assets/`** folder, laid out like a map's own (`textures.txt`, `textures/`, `sndinfo.txt`, `sounds/`,
+  `sprites/`, `decaldef.txt`, `zscript.zs`; source scripts in `assets/art/`), tagged `draft` in the browser; once
+  the mapper has seen one there, its files move into the map that uses it. A map's or draft's asset with a game
+  asset's name replaces it in the list ("(replaces)"). Status and gaps: `docs/asset-browser.md`, "Layers".
 - **Updating a tool** is a deliberate change to `config\tools.toml` (version + hash) that shows up in git.
 
 ## Versions and releases

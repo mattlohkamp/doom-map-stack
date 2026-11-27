@@ -361,7 +361,35 @@ Still to build later:
 
 ## 9. Where we left off
 
-*Updated 2026-11-26. A new session starts here.*
+*Updated 2026-11-27. A new session starts here.*
+
+**2026-11-27 (night): released v0.24.0; the drone gun, the drones' sounds, notes #176-#179** (`maps/cacobelisk/notes.md` has each).
+*Cacobelisk:* the drones' sounds are static of the map's own (`art/static_burst.py`: crunch = pain, sputter = idle,
+squelch = death, then the lost soul's pop); the yellow drone flinches at 37%, not every hit; every drone drops a small
+cell. **The drone gun** (`CacobeliskDroneGun`, slot 6, the plasma rifle's cells; the mapper: "immensely satisfying",
+it may replace the plasma rifle): a hacked cyan drone held close, seen from behind (`art/drone_gun.py`: no hands,
+a torn-open panel, wires), a burst of static and a brief charge, then sustained glitchy bursts of five (5-10 a bolt,
+5 tics apart, 12 between bursts, about 5.5 degrees of stray, shots pitched up a semitone, plus or minus one at random); picked
+up with a wolf whistle made from the drones' whistle (`art/wolf_whistle.py`, Freedoom's licence in
+`sounds/NOTICE.txt`). One on a crate in the station's storage room; south of it, behind a door, **the zombie hall**
+(704 x 640, twenty zombiemen) to try it on, with a cell pack (100) for testing: the mapper wants cells scarce, so
+that pack goes (or shrinks) once testing is done. Also: the guard posts' back doors are open doorways, their side
+walls cage fronts; the back tunnel's ceiling FLAT5_2 and its end chamber in the tunnel's textures; the passage's
+secret door face lifts like a door.
+*Tools:* the asset browser shows **weapons** of a map's own (Items, a first-person view of Ready and one Fire on a
+click, frames placed by their offsets: `mapassets._hud`, `assets.html` `renderHud`). **The game and the editor are
+started loose** (`launch.spawn_loose`): a game the board had restarted (H) was in the board server's process tree
+and was killed, log cut short, whenever a dms `.py` file changed. *Lessons:* the "Invalid argument" write failure hit
+`map.py` twice in a row: edits went through a scratch file and `cp`; **dms retrying its own writes** is now more
+pressing. Heredocs with quotes in them broke the shell twice: write edit scripts with the Write tool. A pickup more than
+56 above the player's feet can't be taken, and one 32 in from a ledge can't be reached (touch is centres within the
+two radii): the movement check calls a pickup on a crate unreachable regardless. `drone_sprites.py` clears only its
+own sprites now. **A version bump breaks every dms command while the board runs**: `uv run --locked` sees the
+package's new version and reinstalls it, which fails ("Access is denied") because the board's `dms.exe` is in use;
+it clears once the board is closed. Worth fixing in `dms.ps1` (fall back to `--no-sync`, or run `python -m dms`
+instead of the `dms.exe` entry point) before the next release.
+**Next:** the mapper's call on where the drone gun goes (and whether it replaces the plasma rifle); the cell pack;
+the crest on the held drone (keep, shrink, drop: unanswered); the open items below.
 
 **2026-11-26, later: released v0.23.0, enemy edits.** The mapper asked for a lost soul variant that is
 human/robot rather than bio/alien and stares, then shoots instead of charging. Built in Cacobelisk as **the
